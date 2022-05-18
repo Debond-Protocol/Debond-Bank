@@ -29,6 +29,7 @@ contract('APM', async (accounts: string[]) => {
         // 1 get some tokens
         await usdcContract.mint(swapper, web3.utils.toWei('100', 'ether'));
         await usdcContract.mint(apmContract.address, web3.utils.toWei('100', 'ether'));
+        await usdcContract.approve(bankContract.address, web3.utils.toWei('100', 'ether'), {from: swapper})
         //pareil avec dbit
 
         const MINTER_ROLE = await dbitInstance.MINTER_ROLE();

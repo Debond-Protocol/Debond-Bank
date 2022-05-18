@@ -14,6 +14,7 @@ const DBIT = artifacts.require("DBIT");
 const APM = artifacts.require("APM");
 const DebondData = artifacts.require("DebondData");
 
+
 contract('Bank', async (accounts: string[]) => {
     enum PurchaseMethod {
         BUYING = 0,
@@ -49,6 +50,7 @@ contract('Bank', async (accounts: string[]) => {
         // await apmContract.updateTotalReserve(dbitContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve
 
         await usdcContract.mint(accounts[0], web3.utils.toWei('100000', 'ether'));
+        await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'));
         await bankContract.buyBond(USDC_FIX_6MTH_CLASS_ID, DBIT_FIX_6MTH_CLASS_ID, web3.utils.toWei('3000', 'ether'), 0, PurchaseMethod.BUYING);
 
 

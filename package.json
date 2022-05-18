@@ -14,7 +14,8 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.5.0",
     "dotenv": "^16.0.0",
-    "prb-math": "^2.4.3"
+    "prb-math": "^2.4.3",
+    "debond-erc3475": "https://github.com/Debond-Protocol/Debond-ERC3475/tree/main/contracts"
   },
   "devDependencies": {
     "@typechain/truffle-v5": "^5.1.0",

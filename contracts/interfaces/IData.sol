@@ -13,18 +13,18 @@ pragma solidity ^0.8.0;
     See the License for the specific language governing permissions and
     limitations under the License.
 */
+import "debond-erc3475/contracts/interfaces/IDebondBond.sol";
+
 
 interface IData {
 
-    enum InterestRateType {FixedRate, FloatingRate}
-
-    function addClass(uint classId, string memory symbol, InterestRateType interestRateType, address tokenAddress, uint periodTimestamp) external;
+    function addClass(uint classId, string memory symbol, IDebondBond.InterestRateType interestRateType, address tokenAddress, uint periodTimestamp) external;
 
     function updatePurchasableClass(uint debondClassId, uint purchaseClassId, bool purchasable) external;
 
     function canPurchase(uint debondClassId , uint purchaseClassId) external view returns (bool);
 
-    function getClassFromId(uint classId) external view returns(string memory symbol, InterestRateType interestRateType, address tokenAddress, uint periodTimestamp);
+    function getClassFromId(uint classId) external view returns(string memory symbol, IDebondBond.InterestRateType interestRateType, address tokenAddress, uint periodTimestamp);
 
     function getLastNonceCreated(uint classId) external view returns(uint nonceId, uint createdAt);
 

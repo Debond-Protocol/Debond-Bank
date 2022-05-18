@@ -25,7 +25,7 @@ import "./interfaces/IData.sol";
 import "./interfaces/ICollateral.sol";
 import "./interfaces/IDebondToken.sol";
 import "./libraries/DebondMath.sol";
-import "./interfaces/IDebondBond.sol";
+import "debond-erc3475/contracts/interfaces/IDebondBond.sol";
 
 
 
@@ -93,7 +93,7 @@ contract Bank {
 
 
         (,,address purchaseTokenAddress,) = debondData.getClassFromId(purchaseClassId);
-        (,IData.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(debondClassId);
+        (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(debondClassId);
 
         if (debondTokenAddress == DBITAddress) {
             uint amountDBITToMint = mintDbitFromUsd(purchaseTokenAmount, purchaseTokenAddress);
@@ -130,13 +130,13 @@ contract Bank {
             //if reserve == 0 : use cdp price instead of quote? See with yu
             //do we have to handle the case where reserve = 0? or when deploying, we put some liquidity?
             uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
-            uint rate = interestRateType == IData.InterestRateType.FixedRate ? fixedRate : floatingRate;
+            uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
             issueBonds(msg.sender, debondClassId, amount.mul(rate));
         }
         else if (purchaseMethod == PurchaseMethod.Buying) {
             (uint reserveA, uint reserveB) = apm.getReserves(purchaseTokenAddress, debondTokenAddress);
             uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
-            uint rate = interestRateType == IData.InterestRateType.FixedRate ? fixedRate : floatingRate;
+            uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
             issueBonds(msg.sender, debondClassId, amount + amount.mul(rate)); // here the interest calculation is hardcoded. require the interest is enough high
         }
 
@@ -154,18 +154,18 @@ contract Bank {
         bond.redeem(msg.sender, classId, nonceId, amount);
 	    //require(redeemable) is already done in redeem function for liquidity, but still has to be done for time redemption
 
-        (, IData.InterestRateType interestRateType ,address tokenAddress,) = debondData.getClassFromId(classId);
+        (, IDebondBond.InterestRateType interestRateType ,address tokenAddress,) = debondData.getClassFromId(classId);
         //require(reserves[TokenAddress]>amountIn);
 
 
 
-        if(interestRateType == IData.InterestRateType.FixedRate) {
+        if(interestRateType == IDebondBond.InterestRateType.FixedRate) {
             IERC20(tokenAddress).transferFrom(address(apm), msg.sender, amount);
             apm.updateTotalReserve(tokenAddress, amount);
 
 
         }
-        else if (interestRateType == IData.InterestRateType.FloatingRate){
+        else if (interestRateType == IDebondBond.InterestRateType.FloatingRate){
             //to be implemented later
         }
 
@@ -203,10 +203,10 @@ contract Bank {
         uint amountIn,
         uint amountOutMin,
         address[] calldata path //TODO : mettre l'address to en param, comme uniswap : msg.sender pas fiable.
-    ) public returns (uint[] memory amounts) {
-        amounts = apm.getAmountsOut(amountIn, path);
+    ) external {
+        uint[] memory amounts = apm.getAmountsOut(amountIn, path);
         require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
-    
+
         IERC20(path[0]).transferFrom(msg.sender, address(apm), amounts[0]);
         _swap(amounts, path, msg.sender); //msg.sender?
     }
@@ -251,19 +251,19 @@ contract Bank {
         uint fixRateSupply = 0;
         uint floatRateSupply = 0;
 
-        (,IData.InterestRateType interestRateType, address purchaseTokenAddress,) = debondData.getClassFromId(purchaseTokenClassId); // address of the purchase token
+        (,IDebondBond.InterestRateType interestRateType, address purchaseTokenAddress,) = debondData.getClassFromId(purchaseTokenClassId); // address of the purchase token
 
 
         // staking collateral for bonds
         if (purchaseMethod == PurchaseMethod.Staking) {
-            fixRateSupply = bond.bondAmountDue(purchaseTokenAddress, IData.InterestRateType.FixedRate);// we get the fix rate bonds supply
-            floatRateSupply = bond.bondAmountDue(purchaseTokenAddress, IData.InterestRateType.FloatingRate);// we get the float rate bonds supply
+            fixRateSupply = bond.bondAmountDue(purchaseTokenAddress, IDebondBond.InterestRateType.FixedRate);// we get the fix rate bonds supply
+            floatRateSupply = bond.bondAmountDue(purchaseTokenAddress, IDebondBond.InterestRateType.FloatingRate);// we get the float rate bonds supply
 
             // we had the client amount to the according bond balance to calculate interest rate after deposit
-            if (purchaseTokenAmount > 0 && interestRateType == IData.InterestRateType.FixedRate) {
+            if (purchaseTokenAmount > 0 && interestRateType == IDebondBond.InterestRateType.FixedRate) {
                 fixRateSupply += purchaseTokenAmount;
             }
-            if (purchaseTokenAmount > 0 && interestRateType == IData.InterestRateType.FloatingRate) {
+            if (purchaseTokenAmount > 0 && interestRateType == IDebondBond.InterestRateType.FloatingRate) {
                 floatRateSupply += purchaseTokenAmount;
             }
 
@@ -276,13 +276,13 @@ contract Bank {
             // we are trying to know how many Debond Token the buying bond process will add to the LQY
             uint debondTokenAmount = purchaseTokenAmount;
 
-            fixRateSupply = bond.bondAmountDue(debondTokenAddress, IData.InterestRateType.FixedRate);
-            floatRateSupply = bond.bondAmountDue(debondTokenAddress, IData.InterestRateType.FloatingRate);
+            fixRateSupply = bond.bondAmountDue(debondTokenAddress, IDebondBond.InterestRateType.FixedRate);
+            floatRateSupply = bond.bondAmountDue(debondTokenAddress, IDebondBond.InterestRateType.FloatingRate);
 
-            if (interestRateType == IData.InterestRateType.FixedRate) {
+            if (interestRateType == IDebondBond.InterestRateType.FixedRate) {
                 fixRateSupply += debondTokenAmount;
             }
-            if (interestRateType == IData.InterestRateType.FloatingRate) {
+            if (interestRateType == IDebondBond.InterestRateType.FloatingRate) {
                 floatRateSupply += debondTokenAmount;
             }
         }

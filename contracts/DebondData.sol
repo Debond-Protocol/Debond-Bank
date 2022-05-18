@@ -16,6 +16,8 @@ pragma solidity ^0.8.0;
 
 
 import './interfaces/IData.sol';
+import "debond-erc3475/contracts/interfaces/IDebondBond.sol";
+
 
 
 contract DebondData is IData {
@@ -25,7 +27,7 @@ contract DebondData is IData {
         uint id;
         bool exists;
         string symbol;
-        InterestRateType interestRateType;
+        IDebondBond.InterestRateType interestRateType;
         address tokenAddress;
         uint periodTimestamp;
         uint lastNonceIdCreated;
@@ -45,15 +47,15 @@ contract DebondData is IData {
         address DAI
     ) {
 
-        addClass(0, "D/BIT", InterestRateType.FixedRate, DBIT, SIX_M_PERIOD);
-        addClass(1, "USDC", InterestRateType.FixedRate, USDC, SIX_M_PERIOD);
-        addClass(2, "USDT", InterestRateType.FixedRate, USDT, SIX_M_PERIOD);
-        addClass(3, "DAI", InterestRateType.FixedRate, DAI, SIX_M_PERIOD);
+        addClass(0, "D/BIT", IDebondBond.InterestRateType.FixedRate, DBIT, SIX_M_PERIOD);
+        addClass(1, "USDC", IDebondBond.InterestRateType.FixedRate, USDC, SIX_M_PERIOD);
+        addClass(2, "USDT", IDebondBond.InterestRateType.FixedRate, USDT, SIX_M_PERIOD);
+        addClass(3, "DAI", IDebondBond.InterestRateType.FixedRate, DAI, SIX_M_PERIOD);
 
-        addClass(4, "D/BIT", InterestRateType.FloatingRate, DBIT, SIX_M_PERIOD);
-        addClass(5, "USDC", InterestRateType.FloatingRate, USDC, SIX_M_PERIOD);
-        addClass(6, "USDT", InterestRateType.FloatingRate, USDT, SIX_M_PERIOD);
-        addClass(7, "DAI", InterestRateType.FloatingRate, DAI, SIX_M_PERIOD);
+        addClass(4, "D/BIT", IDebondBond.InterestRateType.FloatingRate, DBIT, SIX_M_PERIOD);
+        addClass(5, "USDC", IDebondBond.InterestRateType.FloatingRate, USDC, SIX_M_PERIOD);
+        addClass(6, "USDT", IDebondBond.InterestRateType.FloatingRate, USDT, SIX_M_PERIOD);
+        addClass(7, "DAI", IDebondBond.InterestRateType.FloatingRate, DAI, SIX_M_PERIOD);
 
         debondClasses.push(0);
         debondClasses.push(4);
@@ -70,7 +72,7 @@ contract DebondData is IData {
     /**
      * @notice this method should only be called by the governance contract TODO Only Governance
      */
-    function addClass(uint classId, string memory symbol, InterestRateType interestRateType, address tokenAddress, uint periodTimestamp) public override {
+    function addClass(uint classId, string memory symbol, IDebondBond.InterestRateType interestRateType, address tokenAddress, uint periodTimestamp) public override {
         Class storage class = classes[classId];
         require(!class.exists, "DebondData: cannot add an existing classId");
         class.id = classId;
@@ -94,7 +96,7 @@ contract DebondData is IData {
 
     function getClassFromId(
         uint classId
-    ) external view returns(string memory symbol, InterestRateType interestRateType, address tokenAddress, uint periodTimestamp) {
+    ) external view returns(string memory symbol, IDebondBond.InterestRateType interestRateType, address tokenAddress, uint periodTimestamp) {
         Class storage class = classes[classId];
         symbol = class.symbol;
         periodTimestamp = class.periodTimestamp;
