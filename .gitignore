@@ -1,0 +1,13 @@
+artifacts/
+node_modules/
+.DS_Store
+.vscode
+.env
+build/
+types/
+tenderly.yaml
+
+Bank.sol.txt
+Exchange.sol.txt
+tenderly.yaml.txt
+.idea
