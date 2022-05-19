@@ -1,4 +1,4 @@
-pragma solidity >=0.7.6;
+pragma solidity ^0.8.0;
 
 // SPDX-License-Identifier: apache 2.0
 /*
@@ -23,9 +23,6 @@ interface IOracle {
         uint24 fee,
         uint32 secondsAgo
     ) external view returns (uint amountOut);
-
-   
 }
-
 
 
