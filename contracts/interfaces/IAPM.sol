@@ -33,4 +33,6 @@ interface IAPM {
     function getAmountsOut(uint amountIn, address[] memory path) external view returns (uint[] memory amounts);
 
     function updateTotalReserve(address tokenAddress, uint amount) external;
+
+    function removeLiquidity(address _to, address tokenAddress, uint amount) external;
 }

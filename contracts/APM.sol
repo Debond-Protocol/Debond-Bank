@@ -15,14 +15,22 @@ pragma solidity ^0.8.0;
 */
 import "./interfaces/IAPM.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "debond-governance/contracts/utils/GovernanceOwnable.sol";
 
 
-contract APM is IAPM {
+
+
+contract APM is IAPM, GovernanceOwnable {
+
+    using SafeERC20 for IERC20;
+
 
     mapping(address => uint256) internal totalReserve;
     mapping(address => uint256) internal totalVlp; //Vlp : virtual liquidity pool
     //mapping(address => mapping( address => Pair) ) pairs;
     mapping(address => mapping( address => uint) ) vlp;
+    address bankAddress;
 
 
     struct UpdateData { //to avoid stack too deep error
@@ -30,6 +38,18 @@ contract APM is IAPM {
         uint amountB;
         address tokenA;
         address tokenB;
+    }
+
+    constructor(address _governanceAddress) GovernanceOwnable(_governanceAddress) {}
+
+    modifier onlyBank() {
+        require(msg.sender == bankAddress, "APM: Not Authorised");
+        _;
+    }
+
+    function setBankAddress(address _bankAddress) external onlyGovernance {
+        require(_bankAddress != address(0), "APM: Address 0 given for Bank!");
+        bankAddress = _bankAddress;
     }
 
     function getReservesOneToken(
@@ -126,7 +146,7 @@ contract APM is IAPM {
     }
     function updateWhenRemoveLiquidity(
         uint amount, //amountA is the amount of tokenA removed in total pool reserve ( so not the total amount of tokenA in total pool reserve)
-        address token) external {
+        address token) public {
         //require(msg.sender == bankAddress, "not authorized");
 
         totalReserve[token] -= amount;
@@ -172,11 +192,11 @@ contract APM is IAPM {
         require(swapData.amount0In > 0 || swapData.amount1In > 0, 'APM swap: INSUFFICIENT_INPUT_AMOUNT');
         require(swapData.currentReserve0 * swapData.currentReserve1 >= _reserve0 * _reserve1, 'APM swap: K');
         if (amount0Out == 0) {
-            if (amount1Out != 0) IERC20(token1).transferFrom(address(this), to, amount1Out); //use of != because uint, cheaper than >
+            if (amount1Out != 0) IERC20(token1).transfer(to, amount1Out); //use of != because uint, cheaper than >
             updateWhenSwap(swapData.amount0In, amount1Out, token0, token1);
         }
         else{
-            if (amount0Out != 0) IERC20(token0).transferFrom(address(this), to, amount0Out);
+            if (amount0Out != 0) IERC20(token0).transfer(to, amount0Out);
             updateWhenSwap(swapData.amount1In, amount0Out, token1, token0);
         }
     }
@@ -198,6 +218,15 @@ contract APM is IAPM {
             (uint reserveIn, uint reserveOut) = getReserves(path[i], path[i + 1]);
             amounts[i + 1] = getAmountOut(amounts[i], reserveIn, reserveOut);
         }
+    }
+
+
+    // Bank Access
+    function removeLiquidity(address _to, address tokenAddress, uint amount) external onlyBank {
+        // transfer
+        IERC20(tokenAddress).safeTransfer(_to, amount);
+        // update getReserves
+        updateWhenRemoveLiquidity(amount, tokenAddress);
     }
 }
 
