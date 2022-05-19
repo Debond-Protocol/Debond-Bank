@@ -39,25 +39,31 @@ contract Bank {
     IAPM apm;
     IData debondData;
     IDebondBond bond;
+    IOracle oracle;
     enum PurchaseMethod {Buying, Staking}
     uint public constant BASE_TIMESTAMP = 1646089200; // 2022-01-01 00:00
     uint public constant DIFF_TIME_NEW_NONCE = 24 * 3600; // every 24h we crate a new nonce.
     uint public constant BENCHMARK_RATE_DECIMAL_18 = 5 * 10**16;
     address DBITAddress;
     address DGOVAddress;
+    address USDCAddress;
 
     constructor(
         address apmAddress,
         address dataAddress,
         address bondAddress,
         address _DBITAddress,
-        address _DGOVAddress
+        address _DGOVAddress,
+        address oracleAddress,
+        address usdcAddress
     ) {
         apm = IAPM(apmAddress);
         debondData = IData(dataAddress);
         bond = IDebondBond(bondAddress);
         DBITAddress = _DBITAddress;
         DGOVAddress = _DGOVAddress;
+        oracle = IOracle(oracleAddress);
+        USDCAddress = usdcAddress;
     }
 
     modifier ensure(uint deadline) {
@@ -328,11 +334,17 @@ contract Bank {
     * @dev convert a given amount of token to USD  (the pair needs to exist on uniswap)
     * @param _amountToken the amount of token we want to convert
     * @param _tokenAddress the address of token we want to convert
+    * @param fee fees of the pool
     * @return amountUsd the corresponding amount of usd
     */
-    function _convertTokenToUsd(uint256 _amountToken, address _tokenAddress) private pure returns(uint256 amountUsd) {
+    function _convertTokenToUsd(uint256 _amountToken, address _tokenAddress, uint fee) private pure returns(uint256 amountUsd) {
 
-        amountUsd = _amountToken;
+        if (_tokenAddress = USDCAddress) {
+            amountUsd = _amountToken;
+        }
+        else {
+            amountUsd = oracle.estimateAmountOut(_tokenAddress, _amountToken, USDCAddress, fee , 5 );
+        } 
     }
 
     /**
