@@ -153,36 +153,9 @@ contract Bank {
     ) external {
         //1. redeem the bonds (will fail if not maturity date exceeded)
         bond.redeem(msg.sender, classId, nonceId, amount);
-<<<<<<< HEAD
-	    //require(redeemable) is already done in redeem function for liquidity, but still has to be done for time redemption
-
-        (, IDebondBond.InterestRateType interestRateType ,address tokenAddress,) = debondData.getClassFromId(classId);
-        //require(reserves[TokenAddress]>amountIn);
-
-
-
-        if(interestRateType == IDebondBond.InterestRateType.FixedRate) {
-            IERC20(tokenAddress).transferFrom(address(apm), msg.sender, amount);
-            apm.updateTotalReserve(tokenAddress, amount);
-
-
-        }
-        else if (interestRateType == IDebondBond.InterestRateType.FloatingRate){
-            //to be implemented later
-        }
-
-        //how do we know if we have to burn (or put in reserves) dbit or dbgt?
-
-
-	    //APM.removeLiquidity(tokenAddress, amountIn);
-//        apm.updaReserveAfterRemovingLiquidity(tokenAddress, amountIn);
-        //emit
-
-=======
 
         (,IDebondBond.InterestRateType interestRateType, address tokenAddress,) = debondData.getClassFromId(classId);
         apm.removeLiquidity(msg.sender, tokenAddress, amount);
->>>>>>> origin
     }
 
     // **** SWAP ****
