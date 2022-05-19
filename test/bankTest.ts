@@ -1,7 +1,7 @@
 import {
     APMInstance,
     BankInstance,
-    DBITInstance,
+    DBITInstance, DebondBondTestInstance,
     DebondDataInstance,
     USDCInstance,
     USDTInstance
@@ -13,9 +13,12 @@ const USDT = artifacts.require("USDT");
 const DBIT = artifacts.require("DBIT");
 const APM = artifacts.require("APM");
 const DebondData = artifacts.require("DebondData");
+const DebondBondTest = artifacts.require("DebondBondTest");
+
 
 
 contract('Bank', async (accounts: string[]) => {
+    const buyer = accounts[1];
     enum PurchaseMethod {
         BUYING = 0,
         STAKING = 1,
@@ -27,6 +30,7 @@ contract('Bank', async (accounts: string[]) => {
     let dbitContract: DBITInstance
     let apmContract: APMInstance
     let dataContract: DebondDataInstance
+    let bondContract: DebondBondTestInstance
 
     let DBIT_FIX_6MTH_CLASS_ID: number;
     let USDC_FIX_6MTH_CLASS_ID: number;
@@ -39,6 +43,7 @@ contract('Bank', async (accounts: string[]) => {
         dbitContract = await DBIT.deployed();
         apmContract = await APM.deployed();
         dataContract = await DebondData.deployed();
+        bondContract = await DebondBondTest.deployed();
 
         DBIT_FIX_6MTH_CLASS_ID = ((await dataContract.allDebondClasses()).map(c => c.toNumber()))[0];
         const purchasableClasses = (await dataContract.getPurchasableClasses(DBIT_FIX_6MTH_CLASS_ID)).map(c => c.toNumber());
@@ -49,20 +54,21 @@ contract('Bank', async (accounts: string[]) => {
         // await apmContract.updateTotalReserve(usdcContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve
         // await apmContract.updateTotalReserve(dbitContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve
 
-        await usdcContract.mint(accounts[0], web3.utils.toWei('100000', 'ether'));
-        await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'));
-        await bankContract.buyBond(USDC_FIX_6MTH_CLASS_ID, DBIT_FIX_6MTH_CLASS_ID, web3.utils.toWei('3000', 'ether'), 0, PurchaseMethod.BUYING);
+        await usdcContract.mint(buyer, web3.utils.toWei('100000', 'ether'));
+        await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
+        await bankContract.buyBond(USDC_FIX_6MTH_CLASS_ID, DBIT_FIX_6MTH_CLASS_ID, web3.utils.toWei('3000', 'ether'), 0, PurchaseMethod.BUYING, {from: buyer});
 
 
 
 
     })
 
-    // it('redeem Bonds', async () => {
-    //
-    //     const DBITNonces = (await bondContract.getNoncesPerAddress(accounts[0], DBIT_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
-    //     await bankContract.redeemBonds(DBIT_FIX_6MTH_CLASS_ID, DBITNonces[0], web3.utils.toWei('1000', 'ether'));
-    //
-    //     console.log("balance Bond D/BIT: AFTER " + (await bondContract.balanceOf(accounts[0], DBIT_FIX_6MTH_CLASS_ID, DBITNonces[0])));
-    // })
+    it('redeem Bonds', async () => {
+
+        const DBITNonces = (await bondContract.getNoncesPerAddress(buyer, DBIT_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
+        console.log("nonce: " + DBITNonces[0]);
+        await bankContract.redeemBonds(DBIT_FIX_6MTH_CLASS_ID, DBITNonces[0], web3.utils.toWei('1000', 'ether'), {from: buyer});
+
+        console.log("balance Bond D/BIT: AFTER " + (await bondContract.balanceOf(buyer, DBIT_FIX_6MTH_CLASS_ID, DBITNonces[0])));
+    })
 });
