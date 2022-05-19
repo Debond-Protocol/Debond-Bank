@@ -29,6 +29,7 @@ import "debond-erc3475/contracts/interfaces/IDebondBond.sol";
 
 
 
+
 contract Bank {
 
     using SafeERC20 for IERC20;
@@ -178,15 +179,6 @@ contract Bank {
 
     }
 
-    // **** Swaps ****
-
-    function swap(address tokenIn, address tokenOut, uint amountIn, uint amountOutMin) public {
-        //if (tokenIn == dbitAddress){
-
-        //}
-
-    }
-
     // **** SWAP ****
     // requires the initial amount to have already been sent to the first pair
     function _swap(uint[] memory amounts, address[] memory path, address to) internal virtual {
@@ -202,13 +194,14 @@ contract Bank {
     function swapExactTokensForTokens(
         uint amountIn,
         uint amountOutMin,
-        address[] calldata path //TODO : mettre l'address to en param, comme uniswap : msg.sender pas fiable.
+        address[] calldata path,
+        address to
     ) external {
         uint[] memory amounts = apm.getAmountsOut(amountIn, path);
         require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
 
         IERC20(path[0]).transferFrom(msg.sender, address(apm), amounts[0]);
-        _swap(amounts, path, msg.sender); //msg.sender?
+        _swap(amounts, path, to);
     }
 
 
@@ -298,8 +291,8 @@ contract Bank {
 
     // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
     function quote(uint256 amountA, uint256 reserveA, uint256 reserveB) internal pure returns (uint256 amountB) { /// use uint?? int256???
-        require(amountA > 0, 'DebondLibrary: INSUFFICIENT_AMOUNT');
-        require(reserveA > 0 && reserveB > 0, 'DebondLibrary: INSUFFICIENT_LIQUIDITY');
+        require(amountA > 0, 'DebondBank: INSUFFICIENT_AMOUNT');
+        require(reserveA > 0 && reserveB > 0, 'DebondBank: INSUFFICIENT_LIQUIDITY');
         //amountB = amountA.mul(reserveB) / reserveA;
         amountB =  amountA * reserveB / reserveA;
     }
