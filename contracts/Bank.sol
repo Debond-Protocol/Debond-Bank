@@ -23,6 +23,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IAPM.sol";
 import "./interfaces/IData.sol";
 import "./interfaces/ICollateral.sol";
+import "./interfaces/IOracle.sol";
 import "./interfaces/IDebondToken.sol";
 import "./libraries/DebondMath.sol";
 import "debond-erc3475/contracts/interfaces/IDebondBond.sol";
@@ -91,7 +92,8 @@ contract Bank {
         uint _debondClassId, // token to mint
         uint _purchaseTokenAmount,
         uint _bondMinAmount, //should be changed to interest min amount
-        PurchaseMethod purchaseMethod
+        PurchaseMethod purchaseMethod,
+        uint24 fee
     ) external {
 
         uint purchaseClassId = _purchaseClassId;
@@ -106,7 +108,7 @@ contract Bank {
         (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(debondClassId);
 
         if (debondTokenAddress == DBITAddress) {
-            uint amountDBITToMint = mintDbitFromUsd(purchaseTokenAmount, purchaseTokenAddress);
+            uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress, fee); //todo : ferivy if conversion is possible.
             IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
             IDebondToken(debondTokenAddress).mint(address(apm), amountDBITToMint);
             apm.updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, debondTokenAddress);
@@ -122,7 +124,7 @@ contract Bank {
                 apm.updateWhenAddLiquidity(purchaseTokenAmount, amountBToMint,  purchaseTokenAddress,  debondTokenAddress);
             }
             else {
-                uint amountDBITToMint = mintDbitFromUsd(purchaseTokenAmount, purchaseTokenAddress); //need cdp from usd to dgov
+                uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress, fee); //need cdp from usd to dgov
                 uint amountDGOVToMint = mintDgovFromDbit(purchaseTokenAmount);
                 IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
                 IDebondToken(debondTokenAddress).mint(address(apm), amountDGOVToMint);
@@ -340,9 +342,9 @@ contract Bank {
     * @param fee fees of the pool
     * @return amountUsd the corresponding amount of usd
     */
-    function _convertTokenToUsd(uint256 _amountToken, address _tokenAddress, uint fee) private pure returns(uint256 amountUsd) {
+    function _convertTokenToUsd(uint128 _amountToken, address _tokenAddress, uint24 fee) private view returns(uint256 amountUsd) {
 
-        if (_tokenAddress = USDCAddress) {
+        if (_tokenAddress == USDCAddress) {
             amountUsd = _amountToken;
         }
         else {
@@ -354,11 +356,12 @@ contract Bank {
     * @dev given the amount of tokens and the token address, returns the amout of DBIT to mint.
     * @param _amountToken the amount of token
     * @param _tokenAddress the address of token
+    * @param fee fees of the pool
     * @return amountDBIT the amount of DBIT to mint
     */
-    function mintDbitFromUsd(uint256 _amountToken, address _tokenAddress) private returns(uint256 amountDBIT) {
+    function mintDbitFromUsd(uint128 _amountToken, address _tokenAddress, uint24 fee) private view returns(uint256 amountDBIT) {
 
-        uint256 tokenToUsd= _convertTokenToUsd(_amountToken, _tokenAddress);
+        uint256 tokenToUsd= _convertTokenToUsd(_amountToken, _tokenAddress, fee);
         uint256 rate = _cdpUsdToDBIT(DBITAddress);
 
         amountDBIT = tokenToUsd.mul(rate);
