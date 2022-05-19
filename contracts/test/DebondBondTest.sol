@@ -5,7 +5,7 @@ import "debond-erc3475/contracts/DebondBond.sol";
 
 contract DebondBondTest is DebondBond {
 
-    constructor(address DBIT, address USDC, address USDT, address DAI) {
+    constructor(address governanceAddress, address DBIT, address USDC, address USDT, address DAI) DebondBond(governanceAddress) {
         _createClass(0, "D/BIT", IDebondBond.InterestRateType.FixedRate, DBIT, 0);
         _createClass(1, "USDC", IDebondBond.InterestRateType.FixedRate, USDC, 0);
         _createClass(2, "USDT", IDebondBond.InterestRateType.FixedRate, USDT, 0);

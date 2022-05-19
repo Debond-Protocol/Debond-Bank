@@ -26,6 +26,8 @@ import "./interfaces/ICollateral.sol";
 import "./interfaces/IDebondToken.sol";
 import "./libraries/DebondMath.sol";
 import "debond-erc3475/contracts/interfaces/IDebondBond.sol";
+import "erc3475/contracts/IERC3475.sol";
+
 
 
 
@@ -38,6 +40,8 @@ contract Bank {
     IAPM apm;
     IData debondData;
     IDebondBond bond;
+    address debondBondAddress;
+
     enum PurchaseMethod {Buying, Staking}
     uint public constant BASE_TIMESTAMP = 1646089200; // 2022-01-01 00:00
     uint public constant DIFF_TIME_NEW_NONCE = 24 * 3600; // every 24h we crate a new nonce.
@@ -55,6 +59,7 @@ contract Bank {
         apm = IAPM(apmAddress);
         debondData = IData(dataAddress);
         bond = IDebondBond(bondAddress);
+        debondBondAddress = bondAddress;
         DBITAddress = _DBITAddress;
         DGOVAddress = _DGOVAddress;
     }
@@ -151,7 +156,7 @@ contract Bank {
         uint amount
     ) external {
         //1. redeem the bonds (will fail if not maturity date exceeded)
-        bond.redeem(msg.sender, classId, nonceId, amount);
+        IERC3475(debondBondAddress).redeem(msg.sender, classId, nonceId, amount);
 
         (,IDebondBond.InterestRateType interestRateType, address tokenAddress,) = debondData.getClassFromId(classId);
         apm.removeLiquidity(msg.sender, tokenAddress, amount);
@@ -195,7 +200,7 @@ contract Bank {
         if(nonceToAdd != 0) {
             createNewNonce(classId, lastNonceId + nonceToAdd, timestampToCheck);
             (uint nonceId,) = debondData.getLastNonceCreated(classId);
-            bond.issue(to, classId, nonceId, amount);
+            IERC3475(debondBondAddress).issue(to, classId, nonceId, amount);
             return;
         }
     }

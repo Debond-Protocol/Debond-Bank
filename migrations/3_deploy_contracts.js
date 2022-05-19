@@ -27,7 +27,7 @@ module.exports = async function (deployer, networks, accounts) {
 
   await deployer.deploy(DebondData, DBITInstance.address, USDCInstance.address, USDTInstance.address, DAIInstance.address)
   await deployer.deploy(APM, governanceAddress);
-  await deployer.deploy(DebondBondTest, DBITInstance.address, USDCInstance.address, USDTInstance.address, DAIInstance.address);
+  await deployer.deploy(DebondBondTest, governanceAddress, DBITInstance.address, USDCInstance.address, USDTInstance.address, DAIInstance.address);
 
   const dataAddress = (await DebondData.deployed()).address
   const apmInstance = await APM.deployed()
