@@ -33,7 +33,7 @@ module.exports = async function (deployer, networks, accounts) {
   const apmInstance = await APM.deployed()
   const debondBond = await DebondBondTest.deployed()
 
-  await deployer.deploy(Bank, apmInstance.address, dataAddress, debondBond.address, DBITInstance.address, DBITInstance.address);
+  await deployer.deploy(Bank, apmInstance.address, dataAddress, debondBond.address, DBITInstance.address, DBITInstance.address, "0x572AE4C774E466D77BC5A80DFF8A4a59A6cEe6A0", "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174");  //oracle and usdc for polygon
 
   const bankInstance = await Bank.deployed();
   await apmInstance.setBankAddress(bankInstance.address);

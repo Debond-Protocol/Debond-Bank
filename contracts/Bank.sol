@@ -321,15 +321,18 @@ contract Bank {
 
     ////////////////// CDP //////////////////////////:
 
+    // **** DBIT ****
+
     /**
         * @dev gives the amount of DBIT which should be minted for 1$ worth of input
         * @param dbitAddress address of dbit
         * @return amountDBIT the amount of DBIT which should be minted
         */
     function _cdpUsdToDBIT(address dbitAddress) private view returns (uint256 amountDBIT) {
-        amountDBIT = 1.05 ether;
+        amountDBIT = 1 ether; 
         uint256 _sCollateralised = ICollateral(dbitAddress).supplyCollateralised();
         if (_sCollateralised >= 1000 ether) {
+            amountDBIT = 1.05 ether; 
             uint256 logCollateral = (_sCollateralised / 1000).ln();
             amountDBIT = amountDBIT.pow(logCollateral);
         }
@@ -364,7 +367,7 @@ contract Bank {
         uint256 tokenToUsd= _convertTokenToUsd(_amountToken, _tokenAddress, fee);
         uint256 rate = _cdpUsdToDBIT(DBITAddress);
 
-        amountDBIT = tokenToUsd.mul(rate);
+        amountDBIT = (tokenToUsd * 1e12).mul(rate);  //1e6 x1e12 x 1e18 = 1e18
     }
 
 
@@ -378,8 +381,6 @@ contract Bank {
         uint256 _sCollateralised = ICollateral(dgovAddress).supplyCollateralised();
         amountDGOV = (100 ether+ (_sCollateralised).div(33333).pow(2)).inv();
     }
-
-
     /**
     * @dev given the amount of dbit, returns the amout of DGOV to mint
     * @param _amountDBIT the amount of token
@@ -389,5 +390,4 @@ contract Bank {
         uint256 rate = _cdpDbitToDgov(DGOVAddress);
         amountDGOV = _amountDBIT.mul(rate);
     }
-
 }
