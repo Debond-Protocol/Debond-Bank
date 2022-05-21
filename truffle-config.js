@@ -31,6 +31,15 @@ module.exports = {
       network_id: 3,
       // gas: 30000000, //from ganache-cli output
       gasPrice: web3.utils.toWei('1', 'gwei')
+    },
+    matic: {
+      provider: function() {
+        return new HDWalletProvider(process.env.POLYGON_PRIVATE_KEY, `https://polygon-mainnet.g.alchemy.com/v2/${process.env.INFURA_Access_Token}`);
+      },
+      network_id: 80001,
+      confirmations: 2,
+      timeoutBlocks: 200,
+      skipDryRun: true
     }
   },
   mocha: {

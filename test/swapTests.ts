@@ -30,7 +30,6 @@ contract('APM', async (accounts: string[]) => {
         await usdcContract.mint(swapper, web3.utils.toWei('100', 'ether'));
         await usdcContract.mint(apmContract.address, web3.utils.toWei('100', 'ether'));
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100', 'ether'), {from: swapper})
-        //pareil avec dbit
 
         const MINTER_ROLE = await dbitInstance.MINTER_ROLE();
         await dbitInstance.grantRole(MINTER_ROLE, accounts[0]);
@@ -48,7 +47,7 @@ contract('APM', async (accounts: string[]) => {
 
         //Pour plus tard
         const s = await apmContract.getReserves(usdcContract.address, dbitInstance.address);
-        console.log("here we print r0 before addLiqq : " +  s[0].toString(),"here we print r1 before addliq :" + s[1].toString());
+        console.log("here we print r0 after addLiqq : " +  s[0].toString(),"here we print r1 after addliq :" + s[1].toString());
 
     });
 
@@ -57,6 +56,7 @@ contract('APM', async (accounts: string[]) => {
             web3.utils.toWei('10', 'ether'),
             web3.utils.toWei('15', 'ether'),
             [usdcContract.address, dbitInstance.address],
+            swapper,
             {from: swapper});
 
 

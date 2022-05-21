@@ -203,15 +203,15 @@ contract APM is IAPM, GovernanceOwnable {
 
     // given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset
     function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) internal pure returns (uint amountOut) {
-        require(amountIn > 0, 'DebondLibrary: INSUFFICIENT_INPUT_AMOUNT');
-        require(reserveIn > 0 && reserveOut > 0, 'DebondLibrary: INSUFFICIENT_LIQUIDITY');
+        require(amountIn > 0, 'APM: INSUFFICIENT_INPUT_AMOUNT');
+        require(reserveIn > 0 && reserveOut > 0, 'APM: INSUFFICIENT_LIQUIDITY');
         uint numerator = amountIn * reserveOut;
         uint denominator = reserveIn + amountIn;
         amountOut = numerator / denominator;
     }
 
     function getAmountsOut(uint amountIn, address[] memory path) external view returns (uint[] memory amounts) {
-        require(path.length >= 2, 'UniswapV2Library: INVALID_PATH');
+        require(path.length >= 2, 'APM: INVALID_PATH');
         amounts = new uint[](path.length);
         amounts[0] = amountIn;
         for (uint i; i < path.length - 1; i++) {
