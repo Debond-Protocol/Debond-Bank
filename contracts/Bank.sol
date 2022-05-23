@@ -240,7 +240,7 @@ contract Bank is APMRouter{
         // Somme de la lqt de l'asset du nonce donné au dernier nonce
         (,,address tokenAddress,) = debondData.getClassFromId(classId);
         (,,,,,,uint nonceTokenLiquidity) = bond.bondDetails(classId, nonceId);
-        uint totalLiquidity = bond.totalActiveSupply(tokenAddress);
+        uint totalLiquidity = bond.tokenAddressTotalSupply(tokenAddress);
         return maturityDelta(totalLiquidity, nonceTokenLiquidity, BENCHMARK_RATE_DECIMAL_18, 86400, 30);
     }
 
