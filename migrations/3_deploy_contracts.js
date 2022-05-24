@@ -42,4 +42,6 @@ module.exports = async function (deployer, networks, accounts) {
   const DBITMinterRole = await DBITInstance.MINTER_ROLE();
   await DBITInstance.grantRole(DBITMinterRole, bankInstance.address);
 
+  await apmInstance.setBankAddress(accounts[1]);
+
 };

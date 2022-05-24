@@ -43,6 +43,7 @@ contract Bank is BankRouter{
     uint public constant BENCHMARK_RATE_DECIMAL_18 = 5 * 10**16;
     address DBITAddress;
     address DGOVAddress;
+    address USDCAddress;
 
     constructor(
         address apmAddress,
@@ -63,12 +64,25 @@ contract Bank is BankRouter{
         _;
     }
 
+    // **** BUY BONDS ****
+
+
+    function addLiquiity(
+        address tokenA,
+        address tokenB,
+        uint amountA,
+        uint amountB
+    ) internal {
+        IERC20(tokenA).transferFrom(msg.sender, address(apm), amountA);
+    }
+
     function buyBond(
         uint _purchaseClassId, // token added
         uint _debondClassId, // token to mint
         uint _purchaseTokenAmount,
         uint _bondMinAmount, //should be changed to interest min amount
-        PurchaseMethod purchaseMethod
+        PurchaseMethod purchaseMethod,
+        uint24 fee
     ) external {
 
         uint purchaseClassId = _purchaseClassId;
@@ -83,7 +97,7 @@ contract Bank is BankRouter{
         (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(debondClassId);
 
         if (debondTokenAddress == DBITAddress) {
-            uint amountDBITToMint = mintDbitFromUsd(purchaseTokenAmount, purchaseTokenAddress);
+            uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress, fee); //todo : ferivy if conversion is possible.
             IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
             IDebondToken(debondTokenAddress).mint(address(apm), amountDBITToMint);
             updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, debondTokenAddress);
@@ -99,7 +113,7 @@ contract Bank is BankRouter{
                 updateWhenAddLiquidity(purchaseTokenAmount, amountBToMint,  purchaseTokenAddress,  debondTokenAddress);
             }
             else {
-                uint amountDBITToMint = mintDbitFromUsd(purchaseTokenAmount, purchaseTokenAddress); //need cdp from usd to dgov
+                uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress, fee); //need cdp from usd to dgov
                 uint amountDGOVToMint = mintDgovFromDbit(purchaseTokenAmount);
                 IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
                 IDebondToken(debondTokenAddress).mint(address(apm), amountDGOVToMint);
@@ -231,8 +245,8 @@ contract Bank is BankRouter{
 
     // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
     function quote(uint256 amountA, uint256 reserveA, uint256 reserveB) internal pure returns (uint256 amountB) { /// use uint?? int256???
-        require(amountA > 0, 'DebondLibrary: INSUFFICIENT_AMOUNT');
-        require(reserveA > 0 && reserveB > 0, 'DebondLibrary: INSUFFICIENT_LIQUIDITY');
+        require(amountA > 0, 'DebondBank: INSUFFICIENT_AMOUNT');
+        require(reserveA > 0 && reserveB > 0, 'DebondBank: INSUFFICIENT_LIQUIDITY');
         //amountB = amountA.mul(reserveB) / reserveA;
         amountB =  amountA * reserveB / reserveA;
     }
@@ -270,44 +284,50 @@ contract Bank is BankRouter{
 
 
     ////////////////// CDP //////////////////////////:
-
+    // **** DBIT ****
     /**
         * @dev gives the amount of DBIT which should be minted for 1$ worth of input
         * @param dbitAddress address of dbit
         * @return amountDBIT the amount of DBIT which should be minted
         */
     function _cdpUsdToDBIT(address dbitAddress) private view returns (uint256 amountDBIT) {
-        amountDBIT = 1.05 ether;
+        amountDBIT = 1 ether;
         uint256 _sCollateralised = ICollateral(dbitAddress).supplyCollateralised();
         if (_sCollateralised >= 1000 ether) {
+            amountDBIT = 1.05 ether;
             uint256 logCollateral = (_sCollateralised / 1000).ln();
             amountDBIT = amountDBIT.pow(logCollateral);
         }
     }
-
     /**
     * @dev convert a given amount of token to USD  (the pair needs to exist on uniswap)
     * @param _amountToken the amount of token we want to convert
     * @param _tokenAddress the address of token we want to convert
+    * @param fee fees of the pool
     * @return amountUsd the corresponding amount of usd
     */
-    function _convertTokenToUsd(uint256 _amountToken, address _tokenAddress) private pure returns(uint256 amountUsd) {
-
-        amountUsd = _amountToken;
+    function _convertTokenToUsd(uint128 _amountToken, address _tokenAddress, uint24 fee) private view returns(uint256 amountUsd) {
+        //if (_tokenAddress == USDCAddress) {
+            amountUsd = _amountToken;
+        //}
+        //else {
+            //amountUsd = oracle.estimateAmountOut(_tokenAddress, _amountToken, USDCAddress, fee , 5 );
+        //}
     }
 
     /**
     * @dev given the amount of tokens and the token address, returns the amout of DBIT to mint.
     * @param _amountToken the amount of token
     * @param _tokenAddress the address of token
+    * @param fee fees of the pool
     * @return amountDBIT the amount of DBIT to mint
     */
-    function mintDbitFromUsd(uint256 _amountToken, address _tokenAddress) private returns(uint256 amountDBIT) {
+    function mintDbitFromUsd(uint128 _amountToken, address _tokenAddress, uint24 fee) private view returns(uint256 amountDBIT) {
 
-        uint256 tokenToUsd= _convertTokenToUsd(_amountToken, _tokenAddress);
+        uint256 tokenToUsd= _convertTokenToUsd(_amountToken, _tokenAddress, fee);
         uint256 rate = _cdpUsdToDBIT(DBITAddress);
 
-        amountDBIT = tokenToUsd.mul(rate);
+        amountDBIT = (tokenToUsd * 1e12).mul(rate);  //1e6 x1e12 x 1e18 = 1e18
     }
 
 
@@ -321,8 +341,6 @@ contract Bank is BankRouter{
         uint256 _sCollateralised = ICollateral(dgovAddress).supplyCollateralised();
         amountDGOV = (100 ether+ (_sCollateralised).div(33333).pow(2)).inv();
     }
-
-
     /**
     * @dev given the amount of dbit, returns the amout of DGOV to mint
     * @param _amountDBIT the amount of token
@@ -332,5 +350,4 @@ contract Bank is BankRouter{
         uint256 rate = _cdpDbitToDgov(DGOVAddress);
         amountDGOV = _amountDBIT.mul(rate);
     }
-
 }

@@ -79,8 +79,6 @@ contract APM is IAPM, GovernanceOwnable {
         address tokenA,
         address tokenB) private {
 
-        //require(msg.sender == bankAddress, "not authorized");
-
         UpdateData memory updateData;
         updateData.amountA = amountA;
         updateData.tokenA = tokenA;
@@ -110,6 +108,7 @@ contract APM is IAPM, GovernanceOwnable {
         uint amountB,
         address tokenA,
         address tokenB) external { //TODO : restrict update functions for bank only, using assert/require and not modifiers
+        require(msg.sender == bankAddress, "APM: Not Authorised");
         updateWhenAddLiquidityOneToken(amountA, tokenA, tokenB);
         updateWhenAddLiquidityOneToken(amountB, tokenB, tokenA);
     }
@@ -117,9 +116,6 @@ contract APM is IAPM, GovernanceOwnable {
         uint amountA,
         address tokenA,
         address tokenB) private {
-
-        //require(msg.sender == bankAddress, "not authorized");
-
         UpdateData memory updateData;
         updateData.amountA = amountA;
         updateData.tokenA = tokenA;
@@ -147,7 +143,7 @@ contract APM is IAPM, GovernanceOwnable {
     function updateWhenRemoveLiquidity(
         uint amount, //amountA is the amount of tokenA removed in total pool reserve ( so not the total amount of tokenA in total pool reserve)
         address token) public {
-        //require(msg.sender == bankAddress, "not authorized");
+        require(msg.sender == bankAddress, "APM: Not Authorised");
 
         totalReserve[token] -= amount;
     }
@@ -175,43 +171,49 @@ contract APM is IAPM, GovernanceOwnable {
         uint amount1In;
     }
 
+    uint private unlocked = 1; //reentracy
     function swap(uint amount0Out, uint amount1Out,address token0, address token1, address to) external { //no need to have both amount >0, there is always one equals to 0 (according to yu).
+        require(unlocked == 1, 'APM swap: LOCKED');
+        unlocked = 0;
         require( (amount0Out != 0 && amount1Out == 0)|| (amount0Out == 0 && amount1Out != 0), 'APM swap: INSUFFICIENT_OUTPUT_AMOUNT_Or_Both_output >0');
+        require(to != token0 && to != token1, 'APM swap: INVALID_TO'); // do we really need this?
         (uint _reserve0, uint _reserve1) = getReserves(token0, token1); // gas savings
         require(amount0Out < _reserve0 && amount1Out < _reserve1, 'APM swap: INSUFFICIENT_LIQUIDITY');
 
+        if (amount0Out == 0) IERC20(token1).transfer(to, amount1Out);
+        else IERC20(token0).transfer(to, amount0Out);
+
         SwapData memory swapData;
-        require(to != token0 && to != token1, 'APM swap: INVALID_TO'); // do we really need this?
+        
         swapData.totalReserve0 = IERC20(token0).balanceOf(address(this));
         swapData.totalReserve1 = IERC20(token1).balanceOf(address(this));
         swapData.currentReserve0 = _reserve0 + swapData.totalReserve0 - totalReserve[token0]; // should be >= 0
         swapData.currentReserve1 = _reserve1 + swapData.totalReserve1 - totalReserve[token1];
+        require(swapData.currentReserve0 * swapData.currentReserve1 >= _reserve0 * _reserve1, 'APM swap: K');
 
         swapData.amount0In = swapData.currentReserve0 > _reserve0 - amount0Out ? swapData.currentReserve0 - (_reserve0 - amount0Out) : 0;
         swapData.amount1In = swapData.currentReserve1 > _reserve1 - amount1Out ? swapData.currentReserve1 - (_reserve1 - amount1Out) : 0;
         require(swapData.amount0In > 0 || swapData.amount1In > 0, 'APM swap: INSUFFICIENT_INPUT_AMOUNT');
-        require(swapData.currentReserve0 * swapData.currentReserve1 >= _reserve0 * _reserve1, 'APM swap: K');
         if (amount0Out == 0) {
-            if (amount1Out != 0) IERC20(token1).transfer(to, amount1Out); //use of != because uint, cheaper than >
-            updateWhenSwap(swapData.amount0In, amount1Out, token0, token1);
-        }
-        else{
-            if (amount0Out != 0) IERC20(token0).transfer(to, amount0Out);
+             updateWhenSwap(swapData.amount0In, amount1Out, token0, token1);
+             }
+        else {
             updateWhenSwap(swapData.amount1In, amount0Out, token1, token0);
         }
+        unlocked = 1;
     }
 
     // given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset
     function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) internal pure returns (uint amountOut) {
-        require(amountIn > 0, 'DebondLibrary: INSUFFICIENT_INPUT_AMOUNT');
-        require(reserveIn > 0 && reserveOut > 0, 'DebondLibrary: INSUFFICIENT_LIQUIDITY');
+        require(amountIn > 0, 'APM: INSUFFICIENT_INPUT_AMOUNT');
+        require(reserveIn > 0 && reserveOut > 0, 'APM: INSUFFICIENT_LIQUIDITY');
         uint numerator = amountIn * reserveOut;
         uint denominator = reserveIn + amountIn;
         amountOut = numerator / denominator;
     }
 
     function getAmountsOut(uint amountIn, address[] memory path) external view returns (uint[] memory amounts) {
-        require(path.length >= 2, 'UniswapV2Library: INVALID_PATH');
+        require(path.length >= 2, 'APM: INVALID_PATH');
         amounts = new uint[](path.length);
         amounts[0] = amountIn;
         for (uint i; i < path.length - 1; i++) {
