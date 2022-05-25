@@ -26,9 +26,10 @@ import "./libraries/DebondMath.sol";
 import "debond-erc3475/contracts/interfaces/IDebondBond.sol";
 import "erc3475/contracts/IERC3475.sol";
 import "debond-apm/contracts/APMRouter.sol";
+import "./interfaces/IRedeemableBondCalculator.sol";
 
 
-contract Bank is APMRouter{
+contract Bank is APMRouter, IRedeemableBondCalculator {
 
     using SafeERC20 for IERC20;
     using DebondMath for uint256;
@@ -235,12 +236,13 @@ contract Bank is APMRouter{
         }
     }
 
-    function maturityDeltaCalculation(uint classId, uint nonceId) public view returns (uint) {
-        // Somme de la lqt de l'asset du debut au nonce donné
-        // Somme de la lqt de l'asset du nonce donné au dernier nonce
-        (,,address tokenAddress,) = debondData.getClassFromId(classId);
-        (,,,,,,uint nonceTokenLiquidity) = bond.bondDetails(classId, nonceId);
+    function isRedeemable(uint256 class, uint256 nonce) external returns (bool) {
+        (, IDebondBond.InterestRateType interestRateType, address tokenAddress,, uint maturityDate,, uint BsumN) = bond.bondDetails(class, nonce);
+        if (interestRateType == IDebondBond.InterestRateType.FixedRate) return maturityDate <= block.timestamp;
         uint totalLiquidity = bond.tokenAddressTotalSupply(tokenAddress);
+        uint BsumNL = totalLiquidity - BsumN;
+        uint D = BsumN - BsumN.mul(BENCHMARK_RATE_DECIMAL_18);
+//        uint uMonth =
         return maturityDelta(totalLiquidity, nonceTokenLiquidity, BENCHMARK_RATE_DECIMAL_18, 86400, 30);
     }
 
