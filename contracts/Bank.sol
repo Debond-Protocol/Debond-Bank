@@ -239,6 +239,11 @@ contract Bank is APMRouter, IRedeemableBondCalculator {
     function isRedeemable(uint256 class, uint256 nonce) external returns (bool) {
         (, IDebondBond.InterestRateType interestRateType, address tokenAddress,, uint maturityDate,, uint BsumN) = bond.bondDetails(class, nonce);
         if (interestRateType == IDebondBond.InterestRateType.FixedRate) return maturityDate <= block.timestamp;
+        if (interestRateType == IDebondBond.InterestRateType.FixedRate) {
+            return maturityDate <= block.timestamp;
+        }
+
+
         uint totalLiquidity = bond.tokenAddressTotalSupply(tokenAddress);
         uint BsumNL = totalLiquidity - BsumN;
         uint D = BsumN - BsumN.mul(BENCHMARK_RATE_DECIMAL_18);
