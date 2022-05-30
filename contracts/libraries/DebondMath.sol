@@ -173,7 +173,7 @@ library DebondMath {
         averageFlow = _sumOfLiquidityFlow * (1 ether + _benchmarkIR) / 1 ether;
     }
 
-    function estimateRedemptionTime(
+    function floatingETA(
         uint256 _maturityTime,
         uint256 _sumOfLiquidityFlow,
         uint256 _benchmarkIR,
@@ -187,7 +187,7 @@ library DebondMath {
             _sumOfLiquidityOfLastNonce
         );
 
-        int256 sumOverLastMonth = (deficit / int256(_lastMontLiquidityFlow)) * 1 ether * int256(_nonceDuration);
+        int256 sumOverLastMonth = PRBMathSD59x18.div(deficit, int256(_lastMontLiquidityFlow)) * int256(_nonceDuration);
 
         redemptionTime = uint256(int256(_maturityTime * 1 ether) + sumOverLastMonth);
     }
