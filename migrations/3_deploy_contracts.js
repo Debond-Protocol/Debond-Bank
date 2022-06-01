@@ -2,6 +2,7 @@ const DAI = artifacts.require("DAI");
 const DBIT = artifacts.require("DBIT");
 const USDC = artifacts.require("USDC");
 const USDT = artifacts.require("USDT");
+const FakeOracle = artifacts.require("FakeOracle");
 
 const DebondData = artifacts.require("DebondData");
 const APM = artifacts.require("APM");
@@ -34,7 +35,14 @@ module.exports = async function (deployer, networks, accounts) {
   const apmInstance = await APM.deployed()
   const debondBond = await DebondBondTest.deployed()
 
-  await deployer.deploy(Bank, apmInstance.address, dataAddress, debondBond.address, DBITInstance.address, DBITInstance.address);
+  await deployer.deploy(FakeOracle);
+  const fakeOracleInstance = await FakeOracle.deployed();
+
+  // const oracleAddress = networks === "development" ? fakeOracleInstance.address : "0x572AE4C774E466D77BC5A80DFF8A4a59A6cEe6A0";
+  // const USDCAddress = networks === "development" ? USDCInstance.address : "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
+  const oracleAddress = fakeOracleInstance.address
+  const USDCAddress = USDCInstance.address
+  await deployer.deploy(Bank, apmInstance.address, dataAddress, debondBond.address, DBITInstance.address, DBITInstance.address, oracleAddress, USDCAddress);  //oracle and usdc for polygon
 
   const bankInstance = await Bank.deployed();
   await apmInstance.setBankAddress(bankInstance.address);

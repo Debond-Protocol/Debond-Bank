@@ -20,6 +20,7 @@ import './DebondData.sol';
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IData.sol";
 import "./interfaces/ICollateral.sol";
+import "./interfaces/IOracle.sol";
 import "./interfaces/IDebondToken.sol";
 import "./libraries/DebondMath.sol";
 import "debond-erc3475/contracts/interfaces/IDebondBond.sol";
@@ -35,8 +36,8 @@ contract Bank is BankRouter{
 
     IData debondData;
     IDebondBond bond;
+    IOracle oracle;
     address debondBondAddress;
-
     enum PurchaseMethod {Buying, Staking}
     uint public constant BASE_TIMESTAMP = 1646089200; // 2022-01-01 00:00
     uint public constant DIFF_TIME_NEW_NONCE = 24 * 3600; // every 24h we crate a new nonce.
@@ -50,13 +51,17 @@ contract Bank is BankRouter{
         address dataAddress,
         address bondAddress,
         address _DBITAddress,
-        address _DGOVAddress
+        address _DGOVAddress,
+        address oracleAddress,
+        address usdcAddress
     ) BankRouter(apmAddress) {
         debondData = IData(dataAddress);
         bond = IDebondBond(bondAddress);
         debondBondAddress = bondAddress;
         DBITAddress = _DBITAddress;
         DGOVAddress = _DGOVAddress;
+        oracle = IOracle(oracleAddress);
+        USDCAddress = usdcAddress;
     }
 
     modifier ensure(uint deadline) {
@@ -307,12 +312,13 @@ contract Bank is BankRouter{
     * @return amountUsd the corresponding amount of usd
     */
     function _convertTokenToUsd(uint128 _amountToken, address _tokenAddress, uint24 fee) private view returns(uint256 amountUsd) {
-        //if (_tokenAddress == USDCAddress) {
+
+        if (_tokenAddress == USDCAddress) {
             amountUsd = _amountToken;
-        //}
-        //else {
-            //amountUsd = oracle.estimateAmountOut(_tokenAddress, _amountToken, USDCAddress, fee , 5 );
-        //}
+        }
+        else {
+            amountUsd = oracle.estimateAmountOut(_tokenAddress, _amountToken, USDCAddress, fee , 5 );
+        }
     }
 
     /**
