@@ -16,28 +16,23 @@ pragma solidity ^0.8.0;
 
 
 
-import './APM.sol';
 import './DebondData.sol';
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./interfaces/IAPM.sol";
 import "./interfaces/IData.sol";
 import "./interfaces/ICollateral.sol";
 import "./interfaces/IDebondToken.sol";
 import "./libraries/DebondMath.sol";
 import "debond-erc3475/contracts/interfaces/IDebondBond.sol";
 import "erc3475/contracts/IERC3475.sol";
+import "./BankRouter.sol";
 
 
-
-
-contract Bank {
+contract Bank is BankRouter{
 
     using SafeERC20 for IERC20;
     using DebondMath for uint256;
 
 
-    IAPM apm;
     IData debondData;
     IDebondBond bond;
     address debondBondAddress;
@@ -55,8 +50,7 @@ contract Bank {
         address bondAddress,
         address _DBITAddress,
         address _DGOVAddress
-    ) {
-        apm = IAPM(apmAddress);
+    ) BankRouter(apmAddress) {
         debondData = IData(dataAddress);
         bond = IDebondBond(bondAddress);
         debondBondAddress = bondAddress;
@@ -67,18 +61,6 @@ contract Bank {
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'UniswapV2Router: EXPIRED');
         _;
-    }
-
-    // **** BUY BONDS ****
-
-
-    function addLiquiity(
-        address tokenA,
-        address tokenB,
-        uint amountA,
-        uint amountB
-    ) internal {
-        IERC20(tokenA).transferFrom(msg.sender, address(apm), amountA);
     }
 
     function buyBond(
@@ -104,7 +86,7 @@ contract Bank {
             uint amountDBITToMint = mintDbitFromUsd(purchaseTokenAmount, purchaseTokenAddress);
             IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
             IDebondToken(debondTokenAddress).mint(address(apm), amountDBITToMint);
-            apm.updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, debondTokenAddress);
+            updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, debondTokenAddress);
 
             //todo : put this in one addliq function
 
@@ -114,7 +96,7 @@ contract Bank {
                 uint amountBToMint = mintDgovFromDbit(purchaseTokenAmount);
                 IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
                 IDebondToken(debondTokenAddress).mint(address(apm), amountBToMint);
-                apm.updateWhenAddLiquidity(purchaseTokenAmount, amountBToMint,  purchaseTokenAddress,  debondTokenAddress);
+                updateWhenAddLiquidity(purchaseTokenAmount, amountBToMint,  purchaseTokenAddress,  debondTokenAddress);
             }
             else {
                 uint amountDBITToMint = mintDbitFromUsd(purchaseTokenAmount, purchaseTokenAddress); //need cdp from usd to dgov
@@ -122,8 +104,8 @@ contract Bank {
                 IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
                 IDebondToken(debondTokenAddress).mint(address(apm), amountDGOVToMint);
                 IDebondToken(debondTokenAddress).mint(address(apm), 2 * amountDBITToMint);
-                apm.updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint,  purchaseTokenAddress,  DBITAddress);
-                apm.updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint,  DBITAddress,  debondTokenAddress);
+                updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint,  purchaseTokenAddress,  DBITAddress);
+                updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint,  DBITAddress,  debondTokenAddress);
             }
 
         }
@@ -131,7 +113,7 @@ contract Bank {
         (uint fixedRate, uint floatingRate) = interestRate(purchaseClassId, debondClassId, purchaseTokenAmount, purchaseMethod);
         if (purchaseMethod == PurchaseMethod.Staking) {
             issueBonds(msg.sender, purchaseClassId, purchaseTokenAmount);
-            (uint reserveA, uint reserveB) = apm.getReserves(purchaseTokenAddress, debondTokenAddress);
+            (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
             //if reserve == 0 : use cdp price instead of quote? See with yu
             //do we have to handle the case where reserve = 0? or when deploying, we put some liquidity?
             uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
@@ -139,7 +121,7 @@ contract Bank {
             issueBonds(msg.sender, debondClassId, amount.mul(rate));
         }
         else if (purchaseMethod == PurchaseMethod.Buying) {
-            (uint reserveA, uint reserveB) = apm.getReserves(purchaseTokenAddress, debondTokenAddress);
+            (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
             uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
             uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
             issueBonds(msg.sender, debondClassId, amount + amount.mul(rate)); // here the interest calculation is hardcoded. require the interest is enough high
@@ -158,32 +140,8 @@ contract Bank {
         //1. redeem the bonds (will fail if not maturity date exceeded)
         IERC3475(debondBondAddress).redeem(msg.sender, classId, nonceId, amount);
 
-        (,IDebondBond.InterestRateType interestRateType, address tokenAddress,) = debondData.getClassFromId(classId);
-        apm.removeLiquidity(msg.sender, tokenAddress, amount);
-    }
-
-    // **** SWAP ****
-    // requires the initial amount to have already been sent to the first pair
-    function _swap(uint[] memory amounts, address[] memory path, address to) internal virtual {
-        for (uint i; i < path.length - 1; i++) {
-            (address input, address output) = (path[i], path[i + 1]);
-            uint amountOut = amounts[i + 1];
-            (uint amount0Out, uint amount1Out) = (uint(0), amountOut);
-            apm.swap(
-                amount0Out, amount1Out, input, output, to
-            );
-        }
-    }
-    function swapExactTokensForTokens(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path //TODO : mettre l'address to en param, comme uniswap : msg.sender pas fiable.
-    ) external {
-        uint[] memory amounts = apm.getAmountsOut(amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
-
-        IERC20(path[0]).transferFrom(msg.sender, address(apm), amounts[0]);
-        _swap(amounts, path, msg.sender); //msg.sender?
+        (,, address tokenAddress,) = debondData.getClassFromId(classId);
+        removeLiquidity(msg.sender, tokenAddress, amount);
     }
 
 
