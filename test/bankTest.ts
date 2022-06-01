@@ -56,7 +56,7 @@ contract('Bank', async (accounts: string[]) => {
 
         await usdcContract.mint(buyer, web3.utils.toWei('100000', 'ether'));
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        await bankContract.buyBond(USDC_FIX_6MTH_CLASS_ID, DBIT_FIX_6MTH_CLASS_ID, web3.utils.toWei('3000', 'ether'), 0, PurchaseMethod.BUYING, {from: buyer});
+        await bankContract.buyBond(USDC_FIX_6MTH_CLASS_ID, DBIT_FIX_6MTH_CLASS_ID, web3.utils.toWei('3000', 'ether'), 0, PurchaseMethod.BUYING,0, {from: buyer});
 
 
 

@@ -107,8 +107,7 @@ contract APM is IAPM, GovernanceOwnable {
         uint amountA,
         uint amountB,
         address tokenA,
-        address tokenB) external { //TODO : restrict update functions for bank only, using assert/require and not modifiers
-        require(msg.sender == bankAddress, "APM: Not Authorised");
+        address tokenB) external onlyBank { //TODO : restrict update functions for bank only, using assert/require and not modifiers
         updateWhenAddLiquidityOneToken(amountA, tokenA, tokenB);
         updateWhenAddLiquidityOneToken(amountB, tokenB, tokenA);
     }

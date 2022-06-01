@@ -20,6 +20,7 @@ module.exports = async function (deployer, networks, accounts) {
   const USDTInstance = await USDT.deployed();
 
   const governanceAddress = accounts[0];
+  const bankAddress = accounts[1];
 
   await deployer.deploy(DebondMath);
   await deployer.link(DebondMath, Bank);
@@ -42,6 +43,6 @@ module.exports = async function (deployer, networks, accounts) {
   const DBITMinterRole = await DBITInstance.MINTER_ROLE();
   await DBITInstance.grantRole(DBITMinterRole, bankInstance.address);
 
-  await apmInstance.setBankAddress(accounts[1]);
+  await apmInstance.setBankAddress(bankAddress);
 
 };

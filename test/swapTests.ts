@@ -59,7 +59,6 @@ contract('swap', async (accounts: string[]) => {
             web3.utils.toWei('10', 'ether'),
             web3.utils.toWei('15', 'ether'),
             [usdcContract.address, dbitInstance.address],
-            swapper,
             {from: swapper});
 
 
