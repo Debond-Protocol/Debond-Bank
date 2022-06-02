@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 
-contract BankRouter {
+contract APMRouter {
 
     IAPM apm;
 
@@ -23,17 +23,17 @@ contract BankRouter {
         address _tokenB) internal {
         apm.updateWhenAddLiquidity(_amountA, _amountB, _tokenA, _tokenB);
     }
-
     function swapExactTokensForTokens(
         uint amountIn,
         uint amountOutMin,
-        address[] calldata path //TODO : mettre l'address to en param, comme uniswap : msg.sender pas fiable.
+        address[] calldata path,
+        address to
     ) external {
         uint[] memory amounts = apm.getAmountsOut(amountIn, path);
         require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
 
         IERC20(path[0]).transferFrom(msg.sender, address(apm), amounts[0]);
-        _swap(amounts, path, msg.sender); //msg.sender?
+        _swap(amounts, path, to);
     }
 
     function removeLiquidity(address _to, address tokenAddress, uint amount) internal {
@@ -44,7 +44,6 @@ contract BankRouter {
         (_reserveA, _reserveB) = apm.getReserves(tokenA, tokenB);
     }
 
-    // requires the initial amount to have already been sent to the first pair
     function _swap(uint[] memory amounts, address[] memory path, address to) internal virtual {
         for (uint i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
