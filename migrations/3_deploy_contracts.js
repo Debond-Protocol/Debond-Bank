@@ -5,9 +5,10 @@ const USDT = artifacts.require("USDT");
 const FakeOracle = artifacts.require("FakeOracle");
 
 const DebondData = artifacts.require("DebondData");
-const APM = artifacts.require("APM");
 const Bank = artifacts.require("Bank");
 const DebondBondTest = artifacts.require("DebondBondTest");
+const APMTest = artifacts.require("APMTest");
+
 
 
 //libs
@@ -21,19 +22,18 @@ module.exports = async function (deployer, networks, accounts) {
   const USDTInstance = await USDT.deployed();
 
   const governanceAddress = accounts[0];
-  const bankAddress = accounts[1];
 
   await deployer.deploy(DebondMath);
   await deployer.link(DebondMath, Bank);
 
 
+  await deployer.deploy(APMTest, governanceAddress);
   await deployer.deploy(DebondData, DBITInstance.address, USDCInstance.address, USDTInstance.address, DAIInstance.address)
-  await deployer.deploy(APM, governanceAddress);
   await deployer.deploy(DebondBondTest, governanceAddress, DBITInstance.address, USDCInstance.address, USDTInstance.address, DAIInstance.address);
 
   const dataAddress = (await DebondData.deployed()).address
-  const apmInstance = await APM.deployed()
   const debondBond = await DebondBondTest.deployed()
+  const apmInstance = await APMTest.deployed();
 
   await deployer.deploy(FakeOracle);
   const fakeOracleInstance = await FakeOracle.deployed();
@@ -51,6 +51,6 @@ module.exports = async function (deployer, networks, accounts) {
   const DBITMinterRole = await DBITInstance.MINTER_ROLE();
   await DBITInstance.grantRole(DBITMinterRole, bankInstance.address);
 
-  await apmInstance.setBankAddress(bankAddress);
+  await apmInstance.setBankAddress(bankInstance.address);
 
 };

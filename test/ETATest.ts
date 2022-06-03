@@ -36,7 +36,7 @@ contract('Bank', async (accounts: string[]) => {
     let USDC_FIX_6MTH_CLASS_ID: number;
     let USDT_FIX_6MTH_CLASS_ID: number;
 
-    it('buy Bonds', async () => {
+    it('Initialisation', async () => {
         usdcContract = await USDC.deployed();
         usdtContract = await USDT.deployed();
         bankContract = await Bank.deployed();

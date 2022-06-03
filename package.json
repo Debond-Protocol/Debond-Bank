@@ -15,6 +15,7 @@
     "@openzeppelin/contracts": "^4.5.0",
     "debond-governance": "https://github.com/Debond-Protocol/Debond-Governance.git",
     "debond-erc3475": "https://github.com/Debond-Protocol/Debond-ERC3475.git",
+    "debond-apm": "https://github.com/Debond-Protocol/Debond-APM.git",
     "erc3475": "https://github.com/Debond-Protocol/EIP-3475.git",
     "dotenv": "^16.0.0",
     "prb-math": "^2.4.3"

@@ -25,10 +25,10 @@ import "./interfaces/IDebondToken.sol";
 import "./libraries/DebondMath.sol";
 import "debond-erc3475/contracts/interfaces/IDebondBond.sol";
 import "erc3475/contracts/IERC3475.sol";
-import "./BankRouter.sol";
+import "debond-apm/contracts/APMRouter.sol";
 
 
-contract Bank is BankRouter{
+contract Bank is APMRouter{
 
     using SafeERC20 for IERC20;
     using DebondMath for uint256;
@@ -39,7 +39,7 @@ contract Bank is BankRouter{
     IOracle oracle;
     address debondBondAddress;
     enum PurchaseMethod {Buying, Staking}
-    uint public constant BASE_TIMESTAMP = 1646089200; // 2022-01-01 00:00
+    uint public constant BASE_TIMESTAMP = 1646089200; // 2022-03-01 00:00
     uint public constant DIFF_TIME_NEW_NONCE = 24 * 3600; // every 24h we crate a new nonce.
     uint public constant BENCHMARK_RATE_DECIMAL_18 = 5 * 10**16;
     address DBITAddress;
@@ -54,7 +54,7 @@ contract Bank is BankRouter{
         address _DGOVAddress,
         address oracleAddress,
         address usdcAddress
-    ) BankRouter(apmAddress) {
+    ) APMRouter(apmAddress) {
         debondData = IData(dataAddress);
         bond = IDebondBond(bondAddress);
         debondBondAddress = bondAddress;
@@ -67,18 +67,6 @@ contract Bank is BankRouter{
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'UniswapV2Router: EXPIRED');
         _;
-    }
-
-    // **** BUY BONDS ****
-
-
-    function addLiquiity(
-        address tokenA,
-        address tokenB,
-        uint amountA,
-        uint amountB
-    ) internal {
-        IERC20(tokenA).transferFrom(msg.sender, address(apm), amountA);
     }
 
     function buyBond(
@@ -247,17 +235,6 @@ contract Bank is BankRouter{
         }
     }
 
-
-    // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
-    function quote(uint256 amountA, uint256 reserveA, uint256 reserveB) internal pure returns (uint256 amountB) { /// use uint?? int256???
-        require(amountA > 0, 'DebondBank: INSUFFICIENT_AMOUNT');
-        require(reserveA > 0 && reserveB > 0, 'DebondBank: INSUFFICIENT_LIQUIDITY');
-        //amountB = amountA.mul(reserveB) / reserveA;
-        amountB =  amountA * reserveB / reserveA;
-    }
-
-    //todo : input : addressA, addressB. output : ratio reserveA/reserveB
-
     function maturityDeltaCalculation(uint classId, uint nonceId) public view returns (uint) {
         // Somme de la lqt de l'asset du debut au nonce donné
         // Somme de la lqt de l'asset du nonce donné au dernier nonce
@@ -283,12 +260,23 @@ contract Bank is BankRouter{
         fixedRate = 2 * benchmarkInterest - floatingRate;
     }
 
+    //todo : input : addressA, addressB. output : ratio reserveA/reserveB
+
 
 
 
 
 
     ////////////////// CDP //////////////////////////:
+
+    // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
+    function quote(uint256 amountA, uint256 reserveA, uint256 reserveB) internal pure returns (uint256 amountB) { /// use uint?? int256???
+        require(amountA > 0, 'DebondBank: INSUFFICIENT_AMOUNT');
+        require(reserveA > 0 && reserveB > 0, 'DebondBank: INSUFFICIENT_LIQUIDITY');
+        //amountB = amountA.mul(reserveB) / reserveA;
+        amountB =  amountA * reserveB / reserveA;
+    }
+
     // **** DBIT ****
     /**
         * @dev gives the amount of DBIT which should be minted for 1$ worth of input
