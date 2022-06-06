@@ -22,7 +22,6 @@ import "./interfaces/IData.sol";
 import "./interfaces/ICollateral.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IDebondToken.sol";
-import "./interfaces/IDebondBond.sol";
 import "./libraries/DebondMath.sol";
 import "erc3475/contracts/IERC3475.sol";
 import "debond-apm/contracts/APMRouter.sol";
@@ -244,19 +243,19 @@ contract Bank is APMRouter, IRedeemableBondCalculator {
     }
 
     function isRedeemable(uint256 classId, uint256 nonceId) external view returns (bool) {
-        (, IDebondBond.InterestRateType interestRateType, address tokenAddress,, uint maturityDate,, uint BsumN) = bond.bondDetails(classId, nonceId);
-        if (interestRateType == IDebondBond.InterestRateType.FixedRate) return maturityDate <= block.timestamp;
+        (, IDebondBond.InterestRateType interestRateType, address tokenAddress,, uint maturityDate,,) = bond.bondDetails(classId, nonceId);
         if (interestRateType == IDebondBond.InterestRateType.FixedRate) {
             return maturityDate <= block.timestamp;
         }
         uint BsumNL = bond.tokenTotalSupply(tokenAddress);
         uint BsumN = bond.tokenSupplyAtNonce(tokenAddress, nonceId);
         uint BsumNInterest = BsumN + BsumN.mul(BENCHMARK_RATE_DECIMAL_18);
+
         return BsumNInterest < BsumNL;
     }
 
     function getETA(uint256 classId, uint256 nonceId) external view returns (int256) {
-        (, IDebondBond.InterestRateType interestRateType, address tokenAddress,, uint maturityDate,, uint BsumN) = bond.bondDetails(classId, nonceId);
+        (, IDebondBond.InterestRateType interestRateType, address tokenAddress,, uint maturityDate,,) = bond.bondDetails(classId, nonceId);
 
         if (interestRateType == IDebondBond.InterestRateType.FixedRate) {
             return maturityDate;
