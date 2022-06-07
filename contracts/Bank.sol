@@ -14,7 +14,11 @@ pragma solidity ^0.8.0;
     limitations under the License.
 */
 
-
+error Deadline(uint deadline, uint blockTimeStamp);
+error PairNotAllowed();
+error RateNotHighEnough(uint currentRate, uint minRate);
+error INSUFFICIENT_AMOUNT(uint amount);
+error INSUFFICIENT_LIQUIDITY(uint l1, uint l2);
 
 import './DebondData.sol';
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -65,27 +69,49 @@ contract Bank is APMRouter{
     }
 
     modifier ensure(uint deadline) {
-        require(deadline >= block.timestamp, 'UniswapV2Router: EXPIRED');
-        _;
+        if (deadline >= block.timestamp) {
+            revert Deadline(deadline, block.timestamp);
+        } 
+        _; 
+    }
+
+    struct BankData { //to avoid stack too deep error
+        uint purchaseClassId;
+        uint debondClassId;
+        uint purchaseTokenAmount;
+        PurchaseMethod purchaseMethod;
+        uint24 fee;
+        uint minRate;
     }
 
     function buyBond(
-        uint purchaseClassId, // token added
-        uint debondClassId, // token to mint
-        uint purchaseTokenAmount,
-        uint minRate, //should be changed to interest min amount
-        PurchaseMethod purchaseMethod,
-        uint24 fee,
-        uint deadline
+        uint _purchaseClassId, // token added
+        uint _debondClassId, // token to mint
+        uint _purchaseTokenAmount,
+        PurchaseMethod _purchaseMethod,
+        uint24 _fee,
+        uint _minRate, //should be changed to interest min amount
+        uint deadline  
     ) external ensure(deadline) {
-        require(debondData.canPurchase(debondClassId, purchaseClassId), "Pair not Allowed");
 
-        (,,address purchaseTokenAddress,) = debondData.getClassFromId(purchaseClassId);
-        (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(debondClassId);
-        mintingProcess(debondTokenAddress, purchaseTokenAmount, purchaseTokenAddress, fee);
+        BankData memory bankData;
+        bankData.purchaseClassId = _purchaseClassId;
+        bankData.debondClassId = _debondClassId;
+        bankData.purchaseTokenAmount = _purchaseTokenAmount;
+        bankData.purchaseMethod = _purchaseMethod;
+        bankData.fee = _fee;
+        bankData.minRate = _minRate;
 
-        (uint fixedRate, uint floatingRate) = interestRate(purchaseClassId, debondClassId, purchaseTokenAmount, purchaseMethod);
-        issuingProcess(purchaseMethod, purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, debondTokenAddress, debondClassId, interestRateType, fixedRate, floatingRate, minRate);
+        //if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
+        //    revert PairNotAllowed();
+        //} 
+        //(,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(bankData.debondClassId);
+        //(,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
+        
+        //mintingProcess(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.fee);
+    
+        //(uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+        //issuingProcess(bankData.purchaseMethod, bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, debondTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate);
     }
 
     //TODO : time 20 min
@@ -111,14 +137,18 @@ contract Bank is APMRouter{
             //we first update reserves when buying bond so it should never be 0
             uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
             uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
-            require(rate > minRate, "rate");
+            if (rate < minRate){
+                revert RateNotHighEnough(rate, minRate);
+            }
             issueBonds(msg.sender, debondClassId, amount.mul(rate));
         }
         else if (purchaseMethod == PurchaseMethod.Buying) {
             (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
             uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
             uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
-            require(rate > minRate, "rate");
+            if (rate < minRate){
+                revert RateNotHighEnough(rate, minRate);
+            }
             issueBonds(msg.sender, debondClassId, amount + amount.mul(rate)); // here the interest calculation is hardcoded. require the interest is enough high
         }
     }
@@ -291,8 +321,14 @@ contract Bank is APMRouter{
 
     // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
     function quote(uint256 amountA, uint256 reserveA, uint256 reserveB) internal pure returns (uint256 amountB) { /// use uint?? int256???
-        require(amountA > 0, 'DebondBank: INSUFFICIENT_AMOUNT');
-        require(reserveA > 0 && reserveB > 0, 'DebondBank: INSUFFICIENT_LIQUIDITY');
+        if ( amountA == 0) {
+            revert INSUFFICIENT_AMOUNT(amountA);
+        } 
+        if ( reserveA == 0 ){
+            if (reserveB == 0) {
+                revert INSUFFICIENT_LIQUIDITY(reserveA, reserveB);
+            }
+        } 
         //amountB = amountA.mul(reserveB) / reserveA;
         amountB =  amountA * reserveB / reserveA;
     }
