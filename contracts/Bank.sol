@@ -90,9 +90,9 @@ contract Bank is APMRouter{
         uint _purchaseTokenAmount,
         PurchaseMethod _purchaseMethod,
         uint24 _fee,
-        uint _minRate, //should be changed to interest min amount
-        uint deadline  
-    ) external ensure(deadline) {
+        uint _minRate //should be changed to interest min amount
+        //uint deadline  
+    ) external  { //ensure(deadline)
 
         BankData memory bankData;
         bankData.purchaseClassId = _purchaseClassId;
@@ -102,16 +102,16 @@ contract Bank is APMRouter{
         bankData.fee = _fee;
         bankData.minRate = _minRate;
 
-        //if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
-        //    revert PairNotAllowed();
-        //} 
-        //(,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(bankData.debondClassId);
-        //(,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
+        if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
+            revert PairNotAllowed();
+        } 
+        (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(bankData.debondClassId);
+        (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
         
-        //mintingProcess(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.fee);
+        mintingProcess(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.fee);
     
-        //(uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
-        //issuingProcess(bankData.purchaseMethod, bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, debondTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate);
+        (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+        issuingProcess(bankData.purchaseMethod, bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, debondTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate);
     }
 
     //TODO : time 20 min
