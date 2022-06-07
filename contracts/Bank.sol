@@ -37,14 +37,14 @@ contract Bank is APMRouter{
     IData debondData;
     IDebondBond bond;
     IOracle oracle;
-    address debondBondAddress;
     enum PurchaseMethod {Buying, Staking}
     uint public constant BASE_TIMESTAMP = 1646089200; // 2022-03-01 00:00
     uint public constant DIFF_TIME_NEW_NONCE = 24 * 3600; // every 24h we crate a new nonce.
     uint public constant BENCHMARK_RATE_DECIMAL_18 = 5 * 10**16;
-    address DBITAddress;
-    address DGOVAddress;
-    address USDCAddress;
+    address immutable debondBondAddress;
+    address immutable DBITAddress;
+    address immutable DGOVAddress;
+    address immutable USDCAddress;
 
     constructor(
         address apmAddress,
@@ -70,48 +70,58 @@ contract Bank is APMRouter{
     }
 
     function buyBond(
-        uint _purchaseClassId, // token added
-        uint _debondClassId, // token to mint
-        uint _purchaseTokenAmount,
-        uint _bondMinAmount, //should be changed to interest min amount
+        uint purchaseClassId, // token added
+        uint debondClassId, // token to mint
+        uint purchaseTokenAmount,
+        uint minRate, //should be changed to interest min amount
         PurchaseMethod purchaseMethod,
-        uint24 fee
-    ) external {
-
-        uint purchaseClassId = _purchaseClassId;
-        uint debondClassId = _debondClassId;
-        uint purchaseTokenAmount = _purchaseTokenAmount;
-        uint bondMinAmount = _bondMinAmount;
-
+        uint24 fee,
+        uint deadline
+    ) external ensure(deadline) {
         require(debondData.canPurchase(debondClassId, purchaseClassId), "Pair not Allowed");
-
 
         (,,address purchaseTokenAddress,) = debondData.getClassFromId(purchaseClassId);
         (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(debondClassId);
-
-       mintingProcess(debondTokenAddress, purchaseTokenAmount, purchaseTokenAddress, fee);
+        mintingProcess(debondTokenAddress, purchaseTokenAmount, purchaseTokenAddress, fee);
 
         (uint fixedRate, uint floatingRate) = interestRate(purchaseClassId, debondClassId, purchaseTokenAmount, purchaseMethod);
-        if (purchaseMethod == PurchaseMethod.Staking) {
+        issuingProcess(purchaseMethod, purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, debondTokenAddress, debondClassId, interestRateType, fixedRate, floatingRate, minRate);
+    }
+
+    //TODO : time 20 min
+    //todo : require interest high enough
+
+    function issuingProcess(
+        PurchaseMethod purchaseMethod,
+        uint purchaseClassId,
+        uint purchaseTokenAmount,
+        address purchaseTokenAddress,
+        address debondTokenAddress,
+        uint debondClassId,
+        IDebondBond.InterestRateType interestRateType,
+        uint fixedRate,
+        uint floatingRate,
+        uint minRate
+        ) internal {
+         if (purchaseMethod == PurchaseMethod.Staking) {
             issueBonds(msg.sender, purchaseClassId, purchaseTokenAmount);
             (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
             //if reserve == 0 : use cdp price instead of quote? See with yu
             //do we have to handle the case where reserve = 0? or when deploying, we put some liquidity?
+            //we first update reserves when buying bond so it should never be 0
             uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
             uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
+            require(rate > minRate, "rate");
             issueBonds(msg.sender, debondClassId, amount.mul(rate));
         }
         else if (purchaseMethod == PurchaseMethod.Buying) {
             (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
             uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
             uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
+            require(rate > minRate, "rate");
             issueBonds(msg.sender, debondClassId, amount + amount.mul(rate)); // here the interest calculation is hardcoded. require the interest is enough high
         }
-
-
     }
-
-    //TODO : time 20 min
 
 
     function mintingProcess(
