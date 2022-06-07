@@ -18,7 +18,7 @@ error Deadline(uint deadline, uint blockTimeStamp);
 error PairNotAllowed();
 error RateNotHighEnough(uint currentRate, uint minRate);
 error INSUFFICIENT_AMOUNT(uint amount);
-error INSUFFICIENT_LIQUIDITY(uint l1, uint l2);
+error INSUFFICIENT_LIQUIDITY(uint liquidity);
 
 import './DebondData.sol';
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -30,6 +30,7 @@ import "./libraries/DebondMath.sol";
 import "debond-erc3475/contracts/interfaces/IDebondBond.sol";
 import "erc3475/contracts/IERC3475.sol";
 import "debond-apm/contracts/APMRouter.sol";
+import './interfaces/IWETH.sol'; //TODO
 
 
 contract Bank is APMRouter{
@@ -49,6 +50,7 @@ contract Bank is APMRouter{
     address immutable DBITAddress;
     address immutable DGOVAddress;
     address immutable USDCAddress;
+    address immutable WETH; //TODO
 
     constructor(
         address apmAddress,
@@ -57,7 +59,8 @@ contract Bank is APMRouter{
         address _DBITAddress,
         address _DGOVAddress,
         address oracleAddress,
-        address usdcAddress
+        address usdcAddress,
+        address _weth
     ) APMRouter(apmAddress) {
         debondData = IData(dataAddress);
         bond = IDebondBond(bondAddress);
@@ -66,6 +69,7 @@ contract Bank is APMRouter{
         DGOVAddress = _DGOVAddress;
         oracle = IOracle(oracleAddress);
         USDCAddress = usdcAddress;
+        WETH = _weth;
     }
 
     modifier ensure(uint deadline) {
@@ -74,6 +78,8 @@ contract Bank is APMRouter{
         } 
         _; 
     }
+
+    //##############BUY BONDS#############
 
     struct BankData { //to avoid stack too deep error
         uint purchaseClassId;
@@ -84,6 +90,7 @@ contract Bank is APMRouter{
         uint minRate;
     }
 
+    //############buy bonds without eth##############
     function buyBond(
         uint _purchaseClassId, // token added
         uint _debondClassId, // token to mint
@@ -92,6 +99,7 @@ contract Bank is APMRouter{
         uint24 _fee,
         uint _minRate //should be changed to interest min amount
         //uint deadline  
+        //TODO : param to instead of msg.sender 
     ) external  { //ensure(deadline)
 
         BankData memory bankData;
@@ -114,8 +122,8 @@ contract Bank is APMRouter{
         issuingProcess(bankData.purchaseMethod, bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, debondTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate);
     }
 
-    //TODO : time 20 min
-    //todo : require interest high enough
+    //TODO : time 20 min                 : SEE FRONTEND
+    //todo : require interest high enough: OK
 
     function issuingProcess(
         PurchaseMethod purchaseMethod,
@@ -186,6 +194,64 @@ contract Bank is APMRouter{
         }
 
     }
+
+    //############buy bonds WITH eth##############
+
+    function buyBondWithETH(
+        //uint _purchaseClassId, // token added  //here it's eth
+        uint _debondClassId, // token to mint
+        //uint _purchaseTokenAmount,
+        PurchaseMethod _purchaseMethod,
+        uint24 _fee,
+        uint _minRate //should be changed to interest min amount
+        //uint deadline  
+    ) external payable { //ensure(deadline)
+
+        BankData memory bankData;
+        bankData.purchaseClassId /*= _purchaseClassId*/;
+        bankData.debondClassId = _debondClassId;
+        bankData.purchaseTokenAmount = msg.value;
+        bankData.purchaseMethod = _purchaseMethod;
+        bankData.fee = _fee;
+        bankData.minRate = _minRate;
+
+        /*if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
+            revert PairNotAllowed();
+        } */ //we should always be ablez to do eth/debond?
+        (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(bankData.debondClassId);
+        (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
+        
+        mintingProcessETH(debondTokenAddress, bankData.purchaseTokenAmount, bankData.fee);
+    
+        (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+        issuingProcess(bankData.purchaseMethod, bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, debondTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate);
+    }
+
+    function mintingProcessETH(
+        address debondTokenAddress,
+        uint purchaseETHAmount,
+        uint24 fee
+        ) internal {
+        if (debondTokenAddress == DBITAddress) {
+            uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseETHAmount), WETH, fee); //todo : ferivy if conversion is possible.
+            //IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
+            IWETH(WETH).deposit{value: purchaseETHAmount}();
+            assert(IWETH(WETH).transfer(pair, purchaseETHAmount)); // see if better methods
+            IDebondToken(debondTokenAddress).mint(address(apm), amountDBITToMint);
+            updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint, WETH, debondTokenAddress);
+        }
+        else { //else address ==dgov? 
+            uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseETHAmount), WETH, fee); //need cdp from usd to dgov
+            uint amountDGOVToMint = mintDgovFromDbit(purchaseETHAmount);
+            IERC20(WETH).transferFrom(msg.sender, address(apm), purchaseETHAmount);
+            IDebondToken(debondTokenAddress).mint(address(apm), amountDGOVToMint);
+            IDebondToken(debondTokenAddress).mint(address(apm), 2 * amountDBITToMint);
+            updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint,  WETH,  DBITAddress);
+            updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint,  DBITAddress,  debondTokenAddress);
+        }
+
+    }
+
 
     // **** REDEEM BONDS ****
 
@@ -325,10 +391,11 @@ contract Bank is APMRouter{
             revert INSUFFICIENT_AMOUNT(amountA);
         } 
         if ( reserveA == 0 ){
-            if (reserveB == 0) {
-                revert INSUFFICIENT_LIQUIDITY(reserveA, reserveB);
-            }
+            revert INSUFFICIENT_LIQUIDITY(reserveB);
         } 
+        if (reserveB == 0) {
+                revert INSUFFICIENT_LIQUIDITY(reserveA);
+            }
         //amountB = amountA.mul(reserveB) / reserveA;
         amountB =  amountA * reserveB / reserveA;
     }
