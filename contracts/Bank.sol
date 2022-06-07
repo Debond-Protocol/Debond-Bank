@@ -89,14 +89,42 @@ contract Bank is APMRouter{
         (,,address purchaseTokenAddress,) = debondData.getClassFromId(purchaseClassId);
         (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(debondClassId);
 
+       mintingProcess(debondTokenAddress, purchaseTokenAmount, purchaseTokenAddress, fee);
+
+        (uint fixedRate, uint floatingRate) = interestRate(purchaseClassId, debondClassId, purchaseTokenAmount, purchaseMethod);
+        if (purchaseMethod == PurchaseMethod.Staking) {
+            issueBonds(msg.sender, purchaseClassId, purchaseTokenAmount);
+            (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
+            //if reserve == 0 : use cdp price instead of quote? See with yu
+            //do we have to handle the case where reserve = 0? or when deploying, we put some liquidity?
+            uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
+            uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
+            issueBonds(msg.sender, debondClassId, amount.mul(rate));
+        }
+        else if (purchaseMethod == PurchaseMethod.Buying) {
+            (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
+            uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
+            uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
+            issueBonds(msg.sender, debondClassId, amount + amount.mul(rate)); // here the interest calculation is hardcoded. require the interest is enough high
+        }
+
+
+    }
+
+    //TODO : time 20 min
+
+
+    function mintingProcess(
+        address debondTokenAddress,
+        uint purchaseTokenAmount,
+        address purchaseTokenAddress,
+        uint24 fee
+        ) internal {
         if (debondTokenAddress == DBITAddress) {
             uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress, fee); //todo : ferivy if conversion is possible.
             IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
             IDebondToken(debondTokenAddress).mint(address(apm), amountDBITToMint);
             updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, debondTokenAddress);
-
-            //todo : put this in one addliq function
-
         }
         else { //else address ==dgov? 
             if (purchaseTokenAddress == DBITAddress) {
@@ -116,24 +144,6 @@ contract Bank is APMRouter{
             }
 
         }
-
-        (uint fixedRate, uint floatingRate) = interestRate(purchaseClassId, debondClassId, purchaseTokenAmount, purchaseMethod);
-        if (purchaseMethod == PurchaseMethod.Staking) {
-            issueBonds(msg.sender, purchaseClassId, purchaseTokenAmount);
-            (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
-            //if reserve == 0 : use cdp price instead of quote? See with yu
-            //do we have to handle the case where reserve = 0? or when deploying, we put some liquidity?
-            uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
-            uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
-            issueBonds(msg.sender, debondClassId, amount.mul(rate));
-        }
-        else if (purchaseMethod == PurchaseMethod.Buying) {
-            (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
-            uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
-            uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
-            issueBonds(msg.sender, debondClassId, amount + amount.mul(rate)); // here the interest calculation is hardcoded. require the interest is enough high
-        }
-
 
     }
 
