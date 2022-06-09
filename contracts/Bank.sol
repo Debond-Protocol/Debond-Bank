@@ -111,7 +111,7 @@ contract Bank is APMRouter{
         uint _minRate 
         //uint deadline  
         //TODO : param to instead of msg.sender 
-    ) external  { //ensure(deadline)
+        ) external  { //ensure(deadline)
 
         BankData memory bankData;
         bankData.purchaseClassId = _purchaseClassId;
@@ -221,9 +221,9 @@ contract Bank is APMRouter{
 
     }
 
-    //############buy bonds Stacking method##############
+    //############buy bonds Stacking method  Not eth to dbit##############
 
-    function buyBondStacking(
+    function buyBondStackingDebondIsDbit(
         uint _purchaseClassId,
         uint _debondClassId, 
         uint _purchaseTokenAmount,
@@ -231,7 +231,7 @@ contract Bank is APMRouter{
         uint _minRate 
         //uint deadline  
         //TODO : param to instead of msg.sender 
-    ) external  { //ensure(deadline)
+        ) external  { //ensure(deadline)
 
         BankData memory bankData;
         bankData.purchaseClassId = _purchaseClassId;
@@ -243,13 +243,13 @@ contract Bank is APMRouter{
         if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
             revert PairNotAllowed();
         } 
-        (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(bankData.debondClassId); //todo : get info from class id
+        (,IDebondBond.InterestRateType interestRateType ,,) = debondData.getClassFromId(bankData.debondClassId); //todo : get info from class id
         (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
         
-        mintingProcess(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.fee);
+        mintingProcessDebondIsDbit(bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.fee);
     
         (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
-        issuingProcessStacking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, debondTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate);
+        issuingProcessStacking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, DBITAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate);
     }
 
     function issuingProcessStacking(
@@ -273,10 +273,63 @@ contract Bank is APMRouter{
             issueBonds(msg.sender, debondClassId, amount.mul(rate));
     }
 
-    
-//############buy bonds Buying method##############
+    function mintingProcessDebondIsDbit(
+        uint purchaseTokenAmount,
+        address purchaseTokenAddress,
+        uint24 fee
+        ) internal {
+        uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress, fee); //todo : ferivy if conversion is possible.
+        IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
+        IDebondToken(DBITAddress).mint(address(apm), amountDBITToMint);
+        updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
+    }
 
-    function buyBondBuying(
+    //############buy bonds Stacking method  DbitToDgov##############
+
+    function buyBondStackingDbitToDgov(
+        uint _purchaseClassId,
+        uint _debondClassId, 
+        uint _purchaseTokenAmount,
+        uint _minRate 
+        //uint deadline  
+        //TODO : param to instead of msg.sender 
+        ) external  { //ensure(deadline)
+
+        BankData memory bankData;
+        bankData.purchaseClassId = _purchaseClassId;
+        bankData.debondClassId = _debondClassId;
+        bankData.purchaseTokenAmount = _purchaseTokenAmount;
+        bankData.minRate = _minRate;
+
+        if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
+            revert PairNotAllowed();
+        } 
+        (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(bankData.debondClassId); //todo : get info from class id
+        (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
+        
+        mintingProcessDbitToDgov(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress);
+    
+        (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+        issuingProcessStacking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, debondTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate);
+    }
+
+    function mintingProcessDbitToDgov(
+        address debondTokenAddress,
+        uint purchaseTokenAmount,
+        address purchaseTokenAddress
+        ) internal { {
+                uint amountBToMint = mintDgovFromDbit(purchaseTokenAmount);
+                IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
+                IDebondToken(debondTokenAddress).mint(address(apm), amountBToMint);
+                updateWhenAddLiquidity(purchaseTokenAmount, amountBToMint,  purchaseTokenAddress,  debondTokenAddress);
+
+        }
+
+    }
+
+   //############buy bonds Stacking method  else ToDgov############## else is not dbit not eth
+
+    function buyBondStackingElseToDgov(
         uint _purchaseClassId,
         uint _debondClassId, 
         uint _purchaseTokenAmount,
@@ -284,7 +337,7 @@ contract Bank is APMRouter{
         uint _minRate 
         //uint deadline  
         //TODO : param to instead of msg.sender 
-    ) external  { //ensure(deadline)
+        ) external  { //ensure(deadline)
 
         BankData memory bankData;
         bankData.purchaseClassId = _purchaseClassId;
@@ -299,10 +352,58 @@ contract Bank is APMRouter{
         (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(bankData.debondClassId); //todo : get info from class id
         (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
         
-        mintingProcess(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.fee);
+        mintingProcessElseToDgov(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.fee);
     
         (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
-        issuingProcessBuying(bankData.purchaseTokenAmount, purchaseTokenAddress, debondTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate);
+        issuingProcessStacking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, debondTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate);
+    }
+
+    function mintingProcessElseToDgov(
+        address debondTokenAddress,
+        uint purchaseTokenAmount,
+        address purchaseTokenAddress,
+        uint24 fee
+        ) internal { {
+                uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress, fee); //need cdp from usd to dgov
+                uint amountDGOVToMint = mintDgovFromDbit(purchaseTokenAmount);
+                IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
+                IDebondToken(debondTokenAddress).mint(address(apm), amountDGOVToMint);
+                IDebondToken(debondTokenAddress).mint(address(apm), 2 * amountDBITToMint);
+                updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint,  purchaseTokenAddress,  DBITAddress);
+                updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint,  DBITAddress,  debondTokenAddress);
+        }
+
+    }
+    
+//############buy bonds Buying method not eth to dbit##############
+
+    function buyBondBuyingDebondIsDbit(
+        uint _purchaseClassId,
+        uint _debondClassId, 
+        uint _purchaseTokenAmount,
+        uint24 _fee,
+        uint _minRate 
+        //uint deadline  
+        //TODO : param to instead of msg.sender 
+        ) external  { //ensure(deadline)
+
+        BankData memory bankData;
+        bankData.purchaseClassId = _purchaseClassId;
+        bankData.debondClassId = _debondClassId;
+        bankData.purchaseTokenAmount = _purchaseTokenAmount;
+        bankData.fee = _fee;
+        bankData.minRate = _minRate;
+
+        if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
+            revert PairNotAllowed();
+        } 
+        (,IDebondBond.InterestRateType interestRateType ,,) = debondData.getClassFromId(bankData.debondClassId); //todo : get info from class id
+        (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
+        
+        mintingProcessDebondIsDbit(bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.fee);
+    
+        (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+        issuingProcessBuying(bankData.purchaseTokenAmount, purchaseTokenAddress, DBITAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate);
     }
 
     function issuingProcessBuying(
@@ -324,7 +425,71 @@ contract Bank is APMRouter{
             issueBonds(msg.sender, debondClassId, amount + amount.mul(rate));
     }
 
+
+//############buy bonds Buying method DbitToDgov##############
+
+    function buyBondBuyingDbitToDgov(
+        uint _purchaseClassId,
+        uint _debondClassId, 
+        uint _purchaseTokenAmount,
+        uint _minRate 
+        //uint deadline  
+        //TODO : param to instead of msg.sender 
+        ) external  { //ensure(deadline)
+
+        BankData memory bankData;
+        bankData.purchaseClassId = _purchaseClassId;
+        bankData.debondClassId = _debondClassId;
+        bankData.purchaseTokenAmount = _purchaseTokenAmount;
+        bankData.minRate = _minRate;
+
+        if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
+            revert PairNotAllowed();
+        } 
+        (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(bankData.debondClassId); //todo : get info from class id
+        (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
+        
+        mintingProcessDbitToDgov(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress);
     
+        (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+        issuingProcessBuying(bankData.purchaseTokenAmount, purchaseTokenAddress, DBITAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate);
+    }
+    
+
+//############buy bonds Buying method else ToDgov############## else is not dbit not eth
+
+    function buyBondBuyingElseToDgov(
+        uint _purchaseClassId,
+        uint _debondClassId, 
+        uint _purchaseTokenAmount,
+        uint24 _fee,
+        uint _minRate 
+        //uint deadline  
+        //TODO : param to instead of msg.sender 
+        ) external  { //ensure(deadline)
+
+        BankData memory bankData;
+        bankData.purchaseClassId = _purchaseClassId;
+        bankData.debondClassId = _debondClassId;
+        bankData.purchaseTokenAmount = _purchaseTokenAmount;
+        bankData.fee = _fee;
+        bankData.minRate = _minRate;
+
+        if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
+            revert PairNotAllowed();
+        } 
+        (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(bankData.debondClassId); //todo : get info from class id
+        (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
+        
+        mintingProcessElseToDgov(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.fee);
+    
+        (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+        issuingProcessBuying(bankData.purchaseTokenAmount, purchaseTokenAddress, DBITAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate);
+    }
+
+
+
+
 
 
 
@@ -338,7 +503,7 @@ contract Bank is APMRouter{
         uint24 _fee,
         uint _minRate //should be changed to interest min amount
         //uint deadline  
-    ) external payable { //ensure(deadline)
+        ) external payable { //ensure(deadline)
 
         BankData memory bankData;
         bankData.purchaseClassId /*= _purchaseClassId*/;
