@@ -26,11 +26,13 @@ import "./interfaces/IData.sol";
 import "./interfaces/ICollateral.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IDebondToken.sol";
+import './interfaces/IWeth.sol'; //TODO
+
+
 import "./libraries/DebondMath.sol";
 import "debond-erc3475/contracts/interfaces/IDebondBond.sol";
 import "erc3475/contracts/IERC3475.sol";
 import "debond-apm/contracts/APMRouter.sol";
-//import './interfaces/IWETH.sol'; //TODO
 
 
 contract Bank is APMRouter{
@@ -70,6 +72,7 @@ contract Bank is APMRouter{
         oracle = IOracle(oracleAddress);
         USDCAddress = usdcAddress;
         WETH = _weth;
+        
     }
 
     modifier ensure(uint deadline) {
@@ -90,7 +93,7 @@ contract Bank is APMRouter{
             uint minRate;
         }
 
-    //############buybonds without eth##############
+    //############buybonds old version##############
 
         /**
         * @dev let the user buy a bond
@@ -195,7 +198,8 @@ contract Bank is APMRouter{
             uint24 fee
             ) internal {
             if (debondTokenAddress == DBITAddress) {
-                uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress, fee); //todo : ferivy if conversion is possible.
+                //require : purchase token is not dbit, not dgov
+                uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress, fee); //todo : verivy if conversion is possible.
                 IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
                 IDebondToken(debondTokenAddress).mint(address(apm), amountDBITToMint);
                 updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, debondTokenAddress);
@@ -221,7 +225,7 @@ contract Bank is APMRouter{
 
         }
 
-    //############buybonds Stacking method  Not eth to dbit##############
+    //############buybonds Stacking method  Not eth to dbit not dgov##############
 
         function stakeForDbitBondWithAll(
             uint _purchaseClassId,
@@ -287,7 +291,7 @@ contract Bank is APMRouter{
     //############buybonds Stacking method  DbitToDgov##############
 
         function stakeForDgovBondWithDbit(
-            uint _purchaseClassId,
+            uint _purchaseClassId, //should it be hardcode? or it can change in debond data?
             uint _debondClassId, 
             uint _purchaseTokenAmount,
             uint _minRate 
@@ -657,26 +661,20 @@ contract Bank is APMRouter{
             }
 
             function _mintingProcessForDgovWithEth(
-                uint purchaseTokenAmount,
+                uint purchaseETHAmount,
                 address purchaseTokenAddress,
                 uint24 fee
                 ) internal {
-                uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress, fee); //need cdp from usd to dgov
-                uint amountDGOVToMint = mintDgovFromDbit(purchaseTokenAmount);
-                IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
-                //IWETH(WETH).deposit{value: purchaseETHAmount}();
-                //assert(IWETH(WETH).transfer(address(apm), purchaseETHAmount)); // see if better methods
+                uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseETHAmount), purchaseTokenAddress, fee); //need cdp from usd to dgov
+                uint amountDGOVToMint = mintDgovFromDbit(purchaseETHAmount);
+                //IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
+                IWeth(WETH).deposit{value: purchaseETHAmount}();
+                assert(IWeth(WETH).transfer(address(apm), purchaseETHAmount)); // see if better methods
                 IDebondToken(DGOVAddress).mint(address(apm), amountDGOVToMint);
                 IDebondToken(DBITAddress).mint(address(apm), 2 * amountDBITToMint);  //TODO : check here
-                updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint,  purchaseTokenAddress,  DBITAddress);
+                updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint,  purchaseTokenAddress,  DBITAddress);
                 updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint,  DBITAddress,  DGOVAddress);
             }
-
-    
-
-        
-
-
 // **** REDEEM BONDS ****
 
     function redeemBonds(
