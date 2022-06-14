@@ -1,8 +1,8 @@
 import {
     APMInstance,
     BankInstance,
-    DBITInstance, DebondBondTestInstance,
-    DebondDataInstance,
+    DBITInstance,
+    DebondBondTestInstance,
     USDCInstance,
     USDTInstance
 } from "../types/truffle-contracts";
@@ -12,7 +12,6 @@ const USDC = artifacts.require("USDC");
 const USDT = artifacts.require("USDT");
 const DBIT = artifacts.require("DBIT");
 const APM = artifacts.require("APMTest");
-const DebondData = artifacts.require("DebondData");
 const DebondBondTest = artifacts.require("DebondBondTest");
 
 
@@ -29,12 +28,11 @@ contract('Bank', async (accounts: string[]) => {
     let bankContract: BankInstance
     let dbitContract: DBITInstance
     let apmContract: APMInstance
-    let dataContract: DebondDataInstance
     let bondContract: DebondBondTestInstance
 
-    let DBIT_FIX_6MTH_CLASS_ID: number;
-    let USDC_FIX_6MTH_CLASS_ID: number;
-    let USDT_FIX_6MTH_CLASS_ID: number;
+    const DBIT_FIX_6MTH_CLASS_ID = 1;
+    const USDC_FIX_6MTH_CLASS_ID: number;
+    const USDT_FIX_6MTH_CLASS_ID: number;
 
     it('buy Bonds', async () => {
         usdcContract = await USDC.deployed();
@@ -42,13 +40,7 @@ contract('Bank', async (accounts: string[]) => {
         bankContract = await Bank.deployed();
         dbitContract = await DBIT.deployed();
         apmContract = await APM.deployed();
-        dataContract = await DebondData.deployed();
         bondContract = await DebondBondTest.deployed();
-
-        DBIT_FIX_6MTH_CLASS_ID = ((await dataContract.allDebondClasses()).map(c => c.toNumber()))[0];
-        const purchasableClasses = (await dataContract.getPurchasableClasses(DBIT_FIX_6MTH_CLASS_ID)).map(c => c.toNumber());
-        USDC_FIX_6MTH_CLASS_ID = purchasableClasses[0];
-        USDT_FIX_6MTH_CLASS_ID = purchasableClasses[1];
 
 
         // await apmContract.updateTotalReserve(usdcContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve

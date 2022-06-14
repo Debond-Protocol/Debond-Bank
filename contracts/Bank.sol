@@ -22,47 +22,78 @@ import "./interfaces/IData.sol";
 import "./interfaces/ICollateral.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IDebondToken.sol";
-import "./libraries/DebondMath.sol";
 import "erc3475/contracts/IERC3475.sol";
-import "debond-apm/contracts/APMRouter.sol";
 import "./interfaces/IRedeemableBondCalculator.sol";
+import "./BankBondManager.sol";
+import "./libraries/DebondMath.sol";
+import "./APMRouter.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 
-contract Bank is APMRouter, IRedeemableBondCalculator {
 
-    using SafeERC20 for IERC20;
+contract Bank is APMRouter, BankBondManager, Ownable {
+
     using DebondMath for uint256;
+    using SafeERC20 for IERC20;
 
-
-    IData debondData;
-    IDebondBond bond;
     IOracle oracle;
-    address debondBondAddress;
     enum PurchaseMethod {Buying, Staking}
-    uint public constant BASE_TIMESTAMP = 1646089200; // 2022-03-01 00:00
-    uint public constant EPOCH = 24 * 3600; // every 24h we crate a new nonce.
-    uint public constant BENCHMARK_RATE_DECIMAL_18 = 5 * 10 ** 16;
     address DBITAddress;
     address DGOVAddress;
     address USDCAddress;
 
+    bool init;
+
     constructor(
+        address governanceAddress,
         address apmAddress,
-        address dataAddress,
         address bondAddress,
         address _DBITAddress,
         address _DGOVAddress,
         address oracleAddress,
         address usdcAddress
-    ) APMRouter(apmAddress) {
-        debondData = IData(dataAddress);
-        bond = IDebondBond(bondAddress);
-        debondBondAddress = bondAddress;
+    ) APMRouter(apmAddress) BankBondManager(governanceAddress, bondAddress){
         DBITAddress = _DBITAddress;
         DGOVAddress = _DGOVAddress;
         oracle = IOracle(oracleAddress);
         USDCAddress = usdcAddress;
     }
+
+    function initializeApp(address daiAddress, address usdtAddress) external onlyOwner {
+        require(!init, "BankContract Error: already initiated");
+        init = true;
+        uint SIX_M_PERIOD = 3600; // 1 hour period for tests
+
+        _createClass(0, "DBIT", InterestRateType.FixedRate, DBITAddress, SIX_M_PERIOD);
+        _createClass(1, "USDC", InterestRateType.FixedRate, USDCAddress, SIX_M_PERIOD);
+        _createClass(2, "USDT", InterestRateType.FixedRate, usdtAddress, SIX_M_PERIOD);
+        _createClass(3, "DAI", InterestRateType.FixedRate, daiAddress, SIX_M_PERIOD);
+        _createClass(4, "DGOV", InterestRateType.FixedRate, DGOVAddress, SIX_M_PERIOD);
+
+        _createClass(5, "DBIT", InterestRateType.FloatingRate, DBITAddress, SIX_M_PERIOD);
+        _createClass(6, "USDC", InterestRateType.FloatingRate, USDCAddress, SIX_M_PERIOD);
+        _createClass(7, "USDT", InterestRateType.FloatingRate, usdtAddress, SIX_M_PERIOD);
+        _createClass(8, "DAI", InterestRateType.FloatingRate, daiAddress, SIX_M_PERIOD);
+        _createClass(9, "DGOV", InterestRateType.FloatingRate, DGOVAddress, SIX_M_PERIOD);
+
+        _updateCanPurchase(1, 0, true);
+        _updateCanPurchase(2, 0, true);
+        _updateCanPurchase(3, 0, true);
+        _updateCanPurchase(0, 4, true);
+        _updateCanPurchase(1, 4, true);
+        _updateCanPurchase(2, 4, true);
+        _updateCanPurchase(3, 4, true);
+
+        _updateCanPurchase(6, 5, true);
+        _updateCanPurchase(7, 5, true);
+        _updateCanPurchase(8, 5, true);
+        _updateCanPurchase(5, 9, true);
+        _updateCanPurchase(6, 9, true);
+        _updateCanPurchase(7, 9, true);
+        _updateCanPurchase(8, 9, true);
+    }
+
+
 
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'UniswapV2Router: EXPIRED');
@@ -83,11 +114,11 @@ contract Bank is APMRouter, IRedeemableBondCalculator {
         uint purchaseTokenAmount = _purchaseTokenAmount;
         uint bondMinAmount = _bondMinAmount;
 
-        require(debondData.canPurchase(debondClassId, purchaseClassId), "Pair not Allowed");
+        require(canPurchase[purchaseClassId][debondClassId], "Pair not Allowed");
 
 
-        (,,address purchaseTokenAddress,) = debondData.getClassFromId(purchaseClassId);
-        (,IDebondBond.InterestRateType interestRateType,address debondTokenAddress,) = debondData.getClassFromId(debondClassId);
+        (address purchaseTokenAddress,,) = classValues(purchaseClassId);
+        (address debondTokenAddress, InterestRateType interestRateType,) = classValues(debondClassId);
 
         if (debondTokenAddress == DBITAddress) {
             uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress, fee); //todo : ferivy if conversion is possible.
@@ -125,14 +156,14 @@ contract Bank is APMRouter, IRedeemableBondCalculator {
             //if reserve == 0 : use cdp price instead of quote? See with yu
             //do we have to handle the case where reserve = 0? or when deploying, we put some liquidity?
             uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
-            uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
-            issueBonds(msg.sender, debondClassId, amount.mul(rate));
+            uint rate = interestRateType == InterestRateType.FixedRate ? fixedRate : floatingRate;
+            issueBonds(msg.sender, debondClassId, amount *  rate);
         }
         else if (purchaseMethod == PurchaseMethod.Buying) {
             (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
             uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
-            uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
-            issueBonds(msg.sender, debondClassId, amount + amount.mul(rate));
+            uint rate = interestRateType == InterestRateType.FixedRate ? fixedRate : floatingRate;
+            issueBonds(msg.sender, debondClassId, amount + amount * rate);
             // here the interest calculation is hardcoded. require the interest is enough high
         }
 
@@ -149,36 +180,8 @@ contract Bank is APMRouter, IRedeemableBondCalculator {
         //1. redeem the bonds (will fail if not maturity date exceeded)
         IERC3475(debondBondAddress).redeem(msg.sender, classId, nonceId, amount);
 
-        (,, address tokenAddress,) = debondData.getClassFromId(classId);
+        (address tokenAddress,,) = classValues(classId);
         removeLiquidity(msg.sender, tokenAddress, amount);
-    }
-
-
-    function issueBonds(address to, uint256 classId, uint256 amount) private {
-        uint timestampToCheck = block.timestamp;
-        (uint lastNonceId, uint createdAt) = debondData.getLastNonceCreated(classId);
-        createdAt = createdAt == 0 ? BASE_TIMESTAMP : createdAt;
-        uint numDaysNow = getNonceFromDate(timestampToCheck);
-        uint numDaysLastNonce = getNonceFromDate(createdAt);
-        uint nonceToAdd = numDaysNow - numDaysLastNonce;
-        if (nonceToAdd != 0) {
-            createNewNonce(classId, lastNonceId + nonceToAdd, timestampToCheck);
-            (uint nonceId,) = debondData.getLastNonceCreated(classId);
-            IERC3475(debondBondAddress).issue(to, classId, nonceId, amount);
-            return;
-        }
-    }
-
-    function getNonceFromDate(uint256 date) public view returns (uint256) {
-        return (date - BASE_TIMESTAMP) / EPOCH;
-    }
-
-    function createNewNonce(uint classId, uint newNonceId, uint creationTimestamp) private {
-        uint _newNonceId = newNonceId;
-        (,,, uint period) = debondData.getClassFromId(classId);
-        bond.createNonce(classId, _newNonceId, creationTimestamp + period);
-        debondData.updateLastNonce(classId, _newNonceId, creationTimestamp);
-        //here 500 is liquidity info hard coded for now
     }
 
     function interestRate(
@@ -186,101 +189,19 @@ contract Bank is APMRouter, IRedeemableBondCalculator {
         uint _debondTokenClassId,
         uint _purchaseTokenAmount,
         PurchaseMethod purchaseMethod
-    ) public view returns (uint fixRate, uint floatRate) {
-        uint purchaseTokenClassId = _purchaseTokenClassId;
-        uint debondTokenClassId = _debondTokenClassId;
-        uint purchaseTokenAmount = _purchaseTokenAmount;
-
-        uint fixRateSupply = 0;
-        uint floatRateSupply = 0;
-
-        (,IDebondBond.InterestRateType interestRateType, address purchaseTokenAddress,) = debondData.getClassFromId(purchaseTokenClassId);
-        // address of the purchase token
-
+    ) public view returns (uint, uint) {
 
         // staking collateral for bonds
         if (purchaseMethod == PurchaseMethod.Staking) {
-            fixRateSupply = bond.bondAmountDue(purchaseTokenAddress, IDebondBond.InterestRateType.FixedRate);
-            // we get the fix rate bonds supply
-            floatRateSupply = bond.bondAmountDue(purchaseTokenAddress, IDebondBond.InterestRateType.FloatingRate);
-            // we get the float rate bonds supply
-
-            // we had the client amount to the according bond balance to calculate interest rate after deposit
-            if (purchaseTokenAmount > 0 && interestRateType == IDebondBond.InterestRateType.FixedRate) {
-                fixRateSupply += purchaseTokenAmount;
-            }
-            if (purchaseTokenAmount > 0 && interestRateType == IDebondBond.InterestRateType.FloatingRate) {
-                floatRateSupply += purchaseTokenAmount;
-            }
-
+            return interestRateByStaking(_purchaseTokenClassId, _purchaseTokenAmount);
         }
         // buying Bonds
-        else if (purchaseMethod == PurchaseMethod.Buying) {
-
-            (,,address debondTokenAddress,) = debondData.getClassFromId(debondTokenClassId);
-            // address of D/BIT
-
-            // we are trying to know how many Debond Token the buying bond process will add to the LQY
-            uint debondTokenAmount = purchaseTokenAmount;
-
-            fixRateSupply = bond.bondAmountDue(debondTokenAddress, IDebondBond.InterestRateType.FixedRate);
-            floatRateSupply = bond.bondAmountDue(debondTokenAddress, IDebondBond.InterestRateType.FloatingRate);
-
-            if (interestRateType == IDebondBond.InterestRateType.FixedRate) {
-                fixRateSupply += debondTokenAmount;
-            }
-            if (interestRateType == IDebondBond.InterestRateType.FloatingRate) {
-                floatRateSupply += debondTokenAmount;
-            }
-        }
-
-        if (fixRateSupply == 0 || floatRateSupply == 0) {
-            fixRate = 2 * BENCHMARK_RATE_DECIMAL_18 / 3;
-            floatRate = 2 * fixRate;
-        } else {
-            (fixRate, floatRate) = interestRate(fixRateSupply, floatRateSupply, BENCHMARK_RATE_DECIMAL_18);
+        else {
+            //TODO we are trying to know how many Debond Token the buying bond process will add to the LQY
+            uint debondTokenAmount = _purchaseTokenAmount;
+            return interestRateByBuying(_debondTokenClassId, debondTokenAmount);
         }
     }
-
-    function isRedeemable(uint256 classId, uint256 nonceId) external view returns (bool) {
-        (, IDebondBond.InterestRateType interestRateType, address tokenAddress,, uint maturityDate,,) = bond.bondDetails(classId, nonceId);
-        if (interestRateType == IDebondBond.InterestRateType.FixedRate) {
-            return maturityDate <= block.timestamp;
-        }
-        uint BsumNL = bond.tokenTotalSupply(tokenAddress);
-        uint BsumN = bond.tokenSupplyAtNonce(tokenAddress, nonceId);
-        uint BsumNInterest = BsumN + BsumN.mul(BENCHMARK_RATE_DECIMAL_18);
-
-        return BsumNInterest < BsumNL;
-    }
-
-    function getETA(uint256 classId, uint256 nonceId) external view returns (int256) {
-        (, IDebondBond.InterestRateType interestRateType, address tokenAddress,, uint maturityDate,,) = bond.bondDetails(classId, nonceId);
-
-        if (interestRateType == IDebondBond.InterestRateType.FixedRate) {
-            return maturityDate;
-        }
-
-        uint BsumNL = bond.tokenTotalSupply(tokenAddress);
-        uint BsumN = bond.tokenSupplyAtNonce(tokenAddress, nonceId);
-        uint BsumNInterest = BsumN + BsumN.mul(BENCHMARK_RATE_DECIMAL_18);
-        uint liquidityFlowOver30Nonces = bond.tokenLiquidityFlow(tokenAddress, 30, block.timestamp);
-        uint Umonth = liquidityFlowOver30Nonces / 30;
-        return DebondMath.floatingETA(maturityDate, BsumN, BENCHMARK_RATE_DECIMAL_18, BsumNL, EPOCH, Umonth);
-    }
-
-
-    function interestRate(uint fixRateSupply, uint floatRateSupply, uint benchmarkInterest) private pure returns (uint fixedRate, uint floatingRate) {
-        uint sigmoidCParam = DebondMath.inv(3 ether);
-        uint x = fixRateSupply.div(floatRateSupply + fixRateSupply);
-        floatingRate = 2 * (benchmarkInterest.mul(DebondMath.sigmoid(x, sigmoidCParam)));
-        fixedRate = 2 * benchmarkInterest - floatingRate;
-    }
-
-    //todo : input : addressA, addressB. output : ratio reserveA/reserveB
-
-
-
 
 
 
