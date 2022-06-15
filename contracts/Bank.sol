@@ -26,7 +26,7 @@ import "./interfaces/IData.sol";
 import "./interfaces/ICollateral.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IDebondToken.sol";
-import './interfaces/IWeth.sol'; //TODO
+import './interfaces/IWeth.sol';
 
 
 import "./libraries/DebondMath.sol";
@@ -92,7 +92,8 @@ contract Bank is APMRouter{
             address to;
             uint minRate;
         }
-
+    
+    //todo : make sure that we can't call a function dbit to dgov with someting else that dbit (for exemple with usdc)
     //############buybonds old version##############
 
         /**
@@ -194,7 +195,7 @@ contract Bank is APMRouter{
             address purchaseTokenAddress
             ) internal {
             if (debondTokenAddress == DBITAddress) {
-                //require : purchase token is not dbit, not dgov
+                //TODO : require : purchase token is not dbit, not dgov
                 uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress); //todo : verivy if conversion is possible.
                 IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
                 IDebondToken(debondTokenAddress).mint(address(apm), amountDBITToMint);
@@ -221,7 +222,7 @@ contract Bank is APMRouter{
 
         }
 
-    //############buybonds Stacking method  Not eth to dbit not dgov##############
+    //############buybonds Stacking method  (Not eth, not dgov, not dgov) to dbit ##############
 
         function stakeForDbitBondWithAll(
             uint _purchaseClassId,
@@ -327,7 +328,7 @@ contract Bank is APMRouter{
 
         }
 
-    //############buybonds Stacking method  else ToDgov############## else is not dbit not eth
+    //############buybonds Stacking method  else ToDgov############## else is not dbit not eth not dgov
 
         function stakeForDgovBondWithElse(
             uint _purchaseClassId,
@@ -523,9 +524,8 @@ contract Bank is APMRouter{
                 uint purchaseETHAmount
                 ) internal {
                 uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseETHAmount), WETH); //todo : verify if conversion uint128 is possible.
-                //IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
-                //IWETH(WETH).deposit{value: purchaseETHAmount}();
-                //assert(IWETH(WETH).transfer(address(apm), purchaseETHAmount)); // see if better methods
+                IWeth(WETH).deposit{value: purchaseETHAmount}();
+                assert(IWeth(WETH).transfer(address(apm), purchaseETHAmount)); // see if better methods
                 IDebondToken(debondTokenAddress).mint(address(apm), amountDBITToMint);
                 updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint, WETH, debondTokenAddress);
             }
@@ -569,8 +569,8 @@ contract Bank is APMRouter{
             uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseETHAmount), WETH); //need cdp from usd to dgov
             uint amountDGOVToMint = mintDgovFromDbit(purchaseETHAmount);
             //IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
-            //IWETH(WETH).deposit{value: purchaseETHAmount}();
-            //assert(IWETH(WETH).transfer(address(apm), purchaseETHAmount)); // see if better methods
+            IWeth(WETH).deposit{value: purchaseETHAmount}();
+            assert(IWeth(WETH).transfer(address(apm), purchaseETHAmount)); 
             IDebondToken(debondTokenAddress).mint(address(apm), amountDGOVToMint);
             IDebondToken(debondTokenAddress).mint(address(apm), 2 * amountDBITToMint);
             updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint,  WETH,  DBITAddress);
@@ -582,7 +582,7 @@ contract Bank is APMRouter{
         function buyforDbitBondWithEth( //else is not eth not dbit   
                 uint _purchaseClassId,
                 uint _debondClassId, 
-                uint _purchaseTokenAmount,
+                uint _purchaseETHAmount,
                 uint _minRate, 
                 uint deadline,  
                 address _to 
@@ -591,7 +591,7 @@ contract Bank is APMRouter{
                 BankData memory bankData;
                 bankData.purchaseClassId = _purchaseClassId;
                 bankData.debondClassId = _debondClassId;
-                bankData.purchaseTokenAmount = _purchaseTokenAmount;
+                bankData.purchaseTokenAmount = _purchaseETHAmount;
                 bankData.to = _to;
                 bankData.minRate = _minRate;
 
@@ -608,14 +608,14 @@ contract Bank is APMRouter{
             }
 
             function _mintingProcessForDbitWithEth(
-                uint purchaseTokenAmount,
+                uint purchaseETHAmount,
                 address purchaseTokenAddress
                 ) internal {
-                uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress); //todo : ferivy if conversion is possible.
-                //IWETH(WETH).deposit{value: purchaseETHAmount}();
-                //assert(IWETH(WETH).transfer(address(apm), purchaseETHAmount)); // see if better methods
+                uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseETHAmount), purchaseTokenAddress); //todo : ferivy if conversion is possible.
+                IWeth(WETH).deposit{value: purchaseETHAmount}();
+                assert(IWeth(WETH).transfer(address(apm), purchaseETHAmount)); 
                 IDebondToken(DBITAddress).mint(address(apm), amountDBITToMint);
-                updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
+                updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
             }
 
         
@@ -655,15 +655,14 @@ contract Bank is APMRouter{
                 ) internal {
                 uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseETHAmount), purchaseTokenAddress); //need cdp from usd to dgov
                 uint amountDGOVToMint = mintDgovFromDbit(purchaseETHAmount);
-                //IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
                 IWeth(WETH).deposit{value: purchaseETHAmount}();
-                assert(IWeth(WETH).transfer(address(apm), purchaseETHAmount)); // see if better methods
+                assert(IWeth(WETH).transfer(address(apm), purchaseETHAmount)); 
                 IDebondToken(DGOVAddress).mint(address(apm), amountDGOVToMint);
                 IDebondToken(DBITAddress).mint(address(apm), 2 * amountDBITToMint);  //TODO : check here
                 updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint,  purchaseTokenAddress,  DBITAddress);
                 updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint,  DBITAddress,  DGOVAddress);
             }
-// **** REDEEM BONDS ****
+//##############REDEEM BONDS ##############:
 
     function redeemBonds(
         uint classId,
@@ -677,9 +676,11 @@ contract Bank is APMRouter{
         removeLiquidity(msg.sender, tokenAddress, amount);
     }
 
+  //todo : redeem for eth
 
 
 
+//##############bonds logic##############:
 
     function issueBonds(address to, uint256 classId, uint256 amount) private {
         uint timestampToCheck = block.timestamp;
@@ -793,7 +794,7 @@ contract Bank is APMRouter{
 
 
 
-////////////////// CDP //////////////////////////:
+//##############CDP##############:
 
     // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
     function quote(uint256 amountA, uint256 reserveA, uint256 reserveB) internal pure returns (uint256 amountB) { /// use uint?? int256???
@@ -878,7 +879,7 @@ contract Bank is APMRouter{
         uint256 rate = _cdpDbitToDgov(DGOVAddress);
         amountDGOV = _amountDBIT.mul(rate);
     }
-////////////////// fee proxy //////////////////////////:
+//############## fee proxy ##############:
 
     mapping( address=> mapping( address => address) ) poolAddresses;
 
