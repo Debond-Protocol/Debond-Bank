@@ -197,7 +197,7 @@ contract Bank is APMRouter{
             ) internal {
             if (debondTokenAddress == DBITAddress) {
                 //TODO : require : purchase token is not dbit, not dgov
-                uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress); //todo : verivy if conversion is possible.
+                uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); //todo : verivy if conversion is possible.
                 IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
                 IDebondToken(debondTokenAddress).mint(address(apm), amountDBITToMint);
                 updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, debondTokenAddress);
@@ -210,7 +210,7 @@ contract Bank is APMRouter{
                     updateWhenAddLiquidity(purchaseTokenAmount, amountDGOVToMint,  DBITAddress,  debondTokenAddress);
                 }
                 else {
-                    uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress); //need cdp from usd to dgov
+                    uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); //need cdp from usd to dgov
                     uint amountDGOVToMint = mintDgovFromDbit(purchaseTokenAmount);
                     IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
                     IDebondToken(DGOVAddress).mint(address(apm), amountDGOVToMint);
@@ -250,14 +250,13 @@ contract Bank is APMRouter{
             _mintingProcessForDbitWithElse(bankData.purchaseTokenAmount, purchaseTokenAddress);
         
             (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
-            _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, DBITAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
+            _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
         }
 
         function _issuingProcessStaking(
             uint purchaseClassId,
             uint purchaseTokenAmount,
             address purchaseTokenAddress,
-            address debondTokenAddress,
             uint debondClassId,
             IDebondBond.InterestRateType interestRateType,
             uint fixedRate,
@@ -266,8 +265,7 @@ contract Bank is APMRouter{
             address to
             ) internal {
                 issueBonds(to, purchaseClassId, purchaseTokenAmount);
-                (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
-                uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
+                uint amount = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); //todo : do the same everywhere.
                 uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
                 if (rate < minRate){
                     revert RateNotHighEnough(rate, minRate);
@@ -279,7 +277,7 @@ contract Bank is APMRouter{
             uint purchaseTokenAmount,
             address purchaseTokenAddress
             ) internal {
-            uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress); //todo : ferivy if conversion is possible.
+            uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); //todo : ferivy if conversion is possible.
             IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
             IDebondToken(DBITAddress).mint(address(apm), amountDBITToMint);
             updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
@@ -312,7 +310,7 @@ contract Bank is APMRouter{
             _mintingProcessDgovWithDbit(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress);
         
             (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
-            _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, debondTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
+            _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
         }
 
         function _mintingProcessDgovWithDbit(
@@ -356,7 +354,7 @@ contract Bank is APMRouter{
             _mintingProcessForDgovWithElse(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress);
         
             (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
-            _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, debondTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
+            _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
         }
 
         function _mintingProcessForDgovWithElse(
@@ -364,7 +362,7 @@ contract Bank is APMRouter{
             uint purchaseTokenAmount,
             address purchaseTokenAddress
             ) internal { {
-                    uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress); //need cdp from usd to dgov
+                    uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); //need cdp from usd to dgov
                     uint amountDGOVToMint = mintDgovFromDbit(purchaseTokenAmount);
                     IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
                     IDebondToken(debondTokenAddress).mint(address(apm), amountDGOVToMint);
@@ -517,14 +515,14 @@ contract Bank is APMRouter{
                 _mintingProcessETHWithDbit(debondTokenAddress, bankData.purchaseTokenAmount);
             
                 (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
-                _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, debondTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
+                _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
             }
 
             function _mintingProcessETHWithDbit(
                 address debondTokenAddress,
                 uint purchaseETHAmount
                 ) internal {
-                uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseETHAmount), WETH); //todo : verify if conversion uint128 is possible.
+                uint amountDBITToMint = convertToDbit(uint128(purchaseETHAmount), WETH); //todo : verify if conversion uint128 is possible.
                 IWeth(WETH).deposit{value: purchaseETHAmount}();
                 assert(IWeth(WETH).transfer(address(apm), purchaseETHAmount)); // see if better methods
                 IDebondToken(debondTokenAddress).mint(address(apm), amountDBITToMint);
@@ -560,14 +558,14 @@ contract Bank is APMRouter{
             _mintingProcessETHWithDgov(debondTokenAddress, bankData.purchaseTokenAmount);
         
             (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
-            _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, debondTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
+            _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
         }
 
         function _mintingProcessETHWithDgov(
             address debondTokenAddress,
             uint purchaseETHAmount
             ) internal {
-            uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseETHAmount), WETH); //need cdp from usd to dgov
+            uint amountDBITToMint = convertToDbit(uint128(purchaseETHAmount), WETH); //need cdp from usd to dgov
             uint amountDGOVToMint = mintDgovFromDbit(purchaseETHAmount);
             //IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
             IWeth(WETH).deposit{value: purchaseETHAmount}();
@@ -612,7 +610,7 @@ contract Bank is APMRouter{
                 uint purchaseETHAmount,
                 address purchaseTokenAddress
                 ) internal {
-                uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseETHAmount), purchaseTokenAddress); //todo : ferivy if conversion is possible.
+                uint amountDBITToMint = convertToDbit(uint128(purchaseETHAmount), purchaseTokenAddress); //todo : ferivy if conversion is possible.
                 IWeth(WETH).deposit{value: purchaseETHAmount}();
                 assert(IWeth(WETH).transfer(address(apm), purchaseETHAmount)); 
                 IDebondToken(DBITAddress).mint(address(apm), amountDBITToMint);
@@ -654,7 +652,7 @@ contract Bank is APMRouter{
                 uint purchaseETHAmount,
                 address purchaseTokenAddress
                 ) internal {
-                uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseETHAmount), purchaseTokenAddress); //need cdp from usd to dgov
+                uint amountDBITToMint = convertToDbit(uint128(purchaseETHAmount), purchaseTokenAddress); //need cdp from usd to dgov
                 uint amountDGOVToMint = mintDgovFromDbit(purchaseETHAmount);
                 IWeth(WETH).deposit{value: purchaseETHAmount}();
                 assert(IWeth(WETH).transfer(address(apm), purchaseETHAmount)); 
@@ -852,7 +850,7 @@ contract Bank is APMRouter{
     * @param _tokenAddress the address of token
     * @return amountDBIT the amount of DBIT to mint
     */
-    function mintDbitFromUsd(uint128 _amountToken, address _tokenAddress) private view returns(uint256 amountDBIT) {
+    function convertToDbit(uint128 _amountToken, address _tokenAddress) private view returns(uint256 amountDBIT) {
 
         uint256 tokenToUsd= _convertTokenToUsd(_amountToken, _tokenAddress);
         uint256 rate = _cdpUsdToDBIT(DBITAddress);
