@@ -59,12 +59,14 @@ contract('Bank', async (accounts: string[]) => {
         console.log("1");
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
         console.log("2");
-        await bankContract.buyBond(USDC_FIX_6MTH_CLASS_ID, DBIT_FIX_6MTH_CLASS_ID, web3.utils.toWei('3000', 'ether'), 0, PurchaseMethod.BUYING,0, {from: buyer});
+        await bankContract.buyBond(USDC_FIX_6MTH_CLASS_ID, DBIT_FIX_6MTH_CLASS_ID, web3.utils.toWei('3000', 'ether'), PurchaseMethod.BUYING,20, {from: buyer});
         console.log("3");
 
 
 
     })
+
+
 
     it('redeem Bonds', async () => {
 
