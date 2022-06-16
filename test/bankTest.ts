@@ -30,9 +30,8 @@ contract('Bank', async (accounts: string[]) => {
     let apmContract: APMInstance
     let bondContract: DebondBondTestInstance
 
-    const DBIT_FIX_6MTH_CLASS_ID = 1;
-    const USDC_FIX_6MTH_CLASS_ID: number;
-    const USDT_FIX_6MTH_CLASS_ID: number;
+    const DBIT_FIX_6MTH_CLASS_ID = 0;
+    const USDC_FIX_6MTH_CLASS_ID = 1;
 
     it('buy Bonds', async () => {
         usdcContract = await USDC.deployed();

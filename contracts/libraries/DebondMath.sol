@@ -105,7 +105,7 @@ library DebondMath {
         uint256 _benchmarkIR
     ) public pure returns(uint256 floatingRate) {
         uint256 x = (_fixRateBond * 1 ether) / (_fixRateBond + _floatingRateBond);
-        int256 c = PRBMathSD59x18.inv(3 ether);
+        int256 c = PRBMathSD59x18.inv(5 ether);
         uint256 sig = sigmoid(x, uint256(c));
 
         floatingRate = 2 * _benchmarkIR * sig / 1 ether;

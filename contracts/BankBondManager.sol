@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 
 import "debond-governance/contracts/utils/GovernanceOwnable.sol";
 import "debond-erc3475/contracts/interfaces/IDebondBond.sol";
+import "erc3475/contracts/IERC3475.sol";
 import "./interfaces/IRedeemableBondCalculator.sol";
 import "./libraries/DebondMath.sol";
 
@@ -71,17 +72,15 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
 
     function issueBonds(address to, uint256 classId, uint256 amount) internal {
         uint instant = block.timestamp;
-        (uint lastNonceId, uint createdAt) = IDebondBond(debondBondAddress).getLastNonceCreated(classId);
-        createdAt = createdAt == 0 ? BASE_TIMESTAMP : createdAt;
-        uint numDaysNow = getNonceFromDate(instant);
-        uint numDaysLastNonce = getNonceFromDate(createdAt);
-        uint nonceToAdd = numDaysNow - numDaysLastNonce;
-        if (nonceToAdd != 0) {
-            createNewNonce(classId, lastNonceId + nonceToAdd, instant);
-            (uint nonceId,) = IDebondBond(debondBondAddress).getLastNonceCreated(classId);
-            IERC3475(debondBondAddress).issue(to, classId, nonceId, amount);
-            return;
+        uint _nowNonce = getNonceFromDate(block.timestamp);
+        (,, uint period) = classValues(classId);
+        uint _nonceToCreate = _nowNonce + getNonceFromPeriod(period);
+        (uint _lastNonceCreated,) = IDebondBond(debondBondAddress).getLastNonceCreated(classId);
+        if (_nonceToCreate != _lastNonceCreated) {
+            createNewNonce(classId, _nonceToCreate, instant);
+            (_lastNonceCreated,) = IDebondBond(debondBondAddress).getLastNonceCreated(classId);
         }
+        IERC3475(debondBondAddress).issue(to, classId, _lastNonceCreated, amount);
     }
 
     function createNewNonce(uint classId, uint newNonceId, uint creationTimestamp) private {
@@ -100,7 +99,11 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
     }
 
     function getNonceFromDate(uint256 date) public pure returns (uint256) {
-        return (date - BASE_TIMESTAMP) / EPOCH;
+        return getNonceFromPeriod(date - BASE_TIMESTAMP);
+    }
+
+    function getNonceFromPeriod(uint256 period) private pure returns (uint256) {
+        return period / EPOCH;
     }
 
     function isRedeemable(uint256 classId, uint256 nonceId) external view returns (bool) {
@@ -140,7 +143,6 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
 
         uint BsumNL = _tokenTotalSupply(_tokenAddress);
         uint BsumN = tokenTotalSupplyAtNonce[_tokenAddress][nonceId];
-        uint BsumNInterest = BsumN + BsumN.mul(BENCHMARK_RATE_DECIMAL_18);
 
         uint todayNonceId = getNonceFromDate(block.timestamp);
         uint liquidityFlowOver30Nonces = _supplyIssuedOnPeriod(_tokenAddress, todayNonceId - 30, todayNonceId);
@@ -157,7 +159,7 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
         (address debondTokenAddress, InterestRateType interestRateType,) = classValues(classId);
         (uint fixRateSupply, uint floatRateSupply) = getRateSupplies(debondTokenAddress, amount, interestRateType);
 
-        (fixRate, floatRate) = _calculateRate(fixRateSupply, floatRateSupply);
+        (fixRate, floatRate) = _getCalculatedRate(fixRateSupply, floatRateSupply);
 
     }
 
@@ -168,7 +170,7 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
         (address purchaseTokenAddress, InterestRateType interestRateType,) = classValues(classId);
         (uint fixRateSupply, uint floatRateSupply) = getRateSupplies(purchaseTokenAddress, amount, interestRateType);
 
-        (fixRate, floatRate) = _calculateRate(fixRateSupply, floatRateSupply);
+        (fixRate, floatRate) = _getCalculatedRate(fixRateSupply, floatRateSupply);
     }
 
     function getRateSupplies(address tokenAddress, uint tokenAmount, InterestRateType interestRateType) private view returns (uint fixRateSupply, uint floatRateSupply) {
@@ -184,7 +186,7 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
         }
     }
 
-    function _calculateRate(uint fixRateSupply, uint floatRateSupply) private view returns (uint fixRate, uint floatRate) {
+    function _getCalculatedRate(uint fixRateSupply, uint floatRateSupply) private pure returns (uint fixRate, uint floatRate) {
         // TODO Need to define a min liquidity
         if (fixRateSupply == 0 || floatRateSupply == 0) {
             fixRate = 2 * BENCHMARK_RATE_DECIMAL_18 / 3;
@@ -196,9 +198,7 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
 
     //TODO TEST
     function _interestRate(uint fixRateSupply, uint floatRateSupply, uint benchmarkInterest) private pure returns (uint fixedRate, uint floatingRate) {
-        uint sigmoidCParam = DebondMath.inv(3 ether);
-        uint x = fixRateSupply.div(floatRateSupply + fixRateSupply);
-        floatingRate = 2 * (benchmarkInterest.mul(DebondMath.sigmoid(x, sigmoidCParam)));
+        floatingRate = DebondMath.floatingInterestRate(fixRateSupply, floatRateSupply, benchmarkInterest);
         fixedRate = 2 * benchmarkInterest - floatingRate;
     }
 
