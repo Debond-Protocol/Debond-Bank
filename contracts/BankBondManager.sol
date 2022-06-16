@@ -5,8 +5,8 @@ pragma solidity ^0.8.0;
 
 import "debond-governance/contracts/utils/GovernanceOwnable.sol";
 import "debond-erc3475/contracts/interfaces/IDebondBond.sol";
+import "debond-erc3475/contracts/interfaces/IRedeemableBondCalculator.sol";
 import "erc3475/contracts/IERC3475.sol";
-import "./interfaces/IRedeemableBondCalculator.sol";
 import "./libraries/DebondMath.sol";
 
 
@@ -14,8 +14,9 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
 
     using DebondMath for uint256;
 
-    uint public constant BASE_TIMESTAMP = 1646089200; // 2022-03-01 00:00
-    uint public constant EPOCH = 24 * 3600; // every 24h we crate a new nonce.
+    //    uint public constant BASE_TIMESTAMP = 1646089200; // 2022-03-01 00:00
+    uint public BASE_TIMESTAMP;
+    uint public constant EPOCH = 30; // every 24h we crate a new nonce.
     uint public constant BENCHMARK_RATE_DECIMAL_18 = 5 * 10 ** 16;
 
 
@@ -23,22 +24,24 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
 
     address debondBondAddress;
 
-    mapping(address => mapping(InterestRateType => uint256)) tokenRateTypeTotalSupply; // needed for interest rate calculation also
-    mapping(address => mapping(uint256 => uint256)) tokenTotalSupplyAtNonce;
-    mapping(address => uint256[]) classIdsPerTokenAddress;
+    mapping(address => mapping(InterestRateType => uint256)) public tokenRateTypeTotalSupply; // needed for interest rate calculation also
+    mapping(address => mapping(uint256 => uint256)) public tokenTotalSupplyAtNonce;
+    mapping(address => uint256[]) public classIdsPerTokenAddress;
     mapping(uint256 => mapping(uint256 => bool)) public canPurchase; // can u get second input classId token from providing first input classId token
 
     mapping(uint256 => address) public fromBondValueToTokenAddress;
     mapping(address => uint256) public tokenAddressValueMapping;
 
-    mapping (address => bool) public tokenAddressExist;
-    uint256 tokenAddressCount;
+    mapping(address => bool) public tokenAddressExist;
+    uint256 public tokenAddressCount;
 
     constructor(
         address _governanceAddress,
-        address _debondBondAddress
+        address _debondBondAddress,
+        uint256 baseTimeStamp
     ) GovernanceOwnable(_governanceAddress) {
         debondBondAddress = _debondBondAddress;
+        BASE_TIMESTAMP = baseTimeStamp;
     }
 
     function createClass(uint256 classId, string memory _symbol, InterestRateType interestRateType, address tokenAddress, uint256 periodTimestamp) external onlyGovernance {
@@ -51,6 +54,8 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
         if (!tokenAddressExist[tokenAddress]) {
             ++tokenAddressCount;
             tokenAddressValueMapping[tokenAddress] = tokenAddressCount;
+            fromBondValueToTokenAddress[tokenAddressValueMapping[tokenAddress]] = tokenAddress;
+            tokenAddressExist[tokenAddress] = true;
         }
         uint tokenAddressValue = tokenAddressValueMapping[tokenAddress];
 
@@ -80,7 +85,7 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
             createNewNonce(classId, _nonceToCreate, instant);
             (_lastNonceCreated,) = IDebondBond(debondBondAddress).getLastNonceCreated(classId);
         }
-        IERC3475(debondBondAddress).issue(to, classId, _lastNonceCreated, amount);
+        _issueERC3475(to, classId, _lastNonceCreated, amount);
     }
 
     function createNewNonce(uint classId, uint newNonceId, uint creationTimestamp) private {
@@ -92,13 +97,13 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
 
     function _issue(address to, uint256 classId, uint256 nonceId, uint256 amount) internal {
         (address tokenAddress, InterestRateType interestRateType,) = classValues(classId);
-        IDebondBond(debondBondAddress).issue(to, classId, nonceId, amount);
+        _issueERC3475(to, classId, nonceId, amount);
         tokenRateTypeTotalSupply[tokenAddress][interestRateType] += amount;
         tokenTotalSupplyAtNonce[tokenAddress][nonceId] = _tokenTotalSupply(tokenAddress);
 
     }
 
-    function getNonceFromDate(uint256 date) public pure returns (uint256) {
+    function getNonceFromDate(uint256 date) public view returns (uint256) {
         return getNonceFromPeriod(date - BASE_TIMESTAMP);
     }
 
@@ -106,18 +111,21 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
         return period / EPOCH;
     }
 
-    function isRedeemable(uint256 classId, uint256 nonceId) external view returns (bool) {
-        (address _tokenAddress, InterestRateType _interestRateType, ) = classValues(classId);
+    function getProgress(uint256 classId, uint256 nonceId) external view returns (uint256 progressAchieved, uint256 progressRemaining) {
+        (address _tokenAddress, InterestRateType _interestRateType, uint _periodTimestamp) = classValues(classId);
         (, uint256 _maturityDate) = nonceValues(classId, nonceId);
         if (_interestRateType == InterestRateType.FixedRate) {
-            return _maturityDate <= block.timestamp;
+            progressRemaining = _maturityDate <= block.timestamp ? 0 : (_maturityDate - block.timestamp) * 100 / _periodTimestamp;
+            progressAchieved = 100 - progressRemaining;
+            return (progressAchieved, progressRemaining);
         }
 
         uint BsumNL = _tokenTotalSupply(_tokenAddress);
         uint BsumN = tokenTotalSupplyAtNonce[_tokenAddress][nonceId];
         uint BsumNInterest = BsumN + BsumN.mul(BENCHMARK_RATE_DECIMAL_18);
 
-        return BsumNInterest < BsumNL;
+        progressRemaining = BsumNInterest < BsumNL ? 0 : 100;
+        progressAchieved = 100 - progressRemaining;
     }
 
     function _createNonce(uint256 classId, uint256 nonceId, uint256 _maturityDate) internal {
@@ -144,8 +152,8 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
         uint BsumNL = _tokenTotalSupply(_tokenAddress);
         uint BsumN = tokenTotalSupplyAtNonce[_tokenAddress][nonceId];
 
-        uint todayNonceId = getNonceFromDate(block.timestamp);
-        uint liquidityFlowOver30Nonces = _supplyIssuedOnPeriod(_tokenAddress, todayNonceId - 30, todayNonceId);
+        (uint lastNonceCreated,) = IDebondBond(debondBondAddress).getLastNonceCreated(classId);
+        uint liquidityFlowOver30Nonces = _supplyIssuedOnPeriod(_tokenAddress, lastNonceCreated - 30, lastNonceCreated);
         uint Umonth = liquidityFlowOver30Nonces / 30;
         return DebondMath.floatingETA(_maturityDate, BsumN, BENCHMARK_RATE_DECIMAL_18, BsumNL, EPOCH, Umonth);
     }
@@ -203,9 +211,8 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
     }
 
 
-
     function classValues(uint256 classId) public view returns (address _tokenAddress, InterestRateType _interestRateType, uint256 _periodTimestamp) {
-        uint[] memory _classValues = IERC3475(debondBondAddress).classInfos(classId);
+        uint[] memory _classValues = IERC3475(debondBondAddress).classValues(classId);
 
         _interestRateType = _classValues[1] == 0 ? InterestRateType.FixedRate : InterestRateType.FloatingRate;
         _tokenAddress = fromBondValueToTokenAddress[_classValues[0]];
@@ -213,7 +220,7 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
     }
 
     function nonceValues(uint256 classId, uint256 nonceId) public view returns (uint256 _issuanceDate, uint256 _maturityDate) {
-        uint[] memory _nonceValues = IERC3475(debondBondAddress).nonceInfos(classId, nonceId);
+        uint[] memory _nonceValues = IERC3475(debondBondAddress).nonceValues(classId, nonceId);
         _issuanceDate = _nonceValues[0];
         _maturityDate = _nonceValues[1];
     }
@@ -225,11 +232,25 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
     function _supplyIssuedOnPeriod(address tokenAddress, uint256 fromNonceId, uint256 toNonceId) internal view returns (uint256 supply) {
         require(fromNonceId <= toNonceId, "DebondBond Error: Invalid Input");
         // we loop on every nonces required of every token's classes
-        for (uint i = fromNonceId; i <= toNonceId; i++ ) {
-            for (uint j = 0; j < classIdsPerTokenAddress[tokenAddress].length; j++ ) {
+        for (uint i = fromNonceId; i <= toNonceId; i++) {
+            for (uint j = 0; j < classIdsPerTokenAddress[tokenAddress].length; j++) {
                 supply += (IERC3475(debondBondAddress).activeSupply(classIdsPerTokenAddress[tokenAddress][j], i) + IERC3475(debondBondAddress).redeemedSupply(classIdsPerTokenAddress[tokenAddress][j], i));
             }
         }
+    }
+
+    function _issueERC3475(address to, uint classId, uint nonceId, uint amount) internal {
+        IERC3475.Transaction[] memory transactions = new IERC3475.Transaction[](1);
+        IERC3475.Transaction memory transaction = IERC3475.Transaction(classId, nonceId, amount);
+        transactions[0] = transaction;
+        IERC3475(debondBondAddress).issue(to, transactions);
+    }
+
+    function _redeemERC3475(address from, uint classId, uint nonceId, uint amount) internal {
+        IERC3475.Transaction[] memory transactions = new IERC3475.Transaction[](1);
+        IERC3475.Transaction memory transaction = IERC3475.Transaction(classId, nonceId, amount);
+        transactions[0] = transaction;
+        IERC3475(debondBondAddress).redeem(from, transactions);
     }
 
 

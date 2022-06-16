@@ -16,17 +16,15 @@ pragma solidity ^0.8.0;
 
 
 
-import './DebondData.sol';
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/ICollateral.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IDebondToken.sol";
-import "erc3475/contracts/IERC3475.sol";
-import "./interfaces/IRedeemableBondCalculator.sol";
 import "./BankBondManager.sol";
 import "./libraries/DebondMath.sol";
 import "./APMRouter.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./libraries/DebondMath.sol";
 
 
 
@@ -37,9 +35,9 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
     IOracle oracle;
     enum PurchaseMethod {Buying, Staking}
-    address DBITAddress;
-    address DGOVAddress;
-    address USDCAddress;
+    address public DBITAddress;
+    address public DGOVAddress;
+    address public USDCAddress;
 
     bool init;
 
@@ -50,8 +48,9 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         address _DBITAddress,
         address _DGOVAddress,
         address oracleAddress,
-        address usdcAddress
-    ) APMRouter(apmAddress) BankBondManager(governanceAddress, bondAddress){
+        address usdcAddress,
+        uint256 baseTimeStamp
+    ) APMRouter(apmAddress) BankBondManager(governanceAddress, bondAddress, baseTimeStamp){
         DBITAddress = _DBITAddress;
         DGOVAddress = _DGOVAddress;
         oracle = IOracle(oracleAddress);
@@ -61,7 +60,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     function initializeApp(address daiAddress, address usdtAddress) external onlyOwner {
         require(!init, "BankContract Error: already initiated");
         init = true;
-        uint SIX_M_PERIOD = 3600; // 1 hour period for tests
+        uint SIX_M_PERIOD = 180 * 30; // 1 hour period for tests
 
         _createClass(0, "DBIT", InterestRateType.FixedRate, DBITAddress, SIX_M_PERIOD);
         _createClass(1, "USDC", InterestRateType.FixedRate, USDCAddress, SIX_M_PERIOD);
@@ -156,13 +155,13 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             //do we have to handle the case where reserve = 0? or when deploying, we put some liquidity?
             uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
             uint rate = interestRateType == InterestRateType.FixedRate ? fixedRate : floatingRate;
-            issueBonds(msg.sender, debondClassId, amount *  rate);
+            issueBonds(msg.sender, debondClassId, amount.mul(rate));
         }
         else if (purchaseMethod == PurchaseMethod.Buying) {
             (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
             uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
             uint rate = interestRateType == InterestRateType.FixedRate ? fixedRate : floatingRate;
-            issueBonds(msg.sender, debondClassId, amount + amount * rate);
+            issueBonds(msg.sender, debondClassId, amount.mul(rate));
             // here the interest calculation is hardcoded. require the interest is enough high
         }
 
@@ -177,7 +176,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint amount
     ) external {
         //1. redeem the bonds (will fail if not maturity date exceeded)
-        IERC3475(debondBondAddress).redeem(msg.sender, classId, nonceId, amount);
+        _redeemERC3475(msg.sender, classId, nonceId, amount);
 
         (address tokenAddress,,) = classValues(classId);
         removeLiquidity(msg.sender, tokenAddress, amount);

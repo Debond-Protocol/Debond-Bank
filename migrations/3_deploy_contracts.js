@@ -40,6 +40,10 @@ module.exports = async function (deployer, networks, accounts) {
   const oracleAddress = fakeOracleInstance.address
   const USDCAddress = USDCInstance.address
 
+  let d = new Date();
+  d.setHours(0,0,0,0);
+
+  console.log(d.getTime());
   await deployer.deploy(Bank,
       governanceAddress,
       apmInstance.address,
@@ -47,7 +51,8 @@ module.exports = async function (deployer, networks, accounts) {
       DBITInstance.address,
       DGOVInstance.address,
       oracleAddress,
-      USDCAddress);  //oracle and usdc for polygon
+      USDCAddress,
+      d.getTime()/10**3);  //oracle and usdc for polygon
 
   const bankInstance = await Bank.deployed();
   await apmInstance.setBankAddress(bankInstance.address);

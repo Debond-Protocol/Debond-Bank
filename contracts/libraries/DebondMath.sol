@@ -227,6 +227,6 @@ library DebondMath {
             _sumOfLiquidityOfLastNonce
         );
 
-        deficit > 0 ? crisis = true : crisis = false;
+        crisis = deficit > 0;
     }
 }
