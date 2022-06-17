@@ -232,7 +232,7 @@ contract Bank is APMRouter{
             uint _minRate,
             uint deadline,
             address _to  
-            ) external ensure(deadline) { 
+            ) external ensure(deadline) returns(uint amount){ 
 
             BankData memory bankData;
             bankData.purchaseClassId = _purchaseClassId;
@@ -250,7 +250,7 @@ contract Bank is APMRouter{
             _mintingProcessForDbitWithElse(bankData.purchaseTokenAmount, purchaseTokenAddress);
         
             (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
-            _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
+            amount = _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
         }
 
         function _issuingProcessStaking(
@@ -263,9 +263,9 @@ contract Bank is APMRouter{
             uint floatingRate,
             uint minRate,
             address to
-            ) internal {
+            ) public returns(uint amount) {
                 issueBonds(to, purchaseClassId, purchaseTokenAmount);
-                uint amount = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); //todo : do the same everywhere.
+                amount = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); //todo : do the same everywhere.
                 uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
                 if (rate < minRate){
                     revert RateNotHighEnough(rate, minRate);
