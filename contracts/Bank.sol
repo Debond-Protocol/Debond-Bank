@@ -54,6 +54,11 @@ contract Bank is APMRouter{
     address immutable USDCAddress;
     address immutable WETH; //TODO
 
+    event test(uint amount);
+    event test1(uint amount);
+    event test2(uint amount);
+    event test3(uint amount);
+
     constructor(
         address apmAddress,
         address dataAddress,
@@ -232,7 +237,7 @@ contract Bank is APMRouter{
             uint _minRate,
             uint deadline,
             address _to  
-            ) external ensure(deadline) returns(uint amount){ 
+            ) external ensure(deadline) { 
 
             BankData memory bankData;
             bankData.purchaseClassId = _purchaseClassId;
@@ -250,7 +255,8 @@ contract Bank is APMRouter{
             _mintingProcessForDbitWithElse(bankData.purchaseTokenAmount, purchaseTokenAddress);
         
             (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
-            amount = _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
+            uint amount = _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
+            emit test(amount);
         }
 
         function _issuingProcessStaking(
@@ -850,12 +856,17 @@ contract Bank is APMRouter{
     * @param _tokenAddress the address of token
     * @return amountDBIT the amount of DBIT to mint
     */
-    function convertToDbit(uint128 _amountToken, address _tokenAddress) private view returns(uint256 amountDBIT) {
+    function convertToDbit(uint128 _amountToken, address _tokenAddress) private  returns(uint256 amountDBIT) {
 
         uint256 tokenToUsd= _convertTokenToUsd(_amountToken, _tokenAddress);
         uint256 rate = _cdpUsdToDBIT(DBITAddress);
 
-        amountDBIT = (tokenToUsd * 1e12).mul(rate);  //1e6 x1e12 x 1e18 = 1e18
+        amountDBIT = (tokenToUsd * 1e12).mul(rate);  //1e6 x 1e12 x 1e18 = 1e18
+
+        emit test1(amountDBIT);
+        emit test2(rate);
+        emit test3(tokenToUsd);
+
     }
 
 
@@ -874,7 +885,7 @@ contract Bank is APMRouter{
     * @param _amountDBIT the amount of token
     * @return amountDGOV the amount of DGOV to mint
     */
-    function mintDgovFromDbit(uint256 _amountDBIT) private view returns(uint256 amountDGOV) {
+    function mintDgovFromDbit(uint256 _amountDBIT) private view returns(uint256 amountDGOV) {  //todo: change name to convertDbitToDgov
         uint256 rate = _cdpDbitToDgov(DGOVAddress);
         amountDGOV = _amountDBIT.mul(rate);
     }

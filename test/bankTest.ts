@@ -97,7 +97,39 @@ contract('Bank', async (accounts: string[]) => {
         
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
         let amount = await bankContract.stakeForDbitBondWithElse(USDC_FIX_6MTH_CLASS_ID, DBIT_FIX_6MTH_CLASS_ID, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
-        console.log("amount: " + amount);
+        
+       
+        //console.log("logs: ", amount.logs);
+        console.log("logs: ", parseInt(amount.receipt.rawLogs[0].topics, 16));
+        
+
+        
+        
+        //console.log("amount: ", amount.logs[0].args[0]["words"][1]);
+
+        /*
+        let amount0 = amount.logs[0].args[0]["words"][1];
+        console.log("amount0: ", amount0);
+
+        let amount1 = amount.logs[1].args[0]["words"][1];
+        console.log("amount1: ", amount1);
+
+        let amount2 = amount.logs[2].args[0]["words"][1];
+        console.log("amount2: ", amount2);
+
+        let amount3 = amount.logs[3].args[0];
+        console.log("amount3: ", amount3);
+
+        let amount4 = amount.logs[4].args[0];
+        console.log("amount4: ", amount4);
+
+        let amount5 = amount.logs[5].args[0];
+        console.log("amount5: ", amount5);
+
+        let amount6 = amount.logs[6].args[0]["words"][1];
+        console.log("amount6: ", amount6);*/
+
+        
 
         const DBITNonces = (await bondContract.getNoncesPerAddress(buyer, DBIT_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
         console.log("nonce: " + DBITNonces[0]);
