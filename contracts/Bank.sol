@@ -17,15 +17,12 @@ pragma solidity ^0.8.0;
 
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./interfaces/ICollateral.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "debond-token-contracts/interfaces/IDebondToken.sol";
 import "./interfaces/IOracle.sol";
-import "./interfaces/IDebondToken.sol";
 import "./BankBondManager.sol";
 import "./libraries/DebondMath.sol";
 import "./APMRouter.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "./libraries/DebondMath.sol";
-
 
 
 contract Bank is APMRouter, BankBondManager, Ownable {
@@ -121,7 +118,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         if (debondTokenAddress == DBITAddress) {
             uint amountDBITToMint = mintDbitFromUsd(uint128(purchaseTokenAmount), purchaseTokenAddress, fee); //todo : ferivy if conversion is possible.
             IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
-            IDebondToken(debondTokenAddress).mint(address(apm), amountDBITToMint);
+            IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
             updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, debondTokenAddress);
 
             //todo : put this in one addliq function
@@ -131,7 +128,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             if (purchaseTokenAddress == DBITAddress) {
                 uint amountBToMint = mintDgovFromDbit(purchaseTokenAmount);
                 IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
-                IDebondToken(debondTokenAddress).mint(address(apm), amountBToMint);
+                IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), amountBToMint);
                 updateWhenAddLiquidity(purchaseTokenAmount, amountBToMint, purchaseTokenAddress, debondTokenAddress);
             }
             else {
@@ -139,8 +136,8 @@ contract Bank is APMRouter, BankBondManager, Ownable {
                 //need cdp from usd to dgov
                 uint amountDGOVToMint = mintDgovFromDbit(purchaseTokenAmount);
                 IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
-                IDebondToken(debondTokenAddress).mint(address(apm), amountDGOVToMint);
-                IDebondToken(debondTokenAddress).mint(address(apm), 2 * amountDBITToMint);
+                IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
+                IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);
                 updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
                 updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, debondTokenAddress);
             }
@@ -221,7 +218,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         */
     function _cdpUsdToDBIT(address dbitAddress) private view returns (uint256 amountDBIT) {
         amountDBIT = 1 ether;
-        uint256 _sCollateralised = ICollateral(dbitAddress).supplyCollateralised();
+        uint256 _sCollateralised = IDebondToken(dbitAddress).getTotalCollateralisedSupply();
         if (_sCollateralised >= 1000 ether) {
             amountDBIT = 1.05 ether;
             uint256 logCollateral = (_sCollateralised / 1000).ln();
@@ -268,7 +265,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         * @return amountDGOV the amount of DGOV which should be minted
         */
     function _cdpDbitToDgov(address dgovAddress) private view returns (uint256 amountDGOV) {
-        uint256 _sCollateralised = ICollateral(dgovAddress).supplyCollateralised();
+        uint256 _sCollateralised = IDebondToken(dgovAddress).getTotalCollateralisedSupply();
         amountDGOV = (100 ether + (_sCollateralised).div(33333).pow(2)).inv();
     }
     /**

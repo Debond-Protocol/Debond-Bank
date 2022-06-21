@@ -1,7 +1,7 @@
 pragma solidity ^0.8.0;
 
 // SPDX-License-Identifier: apache 2.0
-import "debond-apm/contracts/interfaces/IAPM.sol";
+import "apm-contracts/interfaces/IAPM.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 

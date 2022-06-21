@@ -1,7 +1,7 @@
 import {
     APMInstance,
     BankInstance,
-    DBITInstance,
+    DBITTestInstance,
     DebondBondTestInstance,
     USDCInstance,
     USDTInstance
@@ -10,7 +10,7 @@ import {
 const Bank = artifacts.require("Bank");
 const USDC = artifacts.require("USDC");
 const USDT = artifacts.require("USDT");
-const DBIT = artifacts.require("DBIT");
+const DBIT = artifacts.require("DBITTest");
 const APM = artifacts.require("APMTest");
 const DebondBondTest = artifacts.require("DebondBondTest");
 
@@ -26,7 +26,7 @@ contract('Bank', async (accounts: string[]) => {
     let usdcContract: USDCInstance
     let usdtContract: USDTInstance
     let bankContract: BankInstance
-    let dbitContract: DBITInstance
+    let dbitContract: DBITTestInstance
     let apmContract: APMInstance
     let bondContract: DebondBondTestInstance
 
@@ -42,11 +42,10 @@ contract('Bank', async (accounts: string[]) => {
         bondContract = await DebondBondTest.deployed();
 
 
-        // await apmContract.updateTotalReserve(usdcContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve
-        // await apmContract.updateTotalReserve(dbitContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve
-
         await usdcContract.mint(buyer, web3.utils.toWei('100000', 'ether'));
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
+        const classValues = await bondContract.classValues(DBIT_FIX_6MTH_CLASS_ID);
+        console.log(classValues.map(c => c.toNumber()));
         await bankContract.buyBond(USDC_FIX_6MTH_CLASS_ID, DBIT_FIX_6MTH_CLASS_ID, web3.utils.toWei('3000', 'ether'), 0, PurchaseMethod.BUYING,0, {from: buyer});
 
 

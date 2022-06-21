@@ -1,6 +1,6 @@
 const DAI = artifacts.require("DAI");
-const DBIT = artifacts.require("DBIT");
-const DGOV = artifacts.require("DGOV");
+const DBIT = artifacts.require("DBITTest");
+const DGOV = artifacts.require("DGOVTest");
 const USDC = artifacts.require("USDC");
 const USDT = artifacts.require("USDT");
 const FakeOracle = artifacts.require("FakeOracle");
@@ -57,11 +57,7 @@ module.exports = async function (deployer, networks, accounts) {
   const bankInstance = await Bank.deployed();
   await apmInstance.setBankAddress(bankInstance.address);
   await debondBondInstance.setBankAddress(bankInstance.address);
+  await DBITInstance.setBankAddress(bankInstance.address);
+  await DGOVInstance.setBankAddress(bankInstance.address);
   await bankInstance.initializeApp(DAIInstance.address, USDTInstance.address);
-
-
-  const DBITMinterRole = await DBITInstance.MINTER_ROLE();
-  await DBITInstance.grantRole(DBITMinterRole, bankInstance.address);
-  const DGOVMinterRole = await DGOVInstance.MINTER_ROLE();
-  await DBITInstance.grantRole(DGOVMinterRole, bankInstance.address);
 };

@@ -1,7 +1,7 @@
 import {before} from "mocha";
 import {
     DBITInstance,
-    APMRouterInstance, USDCInstance, APMInstance
+    USDCInstance, APMInstance, BankInstance
 } from "../types/truffle-contracts";
 
 const APM = artifacts.require("APM");
@@ -13,7 +13,7 @@ const USDC = artifacts.require("USDC");
 contract('External Swap (from Bank)', async (accounts: string[]) => {
     const swapper = accounts[1];
     let dbitInstance: DBITInstance;
-    let bankContract: APMRouterInstance;
+    let bankContract: BankInstance;
     let usdcContract: USDCInstance;
     let apmContract : APMInstance;
 
