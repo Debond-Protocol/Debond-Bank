@@ -7,7 +7,7 @@ const web3 = new Web3();
 module.exports = {
   plugins: ['truffle-plugin-verify'],
   api_keys: {
-    etherscan: "YWW54NEHSEUXR7E4NP5JFWP176QN9N4NN5",
+    etherscan: process.env.ETHERSCAN_API_KEY,
   },
   networks: {
     development: {
@@ -17,7 +17,7 @@ module.exports = {
     },
     rinkeby: {
       provider: function() {
-        return new HDWalletProvider("a6c283e0090a5b51410f2239f45ad1c33bd503456001428933ab4819ce555fc4", `https://rinkeby.infura.io/v3/bc900f3c5d3f46718632cf0aa0b03f1c`);
+        return new HDWalletProvider(process.env.TESTNET_PRIVATE_KEY, `https://rinkeby.infura.io/v3/${process.env.INFURA_ACCESS_TOKEN}`);
       },
       network_id: 4,
       // gas: 30000000, //from ganache-cli output
