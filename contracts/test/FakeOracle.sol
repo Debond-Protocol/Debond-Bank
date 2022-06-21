@@ -25,7 +25,8 @@ contract FakeOracle is IOracle{
         uint24 fee,
         uint32 secondsAgo
     ) external view returns (uint amountOut) {
-        amountOut = amountIn;
+        // as real oracle, result is given on base 6
+        amountOut = amountIn / 1e12;
     }
 }
 

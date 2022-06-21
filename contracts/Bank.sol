@@ -238,7 +238,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             amountUsd = _amountToken;
         }
         else {
-            amountUsd = oracle.estimateAmountOut(_tokenAddress, _amountToken, USDCAddress, fee , 5 );
+            amountUsd = oracle.estimateAmountOut(_tokenAddress, _amountToken, USDCAddress, fee , 5 ) * 1e12;
         }
     }
 
@@ -254,7 +254,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint256 tokenToUsd = _convertTokenToUsd(_amountToken, _tokenAddress, fee);
         uint256 rate = _cdpUsdToDBIT(DBITAddress);
 
-        amountDBIT = (tokenToUsd * 1e12).mul(rate);  //1e6 x1e12 x 1e18 = 1e18
+        amountDBIT = tokenToUsd.mul(rate);  //1e6 x1e12 x 1e18 = 1e18
     }
 
 

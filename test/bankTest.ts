@@ -32,8 +32,9 @@ contract('Bank', async (accounts: string[]) => {
 
     const DBIT_FIX_6MTH_CLASS_ID = 0;
     const USDC_FIX_6MTH_CLASS_ID = 1;
+    const USDT_FIX_6MTH_CLASS_ID = 2;
 
-    it('buy Bonds', async () => {
+    it('buy Bonds with USDC', async () => {
         usdcContract = await USDC.deployed();
         usdtContract = await USDT.deployed();
         bankContract = await Bank.deployed();
@@ -44,10 +45,28 @@ contract('Bank', async (accounts: string[]) => {
 
         await usdcContract.mint(buyer, web3.utils.toWei('100000', 'ether'));
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        const classValues = await bondContract.classValues(DBIT_FIX_6MTH_CLASS_ID);
-        console.log(classValues.map(c => c.toNumber()));
         await bankContract.buyBond(USDC_FIX_6MTH_CLASS_ID, DBIT_FIX_6MTH_CLASS_ID, web3.utils.toWei('3000', 'ether'), 0, PurchaseMethod.BUYING,0, {from: buyer});
+        const DBITNonces = (await bondContract.getNoncesPerAddress(buyer, DBIT_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
+        console.log("balance Bond D/BIT: AFTER " + (await bondContract.balanceOf(buyer, DBIT_FIX_6MTH_CLASS_ID, DBITNonces[0])));
 
+
+
+    })
+
+    it('buy Bonds with USDT', async () => {
+
+        usdcContract = await USDC.deployed();
+        usdtContract = await USDT.deployed();
+        bankContract = await Bank.deployed();
+        dbitContract = await DBIT.deployed();
+        apmContract = await APM.deployed();
+        bondContract = await DebondBondTest.deployed();
+
+        await usdtContract.mint(buyer, web3.utils.toWei('100000', 'ether'));
+        await usdtContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
+        await bankContract.buyBond(USDT_FIX_6MTH_CLASS_ID, DBIT_FIX_6MTH_CLASS_ID, web3.utils.toWei('3000', 'ether'), 0, PurchaseMethod.BUYING,0, {from: buyer});
+        const DBITNonces = (await bondContract.getNoncesPerAddress(buyer, DBIT_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
+        console.log("balance Bond D/BIT: AFTER " + (await bondContract.balanceOf(buyer, DBIT_FIX_6MTH_CLASS_ID, DBITNonces[0])));
 
 
 
