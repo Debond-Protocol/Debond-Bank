@@ -85,7 +85,7 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
             createNewNonce(classId, _nonceToCreate, instant);
             (_lastNonceCreated,) = IDebondBond(debondBondAddress).getLastNonceCreated(classId);
         }
-        _issueERC3475(to, classId, _lastNonceCreated, amount);
+        _issue(to, classId, _lastNonceCreated, amount);
     }
 
     function createNewNonce(uint classId, uint newNonceId, uint creationTimestamp) private {

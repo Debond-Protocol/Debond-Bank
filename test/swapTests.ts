@@ -1,21 +1,20 @@
-import {before} from "mocha";
 import {
-    DBITInstance,
-    USDCInstance, APMInstance, BankInstance
+
+    USDCInstance, APMInstance, BankInstance, DBITTestInstance
 } from "../types/truffle-contracts";
 
 const APM = artifacts.require("APM");
 const Bank = artifacts.require("Bank");
-const DBIT = artifacts.require("DBIT");
+const DBIT = artifacts.require("DBITTest");
 const USDC = artifacts.require("USDC");
 
 
 contract('External Swap (from Bank)', async (accounts: string[]) => {
     const swapper = accounts[1];
-    let dbitInstance: DBITInstance;
+    let dbitInstance: DBITTestInstance;
     let bankContract: BankInstance;
     let usdcContract: USDCInstance;
-    let apmContract : APMInstance;
+    let apmContract: APMInstance;
 
 
     it('Initialisation', async () => {
@@ -32,12 +31,10 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100', 'ether'), {from: swapper})
         //pareil avec dbit
 
-        const MINTER_ROLE = await dbitInstance.MINTER_ROLE();
-        await dbitInstance.grantRole(MINTER_ROLE, accounts[0]);
-        await dbitInstance.mint(apmContract.address, web3.utils.toWei('200', 'ether'));
+        await dbitInstance.mintCollateralisedSupply(apmContract.address, web3.utils.toWei('200', 'ether'));
 
         const a = await apmContract.getReserves(usdcContract.address, dbitInstance.address);
-        console.log("here we print r0 before addLiqq : " +  a[0].toString(),"here we print r1 before addliq :" + a[1].toString());
+        console.log("here we print r0 before addLiqq : " + a[0].toString(), "here we print r1 before addliq :" + a[1].toString());
         //
         await apmContract.setBankAddress(accounts[1]);
 
@@ -46,7 +43,7 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
             web3.utils.toWei('100', 'ether'),
             dbitInstance.address,
             usdcContract.address,
-            {from :accounts[1]}
+            {from: accounts[1]}
         );
 
         await apmContract.setBankAddress(bankContract.address);
@@ -54,7 +51,7 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
 
         //Pour plus tard
         const s = await apmContract.getReserves(usdcContract.address, dbitInstance.address);
-        console.log("here we print r0 before addLiqq : " +  s[0].toString(),"here we print r1 before addliq :" + s[1].toString());
+        console.log("here we print r0 before addLiqq : " + s[0].toString(), "here we print r1 before addliq :" + s[1].toString());
 
     });
 
@@ -70,10 +67,10 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
 
 
         const dbitBalance = await dbitInstance.balanceOf(swapper);
-        expect(dbitBalance.toString()).to.equal( web3.utils.toWei('18.181818181818181818', 'ether').toString() ); //value found with xy=k formula
+        expect(dbitBalance.toString()).to.equal(web3.utils.toWei('18.181818181818181818', 'ether').toString()); //value found with xy=k formula
 
         const s = await apmContract.getReserves(usdcContract.address, dbitInstance.address);
-        console.log("here we print r0 after swap : " +  s[0].toString(),"here we print r1 after swap :" + s[1].toString());
+        console.log("here we print r0 after swap : " + s[0].toString(), "here we print r1 after swap :" + s[1].toString());
 
     })
 
@@ -81,18 +78,17 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
 
         console.log("should NOT swap");
         const s = await apmContract.getReserves(usdcContract.address, dbitInstance.address);
-        console.log("here we print r0 before swap : " +  s[0].toString(),"here we print r1 before swap :" + s[1].toString());
+        console.log("here we print r0 before swap : " + s[0].toString(), "here we print r1 before swap :" + s[1].toString());
 
         try {
             await apmContract.swap(0, web3.utils.toWei('10', 'ether'), usdcContract.address, dbitInstance.address, swapper)
-        }
-        catch (e:any) {
+        } catch (e: any) {
             assert("APM swap: K" == e.reason)
         }
 
 
         const l = await apmContract.getReserves(usdcContract.address, dbitInstance.address);
-        console.log("here we print r0 after swap : " +  l[0].toString(),"here we print r1 after swap :" + l[1].toString());
+        console.log("here we print r0 after swap : " + l[0].toString(), "here we print r1 after swap :" + l[1].toString());
 
     })
 })
