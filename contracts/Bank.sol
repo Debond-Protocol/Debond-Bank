@@ -210,15 +210,13 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         amountB =  amountA * reserveB / reserveA;
     }
 
-    // **** DBIT ****
     /**
-        * @dev gives the amount of DBIT which should be minted for 1$ worth of input
-        * @param dbitAddress address of dbit
-        * @return amountDBIT the amount of DBIT which should be minted
-        */
-    function _cdpUsdToDBIT(address dbitAddress) private view returns (uint256 amountDBIT) {
+    * @dev gives the amount of DBIT which should be minted for 1$ worth of input
+    * @return amountDBIT the amount of DBIT which should be minted
+    */
+    function _cdpUsdToDBIT() private view returns (uint256 amountDBIT) {
         amountDBIT = 1 ether;
-        uint256 _sCollateralised = IDebondToken(dbitAddress).getTotalCollateralisedSupply();
+        uint256 _sCollateralised = IDebondToken(DBITAddress).getTotalCollateralisedSupply();
         if (_sCollateralised >= 1000 ether) {
             amountDBIT = 1.05 ether;
             uint256 logCollateral = (_sCollateralised / 1000).ln();
@@ -252,9 +250,9 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     function mintDbitFromUsd(uint128 _amountToken, address _tokenAddress, uint24 fee) private view returns (uint256 amountDBIT) {
 
         uint256 tokenToUsd = _convertTokenToUsd(_amountToken, _tokenAddress, fee);
-        uint256 rate = _cdpUsdToDBIT(DBITAddress);
+        uint256 rate = _cdpUsdToDBIT();
 
-        amountDBIT = tokenToUsd.mul(rate);  //1e6 x1e12 x 1e18 = 1e18
+        amountDBIT = tokenToUsd.mul(rate);
     }
 
 
