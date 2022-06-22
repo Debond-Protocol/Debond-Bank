@@ -1,29 +1,29 @@
 Verifying DAI
-Already Verified: https://rinkeby.etherscan.io/address/0xc4Dbe88E815C0a0d62Cb4E39dd79E918DE01802D#code
+Already Verified: https://rinkeby.etherscan.io/address/0xf3E0bF9A5D4Ac5d48f14361d8Dd0Ba7984238645#code
 
 Verifying DBITTest
-Already Verified: https://rinkeby.etherscan.io/address/0xB5261119bd9DEa4C52b9037288Cc2190A4419Bce#code
+Already Verified: https://rinkeby.etherscan.io/address/0x52a48fbbfF33f936b0B0d7d4e2a9b5bB35779b64#code
 
 Verifying DGOVTest
-Already Verified: https://rinkeby.etherscan.io/address/0x0914Fad2Cb502736b1C7568c15267d6194194C81#code
+Already Verified: https://rinkeby.etherscan.io/address/0x222c41e58C56Ce2A54EF01a2d0d05055BA2CD51D#code
 
 Verifying USDC
-Already Verified: https://rinkeby.etherscan.io/address/0x73DfCF660B24ae2E371d387941995C23eDc48c9E#code
+Already Verified: https://rinkeby.etherscan.io/address/0x313d0aaAf4210ae280696C0447c752C2D3A32C3b#code
 
 Verifying USDT
-Already Verified: https://rinkeby.etherscan.io/address/0xc9B43A3CE6bd0ec79794481117B8F33C79b3b6EB#code
+Already Verified: https://rinkeby.etherscan.io/address/0x9d155EDb3c43093F08B331A84c5D71ebA53f9321#code
 
 Verifying FakeOracle
-Already Verified: https://rinkeby.etherscan.io/address/0x2B22d2BB50Bf554eC759FaF75749354e330Fb8D8#code
+Already Verified: https://rinkeby.etherscan.io/address/0xb84bf772166467E5D475Ce38A9a04ECc5EE8B663#code
 
 Verifying Bank
-Pass - Verified: https://rinkeby.etherscan.io/address/0xAAd7f2D96FaBA174412b9095f228A3D2e9CCa493#code
+Pass - Verified: https://rinkeby.etherscan.io/address/0xd9F6aEbEd44ea0071c1929b2bf5a3Dd671c39006#code
 
 Verifying DebondBondTest
-Already Verified: https://rinkeby.etherscan.io/address/0x383B67c56c69eF17F4980Aa5F9b976Bf509Ec166#code
+Already Verified: https://rinkeby.etherscan.io/address/0x3BD339C9a8c3321E94Dd1644243b3448f73b7BE8#code
 
 Verifying APMTest
-Already Verified: https://rinkeby.etherscan.io/address/0x642364c00E008c921E26A871A1CaA98D3870021f#code
+Already Verified: https://rinkeby.etherscan.io/address/0xA361763C11cf4D55bD0356b4921D781BEa558325#code
 
 Verifying DebondMath
-Pass - Verified: https://rinkeby.etherscan.io/address/0x05D72eA7C07DaB3eDDBf306948aAf36BC0a08284#code
+Pass - Verified: https://rinkeby.etherscan.io/address/0xcEC56a9d7c618A0D710d362e123B979716F427fA#code
