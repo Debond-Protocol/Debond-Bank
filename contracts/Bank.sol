@@ -158,7 +158,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
             uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
             uint rate = interestRateType == InterestRateType.FixedRate ? fixedRate : floatingRate;
-            issueBonds(msg.sender, debondClassId, amount.mul(rate));
+            issueBonds(msg.sender, debondClassId, amount + amount.mul(rate));
             // here the interest calculation is hardcoded. require the interest is enough high
         }
 
