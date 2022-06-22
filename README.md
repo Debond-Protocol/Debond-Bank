@@ -1,3 +1,51 @@
+## Debond-Bank:
+
+this repository consist of the contracts  that manage the issuance , redemption and  liquidity  of the bonds. it consist of the following main contracts : 
+
+1.  Bank Contract : This contract acts as orchestrator / wrapper interface  for the by providing wrapper function for  bonds, it handles the portfolio of class and nonce of bonds that are agreed upon by the governance, and primarily does the following : 
+
+    - issuers to buy the bonds , whilst depositing the underlying collateral (issued with equal amount of DBIT token) to APM. 
+    -  redeeming the bonds, based on the condition of redemption time condition .
+    - getter functions for 
+        - fetching the interest rate of staking / buying bonds.
+        - getting  CDP (collateral determined price)  for determining the amount of tokens in LP pair. 
+
+
+for the bond issuance / redemption, we follow different logic based on the different category of bonds as explained below:
+    - if the bond is bought for the staking purposes, the amount of the bonds issued is equivalent to the (amount * rate-of-interest) of the bond, where the `rate-of-interest` depends on the fixed rate or floating nature bond. 
+    
+    - else if its bought for issuing the bonds, then the APM receives  `amount(1 + amount* rate)`of bonds. and further rate depends on the nature of bond (fixed / floating).
+
+2. BankBondManager : this contract implements the core logic for managing the bond lifecycle, for instance :
+    - instantiating the bond class.
+    - overriding the implementation of ERC-3475 implementation like getProgress() , classValues and NonceValues.
+    - nonce creation and nonce generation.  
+
+
+
+2. APM: 
+    -  this contract acts as consolidated pool for all the bonds issued  by the bank for the user. 
+
+
+
+
+## diagram (UML)
+
+![](docs/Debond-Bank.svg)
+
+
+
+
+
+
+
+
+
+### for interfaces 
+
+
+
+## Deployed contracts: 
 Verifying DAI
 Already Verified: https://rinkeby.etherscan.io/address/0xf3E0bF9A5D4Ac5d48f14361d8Dd0Ba7984238645#code
 

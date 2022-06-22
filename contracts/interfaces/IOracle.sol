@@ -13,9 +13,20 @@ pragma solidity ^0.8.0;
     See the License for the specific language governing permissions and
     limitations under the License.
 */
+/// @title interface oracle
+/// @dev reference: https://github.com/Debond-Protocol/Oracle/blob/main/contracts/Oracle.sol. 
+/// @notice determining the price of the given ERC20 token in the denomination of token defined  in `tokenOut` (generally it will be stablecoin  USDC/USDT).
+/// @dev needs to defploy  the debond-protocol/oracle contracts and setting the params of token before get it working.
 
 interface IOracle {
 
+
+/// @dev determines the approximate amount for the issuance of the 
+/// @param tokenIn is  address of token that is to be deposited as collateral for bond issuance
+/// @param tokenOut is the address of the stablecoin token (USDC/USDT) in which you want to denominate.
+/// @param amountIn is the amount of ERC20 tokens of address `tokenIn` you need to be denominated .
+/// @param fee is the fees paid to the oracle for recovering each of the 
+/// @return amountOut is the amount(in USD denominated stablecoin) for the given token. 
     function estimateAmountOut(
         address tokenIn,
         uint128 amountIn,
