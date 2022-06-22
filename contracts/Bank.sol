@@ -20,35 +20,30 @@ error RateNotHighEnough(uint currentRate, uint minRate);
 error INSUFFICIENT_AMOUNT(uint amount);
 error INSUFFICIENT_LIQUIDITY(uint liquidity);
 
-import './DebondData.sol';
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./interfaces/IData.sol";
-import "./interfaces/ICollateral.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "debond-token-contracts/interfaces/IDebondToken.sol";
 import "./interfaces/IOracle.sol";
-import "./interfaces/IDebondToken.sol";
+//import "./interfaces/IDebondToken.sol";
 import './interfaces/IWeth.sol';
 
 
+import "./BankBondManager.sol";
 import "./libraries/DebondMath.sol";
-import "debond-erc3475/contracts/interfaces/IDebondBond.sol";
-import "erc3475/contracts/IERC3475.sol";
-import "debond-apm/contracts/APMRouter.sol";
+import "./APMRouter.sol";
 
 
-contract Bank is APMRouter{
+contract Bank is APMRouter, BankBondManager, Ownable {
 
-    using SafeERC20 for IERC20;
     using DebondMath for uint256;
+    using SafeERC20 for IERC20;
 
-
-    IData debondData;
-    IDebondBond bond;
     IOracle oracle;
     enum PurchaseMethod {Buying, Staking}
-    uint public constant BASE_TIMESTAMP = 1646089200; // 2022-03-01 00:00
-    uint public constant DIFF_TIME_NEW_NONCE = 24 * 3600; // every 24h we crate a new nonce.
-    uint public constant BENCHMARK_RATE_DECIMAL_18 = 5 * 10**16;
-    address immutable debondBondAddress;
+    //uint public constant BASE_TIMESTAMP = 1646089200; // 2022-03-01 00:00
+    //uint public constant DIFF_TIME_NEW_NONCE = 24 * 3600; // every 24h we crate a new nonce.
+    //uint public constant BENCHMARK_RATE_DECIMAL_18 = 5 * 10**16;
+    //address immutable debondBondAddress;
     address immutable DBITAddress;
     address immutable DGOVAddress;
     address immutable USDCAddress;
@@ -59,19 +54,22 @@ contract Bank is APMRouter{
     event test2(uint amount);
     event test3(uint amount);
 
+    bool init;
+
     constructor(
+        address governanceAddress,
         address apmAddress,
-        address dataAddress,
         address bondAddress,
         address _DBITAddress,
         address _DGOVAddress,
         address oracleAddress,
         address usdcAddress,
-        address _weth
-    ) APMRouter(apmAddress) {
-        debondData = IData(dataAddress);
-        bond = IDebondBond(bondAddress);
-        debondBondAddress = bondAddress;
+        address _weth,
+        uint256 baseTimeStamp
+    ) APMRouter(apmAddress) BankBondManager(governanceAddress, bondAddress, baseTimeStamp){
+        //debondData = IData(dataAddress);
+        //bond = IDebondBond(bondAddress);
+        //debondBondAddress = bondAddress;
         DBITAddress = _DBITAddress;
         DGOVAddress = _DGOVAddress;
         oracle = IOracle(oracleAddress);
@@ -80,6 +78,42 @@ contract Bank is APMRouter{
         //TODO : call _update to update fee param!!!
     
     }
+
+    function initializeApp(address daiAddress, address usdtAddress) external onlyOwner {
+        require(!init, "BankContract Error: already initiated");
+        init = true;
+        uint SIX_M_PERIOD = 180 * 30; // 1 hour period for tests
+
+        _createClass(0, "DBIT", InterestRateType.FixedRate, DBITAddress, SIX_M_PERIOD);
+        _createClass(1, "USDC", InterestRateType.FixedRate, USDCAddress, SIX_M_PERIOD);
+        _createClass(2, "USDT", InterestRateType.FixedRate, usdtAddress, SIX_M_PERIOD);
+        _createClass(3, "DAI", InterestRateType.FixedRate, daiAddress, SIX_M_PERIOD);
+        _createClass(4, "DGOV", InterestRateType.FixedRate, DGOVAddress, SIX_M_PERIOD);
+
+        _createClass(5, "DBIT", InterestRateType.FloatingRate, DBITAddress, SIX_M_PERIOD);
+        _createClass(6, "USDC", InterestRateType.FloatingRate, USDCAddress, SIX_M_PERIOD);
+        _createClass(7, "USDT", InterestRateType.FloatingRate, usdtAddress, SIX_M_PERIOD);
+        _createClass(8, "DAI", InterestRateType.FloatingRate, daiAddress, SIX_M_PERIOD);
+        _createClass(9, "DGOV", InterestRateType.FloatingRate, DGOVAddress, SIX_M_PERIOD);
+
+        _updateCanPurchase(1, 0, true);
+        _updateCanPurchase(2, 0, true);
+        _updateCanPurchase(3, 0, true);
+        _updateCanPurchase(0, 4, true);
+        _updateCanPurchase(1, 4, true);
+        _updateCanPurchase(2, 4, true);
+        _updateCanPurchase(3, 4, true);
+
+        _updateCanPurchase(6, 5, true);
+        _updateCanPurchase(7, 5, true);
+        _updateCanPurchase(8, 5, true);
+        _updateCanPurchase(5, 9, true);
+        _updateCanPurchase(6, 9, true);
+        _updateCanPurchase(7, 9, true);
+        _updateCanPurchase(8, 9, true);
+    }
+
+
 
     modifier ensure(uint deadline) {
         if (deadline >= block.timestamp) {
@@ -128,11 +162,13 @@ contract Bank is APMRouter{
             bankData.purchaseMethod = _purchaseMethod;
             bankData.minRate = _minRate;
 
-            if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
+            
+
+            if ( ! canPurchase[bankData.purchaseClassId][bankData.debondClassId]) {   //todo : changer les 3 lignes
                 revert PairNotAllowed();
             } 
-            (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(bankData.debondClassId); //todo : get info from class id
-            (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
+            (address purchaseTokenAddress,,) = classValues(bankData.purchaseClassId);
+            (address debondTokenAddress, InterestRateType interestRateType,) = classValues(bankData.debondClassId);
             
             _mintingProcess(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress);
         
@@ -157,6 +193,7 @@ contract Bank is APMRouter{
         * @param floatingRate floating rate value
         * @param minRate minimum Rate that a user is willing to accept. similar to slippage    
         */
+        
 
         function _issuingProcess( //todo : _ for internal
             PurchaseMethod purchaseMethod,
@@ -165,7 +202,7 @@ contract Bank is APMRouter{
             address purchaseTokenAddress,
             address debondTokenAddress,
             uint debondClassId,
-            IDebondBond.InterestRateType interestRateType,
+            InterestRateType interestRateType,
             uint fixedRate,
             uint floatingRate,
             uint minRate
@@ -177,7 +214,7 @@ contract Bank is APMRouter{
                 //do we have to handle the case where reserve = 0? or when deploying, we put some liquidity?
                 //we first update reserves when buying bond so it should never be 0
                 uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
-                uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
+                uint rate = interestRateType == InterestRateType.FixedRate ? fixedRate : floatingRate;
                 if (rate < minRate){
                     revert RateNotHighEnough(rate, minRate);
                 }
@@ -186,7 +223,7 @@ contract Bank is APMRouter{
             else if (purchaseMethod == PurchaseMethod.Buying) {
                 (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
                 uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
-                uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
+                uint rate = interestRateType ==  InterestRateType.FixedRate ? fixedRate : floatingRate;
                 if (rate < minRate){
                     revert RateNotHighEnough(rate, minRate);
                 }
@@ -204,29 +241,32 @@ contract Bank is APMRouter{
                 //TODO : require : purchase token is not dbit, not dgov
                 uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); //todo : verivy if conversion is possible.
                 IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
-                IDebondToken(debondTokenAddress).mint(address(apm), amountDBITToMint);
+                IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
                 updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, debondTokenAddress);
             }
             else { //else address ==dgov? 
                 if (purchaseTokenAddress == DBITAddress) {
                     uint amountDGOVToMint = mintDgovFromDbit(purchaseTokenAmount);
                     IERC20(DBITAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
-                    IDebondToken(debondTokenAddress).mint(address(apm), amountDGOVToMint); //todo : check amountDGOVToMint
+                    IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint); //todo : check amountDGOVToMint
                     updateWhenAddLiquidity(purchaseTokenAmount, amountDGOVToMint,  DBITAddress,  debondTokenAddress);
                 }
                 else {
                     uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); //need cdp from usd to dgov
                     uint amountDGOVToMint = mintDgovFromDbit(purchaseTokenAmount);
                     IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
-                    IDebondToken(DGOVAddress).mint(address(apm), amountDGOVToMint);
-                    IDebondToken(DBITAddress).mint(address(apm), 2 * amountDBITToMint);  //TODO : check here
+                    IDebondToken(DGOVAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
+                    IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);  //TODO : check here
                     updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint,  purchaseTokenAddress,  DBITAddress);
                     updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint,  DBITAddress,  debondTokenAddress);
                 }
 
             }
-
         }
+
+
+            //todo : put this in one addliq function
+
 
     //############buybonds staking method  dbit with else (else is Not eth, not dgov, not dbit)  ##############
 
@@ -246,12 +286,13 @@ contract Bank is APMRouter{
             bankData.to = _to;
             bankData.minRate = _minRate;
 
-            if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
+            if ( ! canPurchase[bankData.purchaseClassId][bankData.debondClassId]) {
                 revert PairNotAllowed();
             } 
-            (,IDebondBond.InterestRateType interestRateType ,,) = debondData.getClassFromId(bankData.debondClassId); //todo : get info from class id
-            (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
-            
+
+            (address purchaseTokenAddress,,) = classValues(bankData.purchaseClassId); //todo : check bankData. everywhere
+            (, InterestRateType interestRateType,) = classValues(bankData.debondClassId);
+
             _mintingProcessForDbitWithElse(bankData.purchaseTokenAmount, purchaseTokenAddress);
         
             (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
@@ -264,7 +305,7 @@ contract Bank is APMRouter{
             uint purchaseTokenAmount,
             address purchaseTokenAddress,
             uint debondClassId,
-            IDebondBond.InterestRateType interestRateType,
+            InterestRateType interestRateType,
             uint fixedRate,
             uint floatingRate,
             uint minRate,
@@ -272,7 +313,7 @@ contract Bank is APMRouter{
             ) public returns(uint amount) {
                 issueBonds(to, purchaseClassId, purchaseTokenAmount);
                 amount = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); //todo : do the same everywhere.
-                uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
+                uint rate = interestRateType ==  InterestRateType.FixedRate ? fixedRate : floatingRate;
                 if (rate < minRate){
                     revert RateNotHighEnough(rate, minRate);
                 }
@@ -285,7 +326,7 @@ contract Bank is APMRouter{
             ) internal {
             uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); //todo : ferivy if conversion is possible.
             IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
-            IDebondToken(DBITAddress).mint(address(apm), amountDBITToMint);
+            IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
             updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
         }
 
@@ -307,11 +348,11 @@ contract Bank is APMRouter{
             bankData.to = _to;
             bankData.minRate = _minRate;
 
-            if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
+            if ( ! canPurchase[bankData.purchaseClassId][bankData.debondClassId]) {  
                 revert PairNotAllowed();
             } 
-            (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(bankData.debondClassId); //todo : get info from class id
-            (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
+            (address purchaseTokenAddress,,) = classValues(bankData.purchaseClassId);
+            (address debondTokenAddress, InterestRateType interestRateType,) = classValues(bankData.debondClassId);
             
             _mintingProcessDgovWithDbit(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress);
         
@@ -323,14 +364,11 @@ contract Bank is APMRouter{
             address debondTokenAddress,
             uint purchaseTokenAmount,
             address purchaseTokenAddress
-            ) internal { {
-                    uint amountBToMint = mintDgovFromDbit(purchaseTokenAmount);
-                    IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
-                    IDebondToken(debondTokenAddress).mint(address(apm), amountBToMint);
-                    updateWhenAddLiquidity(purchaseTokenAmount, amountBToMint,  purchaseTokenAddress,  debondTokenAddress);
-
-            }
-
+            ) internal {
+                uint amountBToMint = mintDgovFromDbit(purchaseTokenAmount);
+                IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
+                IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), amountBToMint);
+                updateWhenAddLiquidity(purchaseTokenAmount, amountBToMint,  purchaseTokenAddress,  debondTokenAddress);
         }
 
     //############buybonds Staking method  else ToDgov############## else is not dbit not eth not dgov
@@ -351,11 +389,11 @@ contract Bank is APMRouter{
             bankData.to = _to;
             bankData.minRate = _minRate;
 
-            if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
+            if ( ! canPurchase[bankData.purchaseClassId][bankData.debondClassId]) {  
                 revert PairNotAllowed();
             } 
-            (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(bankData.debondClassId); //todo : get info from class id
-            (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
+            (address purchaseTokenAddress,,) = classValues(bankData.purchaseClassId);
+            (address debondTokenAddress, InterestRateType interestRateType,) = classValues(bankData.debondClassId);
             
             _mintingProcessForDgovWithElse(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress);
         
@@ -367,15 +405,14 @@ contract Bank is APMRouter{
             address debondTokenAddress,
             uint purchaseTokenAmount,
             address purchaseTokenAddress
-            ) internal { {
-                    uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); //need cdp from usd to dgov
-                    uint amountDGOVToMint = mintDgovFromDbit(purchaseTokenAmount);
-                    IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
-                    IDebondToken(debondTokenAddress).mint(address(apm), amountDGOVToMint);
-                    IDebondToken(debondTokenAddress).mint(address(apm), 2 * amountDBITToMint);
-                    updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint,  purchaseTokenAddress,  DBITAddress);
-                    updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint,  DBITAddress,  debondTokenAddress);
-            }
+            ) internal { 
+                uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); //need cdp from usd to dgov
+                uint amountDGOVToMint = mintDgovFromDbit(purchaseTokenAmount);
+                IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
+                IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
+                IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);
+                updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint,  purchaseTokenAddress,  DBITAddress);
+                updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint,  DBITAddress,  debondTokenAddress);
 
         }
         
@@ -397,12 +434,12 @@ contract Bank is APMRouter{
             bankData.to = _to;
             bankData.minRate = _minRate;
 
-            if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
+            if ( ! canPurchase[bankData.purchaseClassId][bankData.debondClassId]) {  
                 revert PairNotAllowed();
             } 
-            (,IDebondBond.InterestRateType interestRateType ,,) = debondData.getClassFromId(bankData.debondClassId); //todo : get info from class id
-            (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
-            
+            (address purchaseTokenAddress,,) = classValues(bankData.purchaseClassId);
+            (, InterestRateType interestRateType,) = classValues(bankData.debondClassId);
+
             _mintingProcessForDbitWithElse(bankData.purchaseTokenAmount, purchaseTokenAddress);
         
             (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
@@ -414,7 +451,7 @@ contract Bank is APMRouter{
             address purchaseTokenAddress,
             address debondTokenAddress,
             uint debondClassId,
-            IDebondBond.InterestRateType interestRateType,
+            InterestRateType interestRateType,
             uint fixedRate,
             uint floatingRate,
             uint minRate,
@@ -422,7 +459,7 @@ contract Bank is APMRouter{
             ) internal {
                 (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
                 uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
-                uint rate = interestRateType == IDebondBond.InterestRateType.FixedRate ? fixedRate : floatingRate;
+                uint rate = interestRateType ==  InterestRateType.FixedRate ? fixedRate : floatingRate;
                 if (rate < minRate){
                     revert RateNotHighEnough(rate, minRate);
                 }
@@ -449,11 +486,11 @@ contract Bank is APMRouter{
             bankData.to = _to;
             bankData.minRate = _minRate;
 
-            if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
+             if ( ! canPurchase[bankData.purchaseClassId][bankData.debondClassId]) {  
                 revert PairNotAllowed();
             } 
-            (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(bankData.debondClassId); //todo : get info from class id
-            (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
+            (address purchaseTokenAddress,,) = classValues(bankData.purchaseClassId);
+            (address debondTokenAddress, InterestRateType interestRateType,) = classValues(bankData.debondClassId);
             
             _mintingProcessDgovWithDbit(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress);
         
@@ -480,11 +517,11 @@ contract Bank is APMRouter{
             bankData.to = _to;
             bankData.minRate = _minRate;
 
-            if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
+             if ( ! canPurchase[bankData.purchaseClassId][bankData.debondClassId]) {  
                 revert PairNotAllowed();
             } 
-            (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(bankData.debondClassId); //todo : get info from class id
-            (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
+            (address purchaseTokenAddress,,) = classValues(bankData.purchaseClassId);
+            (address debondTokenAddress, InterestRateType interestRateType,) = classValues(bankData.debondClassId);
             
             _mintingProcessForDgovWithElse(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress);
         
@@ -514,9 +551,10 @@ contract Bank is APMRouter{
                 bankData.minRate = _minRate;
 
                 //no need to ckeck if it's allowed
-
-                (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(bankData.debondClassId);
-                (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
+                
+                 
+                (address purchaseTokenAddress,,) = classValues(bankData.purchaseClassId);
+                (address debondTokenAddress, InterestRateType interestRateType,) = classValues(bankData.debondClassId);
                 
                 _mintingProcessETHWithDbit(debondTokenAddress, bankData.purchaseTokenAmount);
             
@@ -531,7 +569,7 @@ contract Bank is APMRouter{
                 uint amountDBITToMint = convertToDbit(uint128(purchaseETHAmount), WETH); //todo : verify if conversion uint128 is possible.
                 IWeth(WETH).deposit{value: purchaseETHAmount}();
                 assert(IWeth(WETH).transfer(address(apm), purchaseETHAmount)); // see if better methods
-                IDebondToken(debondTokenAddress).mint(address(apm), amountDBITToMint);
+                IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
                 updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint, WETH, debondTokenAddress);
             }
 
@@ -558,8 +596,9 @@ contract Bank is APMRouter{
 
             //no need to ckeck if it's allowed
 
-            (,IDebondBond.InterestRateType interestRateType ,address debondTokenAddress,) = debondData.getClassFromId(bankData.debondClassId);
-            (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
+             
+            (address purchaseTokenAddress,,) = classValues(bankData.purchaseClassId);
+            (address debondTokenAddress, InterestRateType interestRateType,) = classValues(bankData.debondClassId);
             
             _mintingProcessETHWithDgov(debondTokenAddress, bankData.purchaseTokenAmount);
         
@@ -576,8 +615,8 @@ contract Bank is APMRouter{
             //IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
             IWeth(WETH).deposit{value: purchaseETHAmount}();
             assert(IWeth(WETH).transfer(address(apm), purchaseETHAmount)); 
-            IDebondToken(debondTokenAddress).mint(address(apm), amountDGOVToMint);
-            IDebondToken(debondTokenAddress).mint(address(apm), 2 * amountDBITToMint);
+            IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
+            IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);
             updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint,  WETH,  DBITAddress);
             updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint,  DBITAddress,  debondTokenAddress);
         }
@@ -591,7 +630,7 @@ contract Bank is APMRouter{
                 uint _minRate, 
                 uint deadline,  
                 address _to 
-                ) external  ensure(deadline) {
+                ) external payable ensure(deadline) {
 
                 BankData memory bankData;
                 bankData.purchaseClassId = _purchaseClassId;
@@ -599,13 +638,10 @@ contract Bank is APMRouter{
                 bankData.purchaseTokenAmount = _purchaseETHAmount;
                 bankData.to = _to;
                 bankData.minRate = _minRate;
+                 
+                (address purchaseTokenAddress,,) = classValues(bankData.purchaseClassId);
+                (, InterestRateType interestRateType,) = classValues(bankData.debondClassId);
 
-                if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
-                    revert PairNotAllowed();
-                } 
-                (,IDebondBond.InterestRateType interestRateType ,,) = debondData.getClassFromId(bankData.debondClassId); //todo : get info from class id
-                (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
-                
                 _mintingProcessForDbitWithEth(bankData.purchaseTokenAmount, purchaseTokenAddress);
             
                 (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
@@ -619,7 +655,7 @@ contract Bank is APMRouter{
                 uint amountDBITToMint = convertToDbit(uint128(purchaseETHAmount), purchaseTokenAddress); //todo : ferivy if conversion is possible.
                 IWeth(WETH).deposit{value: purchaseETHAmount}();
                 assert(IWeth(WETH).transfer(address(apm), purchaseETHAmount)); 
-                IDebondToken(DBITAddress).mint(address(apm), amountDBITToMint);
+                IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
                 updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
             }
 
@@ -633,7 +669,7 @@ contract Bank is APMRouter{
                 uint _minRate, 
                 uint deadline,  
                 address _to 
-                ) external  ensure(deadline) { 
+                ) external payable ensure(deadline) { 
 
                 BankData memory bankData;
                 bankData.purchaseClassId = _purchaseClassId;
@@ -641,12 +677,9 @@ contract Bank is APMRouter{
                 bankData.purchaseTokenAmount = _purchaseETHAmount;
                 bankData.to = _to;
                 bankData.minRate = _minRate;
-
-                if ( ! debondData.canPurchase(bankData.debondClassId, bankData.purchaseClassId)) {
-                    revert PairNotAllowed();
-                } 
-                (,IDebondBond.InterestRateType interestRateType ,,) = debondData.getClassFromId(bankData.debondClassId); //todo : get info from class id
-                (,,address purchaseTokenAddress,) = debondData.getClassFromId(bankData.purchaseClassId);
+                
+                (address purchaseTokenAddress,,) = classValues(bankData.purchaseClassId);
+                (, InterestRateType interestRateType,) = classValues(bankData.debondClassId);
                 
                 _mintingProcessForDgovWithEth(bankData.purchaseTokenAmount, purchaseTokenAddress);
             
@@ -662,8 +695,8 @@ contract Bank is APMRouter{
                 uint amountDGOVToMint = mintDgovFromDbit(purchaseETHAmount);
                 IWeth(WETH).deposit{value: purchaseETHAmount}();
                 assert(IWeth(WETH).transfer(address(apm), purchaseETHAmount)); 
-                IDebondToken(DGOVAddress).mint(address(apm), amountDGOVToMint);
-                IDebondToken(DBITAddress).mint(address(apm), 2 * amountDBITToMint);  //TODO : check here
+                IDebondToken(DGOVAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
+                IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);  //TODO : check here
                 updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint,  purchaseTokenAddress,  DBITAddress);
                 updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint,  DBITAddress,  DGOVAddress);
             }
@@ -675,39 +708,10 @@ contract Bank is APMRouter{
         uint amount
     ) external {
         //1. redeem the bonds (will fail if not maturity date exceeded)
-        IERC3475(debondBondAddress).redeem(msg.sender, classId, nonceId, amount);
+        _redeemERC3475(msg.sender, classId, nonceId, amount);
 
-        (,, address tokenAddress,) = debondData.getClassFromId(classId);
+        (address tokenAddress,,) = classValues(classId);
         removeLiquidity(msg.sender, tokenAddress, amount);
-    }
-
-  //todo : redeem for eth
-
-
-
-//##############bonds logic##############:
-
-    function issueBonds(address to, uint256 classId, uint256 amount) private {
-        uint timestampToCheck = block.timestamp;
-        (uint lastNonceId, uint createdAt) = debondData.getLastNonceCreated(classId);
-        createdAt = createdAt == 0 ? BASE_TIMESTAMP : createdAt;
-        uint numDaysNow = (timestampToCheck - BASE_TIMESTAMP) / DIFF_TIME_NEW_NONCE;
-        uint numDaysLastNonce = (createdAt - BASE_TIMESTAMP) / DIFF_TIME_NEW_NONCE;
-        uint nonceToAdd = numDaysNow - numDaysLastNonce;
-        if(nonceToAdd != 0) {
-            createNewNonce(classId, lastNonceId + nonceToAdd, timestampToCheck);
-            (uint nonceId,) = debondData.getLastNonceCreated(classId);
-            IERC3475(debondBondAddress).issue(to, classId, nonceId, amount);
-            return;
-        }
-    }
-
-    function createNewNonce(uint classId, uint newNonceId, uint creationTimestamp) private {
-        uint _newNonceId = newNonceId;
-        (,,, uint period) = debondData.getClassFromId(classId);
-        bond.createNonce(classId, _newNonceId, creationTimestamp + period);
-        debondData.updateLastNonce(classId, _newNonceId, creationTimestamp);
-        //here 500 is liquidity info hard coded for now
     }
 
     function interestRate(
@@ -715,87 +719,19 @@ contract Bank is APMRouter{
         uint _debondTokenClassId,
         uint _purchaseTokenAmount,
         PurchaseMethod purchaseMethod
-    ) public view returns (uint fixRate, uint floatRate) {
-        uint purchaseTokenClassId = _purchaseTokenClassId;
-        uint debondTokenClassId = _debondTokenClassId;
-        uint purchaseTokenAmount = _purchaseTokenAmount;
-
-        uint fixRateSupply = 0;
-        uint floatRateSupply = 0;
-
-        (,IDebondBond.InterestRateType interestRateType, address purchaseTokenAddress,) = debondData.getClassFromId(purchaseTokenClassId); // address of the purchase token
-
+    ) public view returns (uint, uint) {
 
         // Staking collateral for bonds
         if (purchaseMethod == PurchaseMethod.Staking) {
-            fixRateSupply = bond.bondAmountDue(purchaseTokenAddress, IDebondBond.InterestRateType.FixedRate);// we get the fix rate bonds supply
-            floatRateSupply = bond.bondAmountDue(purchaseTokenAddress, IDebondBond.InterestRateType.FloatingRate);// we get the float rate bonds supply
-
-            // we had the client amount to the according bond balance to calculate interest rate after deposit
-            if (purchaseTokenAmount > 0 && interestRateType == IDebondBond.InterestRateType.FixedRate) {
-                fixRateSupply += purchaseTokenAmount;
-            }
-            if (purchaseTokenAmount > 0 && interestRateType == IDebondBond.InterestRateType.FloatingRate) {
-                floatRateSupply += purchaseTokenAmount;
-            }
-
+            return interestRateByStaking(_purchaseTokenClassId, _purchaseTokenAmount);
         }
         // buying Bonds
-        else if (purchaseMethod == PurchaseMethod.Buying) {
-
-            (,,address debondTokenAddress,) = debondData.getClassFromId(debondTokenClassId); // address of D/BIT
-
-            // we are trying to know how many Debond Token the buying bond process will add to the LQY
-            uint debondTokenAmount = purchaseTokenAmount;
-
-            fixRateSupply = bond.bondAmountDue(debondTokenAddress, IDebondBond.InterestRateType.FixedRate);
-            floatRateSupply = bond.bondAmountDue(debondTokenAddress, IDebondBond.InterestRateType.FloatingRate);
-
-            if (interestRateType == IDebondBond.InterestRateType.FixedRate) {
-                fixRateSupply += debondTokenAmount;
-            }
-            if (interestRateType == IDebondBond.InterestRateType.FloatingRate) {
-                floatRateSupply += debondTokenAmount;
-            }
-        }
-
-        if (fixRateSupply == 0 || floatRateSupply == 0) {
-            fixRate = 2 * BENCHMARK_RATE_DECIMAL_18 / 3;
-            floatRate = 2 * fixRate;
-        } else {
-        (fixRate, floatRate) = interestRate(fixRateSupply, floatRateSupply, BENCHMARK_RATE_DECIMAL_18);
+        else {
+            //TODO we are trying to know how many Debond Token the buying bond process will add to the LQY
+            uint debondTokenAmount = _purchaseTokenAmount;
+            return interestRateByBuying(_debondTokenClassId, debondTokenAmount);
         }
     }
-
-    function maturityDeltaCalculation(uint classId, uint nonceId) public view returns (uint) {
-        // Somme de la lqt de l'asset du debut au nonce donné
-        // Somme de la lqt de l'asset du nonce donné au dernier nonce
-        (,,address tokenAddress,) = debondData.getClassFromId(classId);
-        (,,,,,,uint nonceTokenLiquidity) = bond.bondDetails(classId, nonceId);
-        uint totalLiquidity = bond.totalActiveSupply(tokenAddress);
-        return maturityDelta(totalLiquidity, nonceTokenLiquidity, BENCHMARK_RATE_DECIMAL_18, 86400, 30);
-    }
-
-
-
-
-    function maturityDelta(uint totalLiquidity, uint liquidityUntilGivenDay, uint benchmarkInterest, uint epoch, uint period) private pure returns (uint) {
-        uint deltaLiquidity = totalLiquidity - liquidityUntilGivenDay;
-        uint totalLiquidityInterest = liquidityUntilGivenDay * benchmarkInterest / 1e18;
-        return ((liquidityUntilGivenDay + totalLiquidityInterest) - deltaLiquidity) * epoch / period;
-    }
-
-    function interestRate(uint fixRateSupply, uint floatRateSupply, uint benchmarkInterest) private pure returns (uint fixedRate, uint floatingRate) {
-        uint sigmoidCParam = DebondMath.inv(3 ether);
-        uint x = fixRateSupply.div(floatRateSupply + fixRateSupply);
-        floatingRate = 2 * (benchmarkInterest.mul(DebondMath.sigmoid(x, sigmoidCParam)));
-        fixedRate = 2 * benchmarkInterest - floatingRate;
-    }
-
-    //todo : input : addressA, addressB. output : ratio reserveA/reserveB
-
-
-
 
 
 
@@ -816,15 +752,13 @@ contract Bank is APMRouter{
         amountB =  amountA * reserveB / reserveA;
     }
 
-    // **** DBIT ****
     /**
-        * @dev gives the amount of DBIT which should be minted for 1$ worth of input
-        * @param dbitAddress address of dbit
-        * @return amountDBIT the amount of DBIT which should be minted
-        */
-    function _cdpUsdToDBIT(address dbitAddress) private view returns (uint256 amountDBIT) {
+    * @dev gives the amount of DBIT which should be minted for 1$ worth of input
+    * @return amountDBIT the amount of DBIT which should be minted
+    */
+    function _cdpUsdToDBIT() private view returns (uint256 amountDBIT) {
         amountDBIT = 1 ether;
-        uint256 _sCollateralised = ICollateral(dbitAddress).supplyCollateralised();
+        uint256 _sCollateralised = IDebondToken(DBITAddress).getTotalCollateralisedSupply();
         if (_sCollateralised >= 1000 ether) {
             amountDBIT = 1.05 ether;
             uint256 logCollateral = (_sCollateralised / 1000).ln();
@@ -846,7 +780,7 @@ contract Bank is APMRouter{
             (address token0, address token1) = _sortTokens(_tokenAddress, USDCAddress);
             address poolAddress = poolAddresses[token0][token1];
             require(poolAddress != address(0), "CDP : address is null");
-            amountUsd = oracle.estimateAmountOut(_tokenAddress, _amountToken, USDCAddress, poolAddress , 5 );
+            amountUsd = oracle.estimateAmountOut(_tokenAddress, _amountToken, USDCAddress, poolAddress , 5 ) /* 1e12*/ ; //1e6 x 1e12 = 1e18
         }
     }
 
@@ -859,7 +793,7 @@ contract Bank is APMRouter{
     function convertToDbit(uint128 _amountToken, address _tokenAddress) private  returns(uint256 amountDBIT) {
 
         uint256 tokenToUsd= _convertTokenToUsd(_amountToken, _tokenAddress);
-        uint256 rate = _cdpUsdToDBIT(DBITAddress);
+        uint256 rate = _cdpUsdToDBIT();
 
         amountDBIT = (tokenToUsd * 1e12).mul(rate);  //1e6 x 1e12 x 1e18 = 1e18
 
@@ -877,8 +811,8 @@ contract Bank is APMRouter{
         * @return amountDGOV the amount of DGOV which should be minted
         */
     function _cdpDbitToDgov(address dgovAddress) private view returns (uint256 amountDGOV) {
-        uint256 _sCollateralised = ICollateral(dgovAddress).supplyCollateralised();
-        amountDGOV = (100 ether+ (_sCollateralised).div(33333).pow(2)).inv();
+        uint256 _sCollateralised = IDebondToken(dgovAddress).getTotalCollateralisedSupply();
+        amountDGOV = (100 ether + (_sCollateralised).div(33333).pow(2)).inv();
     }
     /**
     * @dev given the amount of dbit, returns the amout of DGOV to mint
@@ -926,5 +860,4 @@ contract Bank is APMRouter{
         (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
         require(token0 != address(0), 'feeProxy: ZERO_ADDRESS');
     }
-
 }

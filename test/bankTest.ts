@@ -2,8 +2,8 @@ import { writeHeapSnapshot } from "v8";
 import {
     APMInstance,
     BankInstance,
-    DBITInstance, DebondBondTestInstance,
-    DebondDataInstance,
+    DBITTestInstance,
+    DebondBondTestInstance,
     USDCInstance,
     USDTInstance,
     WethInstance
@@ -12,10 +12,9 @@ import {
 const Bank = artifacts.require("Bank");
 const USDC = artifacts.require("USDC");
 const USDT = artifacts.require("USDT");
-const DBIT = artifacts.require("DBIT");
+const DBIT = artifacts.require("DBITTest");
 const APM = artifacts.require("APMTest");
 const WETH = artifacts.require("Weth");
-const DebondData = artifacts.require("DebondData");
 const DebondBondTest = artifacts.require("DebondBondTest");
 
 
@@ -30,36 +29,30 @@ contract('Bank', async (accounts: string[]) => {
     let usdcContract: USDCInstance
     let usdtContract: USDTInstance
     let bankContract: BankInstance
-    let dbitContract: DBITInstance
     let wethContract: WethInstance
+    let dbitContract: DBITTestInstance
     let apmContract: APMInstance
-    let dataContract: DebondDataInstance
     let bondContract: DebondBondTestInstance
 
-    let DBIT_FIX_6MTH_CLASS_ID: number;
-    let USDC_FIX_6MTH_CLASS_ID: number;
-    let USDT_FIX_6MTH_CLASS_ID: number;
+    const DBIT_FIX_6MTH_CLASS_ID = 0;
+    const USDC_FIX_6MTH_CLASS_ID = 1;
+    const USDT_FIX_6MTH_CLASS_ID = 2;
 
-    it('buy Bonds', async () => {
+    it('buy Bonds with USDC', async () => {
         usdcContract = await USDC.deployed();
         usdtContract = await USDT.deployed();
         bankContract = await Bank.deployed();
         dbitContract = await DBIT.deployed();
         wethContract = await WETH.deployed();
         apmContract = await APM.deployed();
-        dataContract = await DebondData.deployed();
         bondContract = await DebondBondTest.deployed();
 
-        DBIT_FIX_6MTH_CLASS_ID = ((await dataContract.allDebondClasses()).map(c => c.toNumber()))[0];
-        const purchasableClasses = (await dataContract.getPurchasableClasses(DBIT_FIX_6MTH_CLASS_ID)).map(c => c.toNumber());
-        USDC_FIX_6MTH_CLASS_ID = purchasableClasses[0];
-        USDT_FIX_6MTH_CLASS_ID = purchasableClasses[1];
-
-
-        // await apmContract.updateTotalReserve(usdcContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve
-        // await apmContract.updateTotalReserve(dbitContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve
 
         await usdcContract.mint(buyer, web3.utils.toWei('100000', 'ether'));
+        await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
+        await bankContract.buyBond(USDC_FIX_6MTH_CLASS_ID, DBIT_FIX_6MTH_CLASS_ID, web3.utils.toWei('3000', 'ether'), PurchaseMethod.BUYING, 0, {from: buyer});
+        const DBITNonces = (await bondContract.getNoncesPerAddress(buyer, DBIT_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
+        console.log("balance Bond D/BIT: AFTER " + (await bondContract.balanceOf(buyer, DBIT_FIX_6MTH_CLASS_ID, DBITNonces[0])));
 
         console.log("1");
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
@@ -68,23 +61,35 @@ contract('Bank', async (accounts: string[]) => {
         console.log("3");
 
 
+    })
+
+    it('buy Bonds with USDT', async () => {
+
+        usdcContract = await USDC.deployed();
+        usdtContract = await USDT.deployed();
+        bankContract = await Bank.deployed();
+        dbitContract = await DBIT.deployed();
+        apmContract = await APM.deployed();
+        bondContract = await DebondBondTest.deployed();
+
+        await usdtContract.mint(buyer, web3.utils.toWei('100000', 'ether'));
+        await usdtContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
+        await bankContract.buyBond(USDT_FIX_6MTH_CLASS_ID, DBIT_FIX_6MTH_CLASS_ID, web3.utils.toWei('3000', 'ether'), PurchaseMethod.BUYING,0, {from: buyer});
+        const DBITNonces = (await bondContract.getNoncesPerAddress(buyer, DBIT_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
+        console.log("balance Bond D/BIT: AFTER " + (await bondContract.balanceOf(buyer, DBIT_FIX_6MTH_CLASS_ID, DBITNonces[0])));
+
+
 
     })
 
-    it.only('buy Bonds: stakeForDbitBondWithElse', async () => {
+    it('buy Bonds: stakeForDbitBondWithElse', async () => {
         usdcContract = await USDC.deployed();
         usdtContract = await USDT.deployed();
         bankContract = await Bank.deployed();
         dbitContract = await DBIT.deployed();
         wethContract = await WETH.deployed();
         apmContract = await APM.deployed();
-        dataContract = await DebondData.deployed();
         bondContract = await DebondBondTest.deployed();
-
-        DBIT_FIX_6MTH_CLASS_ID = ((await dataContract.allDebondClasses()).map(c => c.toNumber()))[0];
-        const purchasableClasses = (await dataContract.getPurchasableClasses(DBIT_FIX_6MTH_CLASS_ID)).map(c => c.toNumber());
-        USDC_FIX_6MTH_CLASS_ID = purchasableClasses[0];
-        USDT_FIX_6MTH_CLASS_ID = purchasableClasses[1];
 
 
         // await apmContract.updateTotalReserve(usdcContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve
