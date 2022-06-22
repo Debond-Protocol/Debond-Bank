@@ -780,7 +780,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             (address token0, address token1) = _sortTokens(_tokenAddress, USDCAddress);
             address poolAddress = poolAddresses[token0][token1];
             require(poolAddress != address(0), "CDP : address is null");
-            amountUsd = oracle.estimateAmountOut(_tokenAddress, _amountToken, USDCAddress, poolAddress , 5 ) /* 1e12*/ ; //1e6 x 1e12 = 1e18
+            amountUsd = oracle.estimateAmountOut(_tokenAddress, _amountToken, USDCAddress, poolAddress , 5 ) * 1e12 ; //1e6 x 1e12 = 1e18
         }
     }
 
@@ -795,7 +795,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint256 tokenToUsd= _convertTokenToUsd(_amountToken, _tokenAddress);
         uint256 rate = _cdpUsdToDBIT();
 
-        amountDBIT = (tokenToUsd * 1e12).mul(rate);  //1e6 x 1e12 x 1e18 = 1e18
+        amountDBIT = tokenToUsd.mul(rate);  //1e6 x 1e12 x 1e18 = 1e18
 
         emit test1(amountDBIT);
         emit test2(rate);

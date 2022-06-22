@@ -31,7 +31,10 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100', 'ether'), {from: swapper})
         //pareil avec dbit
 
-        await dbitInstance.mintCollateralisedSupply(apmContract.address, web3.utils.toWei('200', 'ether'));
+        await dbitInstance.setBankAddress(accounts[1]);
+
+        await dbitInstance.mintCollateralisedSupply(apmContract.address, web3.utils.toWei('200', 'ether'), {from: accounts[1]} );
+        await dbitInstance.setBankAddress(bankContract.address)
 
         const a = await apmContract.getReserves(usdcContract.address, dbitInstance.address);
         console.log("here we print r0 before addLiqq : " + a[0].toString(), "here we print r1 before addliq :" + a[1].toString());
