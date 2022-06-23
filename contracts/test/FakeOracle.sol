@@ -22,7 +22,6 @@ contract FakeOracle is IOracle{
         address tokenIn,
         uint128 amountIn,
         address tokenOut,
-        address poolAddress,
         uint32 secondsAgo
     ) external view returns (uint amountOut) {
         // as real oracle, result is given on base 6

@@ -777,10 +777,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             amountUsd = _amountToken;
         }
         else {
-            (address token0, address token1) = _sortTokens(_tokenAddress, USDCAddress);
-            address poolAddress = poolAddresses[token0][token1];
-            require(poolAddress != address(0), "CDP : address is null");
-            amountUsd = oracle.estimateAmountOut(_tokenAddress, _amountToken, USDCAddress, poolAddress , 5 ) * 1e12 ; //1e6 x 1e12 = 1e18
+            amountUsd = oracle.estimateAmountOut(_tokenAddress, _amountToken, USDCAddress , 5 ) * 1e12 ; //1e6 x 1e12 = 1e18
         }
     }
 
@@ -822,42 +819,5 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     function mintDgovFromDbit(uint256 _amountDBIT) private view returns(uint256 amountDGOV) {  //todo: change name to convertDbitToDgov
         uint256 rate = _cdpDbitToDgov(DGOVAddress);
         amountDGOV = _amountDBIT.mul(rate);
-    }
-//############## fee proxy ##############:
-
-    mapping( address=> mapping( address => address) ) poolAddresses;
-
-    uint24[4] fees = [10000, 3000, 500, 100]; 
-
-    function _getLiquidity(address token1, address token2, uint24 fee) internal view returns (uint balance1, address poolAddress) {
-        poolAddress = oracle.getPoolWithoutCheck(token1, token2, fee);
-        balance1;
-        if (poolAddress != address(0)){
-            balance1 = IERC20(token1).balanceOf(poolAddress);
-        }
-    }
-
-    function _maxLiquidity(address token1, address token2) internal view returns (address poolAddress) {
-        uint balance;
-        (balance, poolAddress) = _getLiquidity(token1, token2, 100);
-    
-        for (uint i; i < 3; i++) {
-            (uint temp_balance, address temp_address) = _getLiquidity(token1, token2, fees[i]);
-            if (temp_balance > balance) {
-                poolAddress = temp_address;
-            }
-        }
-    }
-
-    function update(address token1, address token2) public {
-        (address tokenA, address tokenB) = _sortTokens(token1, token2);
-        poolAddresses[tokenA][tokenB] = _maxLiquidity(tokenA, tokenB);
-    }
-
-
-    function _sortTokens(address tokenA, address tokenB) internal pure returns (address token0, address token1) {
-        require(tokenA != tokenB, 'feeProxy: IDENTICAL_ADDRESSES');
-        (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-        require(token0 != address(0), 'feeProxy: ZERO_ADDRESS');
     }
 }
