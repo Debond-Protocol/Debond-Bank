@@ -295,7 +295,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
             _mintingProcessForDbitWithElse(bankData.purchaseTokenAmount, purchaseTokenAddress);
         
-            (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+            (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, PurchaseMethod.Staking);
             uint amount = _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
             emit test(amount);
         }
@@ -356,7 +356,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             
             _mintingProcessDgovWithDbit(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress);
         
-            (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+            (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, PurchaseMethod.Staking);
             _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
         }
 
@@ -397,7 +397,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             
             _mintingProcessForDgovWithElse(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress);
         
-            (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+            (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, PurchaseMethod.Staking);
             _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
         }
 
@@ -442,7 +442,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
             _mintingProcessForDbitWithElse(bankData.purchaseTokenAmount, purchaseTokenAddress);
         
-            (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+            (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, PurchaseMethod.Buying);
             _issuingProcessBuying(bankData.purchaseTokenAmount, purchaseTokenAddress, DBITAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
         }
 
@@ -494,7 +494,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             
             _mintingProcessDgovWithDbit(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress);
         
-            (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+            (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, PurchaseMethod.Buying);
             _issuingProcessBuying(bankData.purchaseTokenAmount, purchaseTokenAddress, DBITAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
         }
         
@@ -525,7 +525,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             
             _mintingProcessForDgovWithElse(debondTokenAddress, bankData.purchaseTokenAmount, purchaseTokenAddress);
         
-            (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+            (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, PurchaseMethod.Buying);
             _issuingProcessBuying(bankData.purchaseTokenAmount, purchaseTokenAddress, DBITAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
         }
 
@@ -536,7 +536,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
                 //uint _purchaseClassId, // token added  //here it's eth
                 uint _debondClassId, // token to mint
                 //uint _purchaseTokenAmount,
-                PurchaseMethod _purchaseMethod,
                 uint _minRate, 
                 uint deadline, 
                 address _to 
@@ -546,7 +545,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
                 bankData.purchaseClassId /*= _purchaseClassId*/;
                 bankData.debondClassId = _debondClassId;
                 bankData.purchaseTokenAmount = msg.value;
-                bankData.purchaseMethod = _purchaseMethod;
                 bankData.to = _to;
                 bankData.minRate = _minRate;
 
@@ -558,7 +556,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
                 
                 _mintingProcessETHWithDbit(debondTokenAddress, bankData.purchaseTokenAmount);
             
-                (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+                (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, PurchaseMethod.Staking);
                 _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
             }
 
@@ -602,7 +600,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             
             _mintingProcessETHWithDgov(debondTokenAddress, bankData.purchaseTokenAmount);
         
-            (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+            (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, PurchaseMethod.Staking);
             _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
         }
 
@@ -644,7 +642,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
                 _mintingProcessForDbitWithEth(bankData.purchaseTokenAmount, purchaseTokenAddress);
             
-                (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+                (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, PurchaseMethod.Buying);
                 _issuingProcessBuying(bankData.purchaseTokenAmount, purchaseTokenAddress, DBITAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
             }
 
@@ -683,7 +681,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
                 
                 _mintingProcessForDgovWithEth(bankData.purchaseTokenAmount, purchaseTokenAddress);
             
-                (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount, bankData.purchaseMethod);
+                (uint fixedRate, uint floatingRate) = interestRate(bankData.purchaseClassId, bankData.debondClassId, bankData.purchaseTokenAmount,  PurchaseMethod.Buying);
                 _issuingProcessBuying(bankData.purchaseTokenAmount, purchaseTokenAddress, DBITAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
             }
 
@@ -758,7 +756,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     */
     function _cdpUsdToDBIT() private view returns (uint256 amountDBIT) {
         amountDBIT = 1 ether;
-        uint256 _sCollateralised = IDebondToken(DBITAddress).getTotalCollateralisedSupply();
+        uint256 _sCollateralised = IDebondToken(DBITAddress).getTotalCollateralisedSupply(); //todo: is this working?
         if (_sCollateralised >= 1000 ether) {
             amountDBIT = 1.05 ether;
             uint256 logCollateral = (_sCollateralised / 1000).ln();
