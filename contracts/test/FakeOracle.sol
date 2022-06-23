@@ -27,14 +27,6 @@ contract FakeOracle is IOracle{
         // as real oracle, result is given on base 6
         amountOut = amountIn / 1e12;
     }
-
-    function getPoolWithoutCheck(
-        address token1,
-        address token2, 
-        uint24 fee
-        ) external view returns (address poolAddress) {
-            poolAddress;
-        }
 }
 
 
