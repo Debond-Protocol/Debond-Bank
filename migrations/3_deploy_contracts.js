@@ -3,6 +3,7 @@ const DBIT = artifacts.require("DBITTest");
 const DGOV = artifacts.require("DGOVTest");
 const USDC = artifacts.require("USDC");
 const USDT = artifacts.require("USDT");
+const WETH = artifacts.require("WETH");
 const FakeOracle = artifacts.require("FakeOracle");
 
 const Bank = artifacts.require("Bank");
@@ -21,6 +22,7 @@ module.exports = async function (deployer, networks, accounts) {
   const DGOVInstance = await DGOV.deployed();
   const USDCInstance = await USDC.deployed();
   const USDTInstance = await USDT.deployed();
+  const WETHInstance = await WETH.deployed();
 
   const governanceAddress = accounts[0];
 
@@ -39,6 +41,7 @@ module.exports = async function (deployer, networks, accounts) {
   const fakeOracleInstance = await FakeOracle.deployed();
   const oracleAddress = fakeOracleInstance.address
   const USDCAddress = USDCInstance.address
+  const WETHAddress = WETHInstance.address
 
   let d = new Date();
   d.setHours(0,0,0,0);
@@ -52,6 +55,7 @@ module.exports = async function (deployer, networks, accounts) {
       DGOVInstance.address,
       oracleAddress,
       USDCAddress,
+      WETHAddress,
       d.getTime()/10**3);  //oracle and usdc for polygon
 
   const bankInstance = await Bank.deployed();
