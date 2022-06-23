@@ -82,7 +82,7 @@ contract('Bank', async (accounts: string[]) => {
 
     })
 
-    it.only('buy Bonds: stakeForDbitBondWithElse', async () => {
+    it('buy Bonds: stakeForDbitBondWithElse', async () => {
         usdcContract = await USDC.deployed();
         usdtContract = await USDT.deployed();
         bankContract = await Bank.deployed();
