@@ -3,7 +3,7 @@ import {
     USDCInstance, APMInstance, BankInstance, DBITTestInstance
 } from "../types/truffle-contracts";
 
-const APM = artifacts.require("APM");
+const APM = artifacts.require("APMTest");
 const Bank = artifacts.require("Bank");
 const DBIT = artifacts.require("DBITTest");
 const USDC = artifacts.require("USDC");
@@ -33,7 +33,7 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
 
         await dbitInstance.setBankAddress(accounts[1]);
 
-        await dbitInstance.mintCollateralisedSupply(apmContract.address, web3.utils.toWei('200', 'ether'), {from: accounts[1]} );
+        await dbitInstance.mintCollateralisedSupply(apmContract.address, web3.utils.toWei('200', 'ether'), {from: accounts[1]});
         await dbitInstance.setBankAddress(bankContract.address)
 
         const a = await apmContract.getReserves(usdcContract.address, dbitInstance.address);
@@ -50,6 +50,7 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
         );
 
         await apmContract.setBankAddress(bankContract.address);
+        await dbitInstance.setBankAddress(bankContract.address);
 
 
         //Pour plus tard
