@@ -780,7 +780,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             (address token0, address token1) = _sortTokens(_tokenAddress, USDCAddress);
             address poolAddress = poolAddresses[token0][token1];
             require(poolAddress != address(0), "CDP : address is null");
-            amountUsd = oracle.estimateAmountOut(_tokenAddress, _amountToken, USDCAddress, poolAddress , 5 ) * 1e12 ; //1e6 x 1e12 = 1e18
+            amountUsd = oracle.estimateAmountOut(_tokenAddress, _amountToken, USDCAddress, 60 ) * 1e12 ; //1e6 x 1e12 = 1e18
         }
     }
 
@@ -849,8 +849,8 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         }
     }
 
-    function update(address token1, address token2) public {
-        (address tokenA, address tokenB) = _sortTokens(token1, token2);
+    function update(address token) public {
+        (address tokenA, address tokenB) = _sortTokens(token , USDCAddress);
         poolAddresses[tokenA][tokenB] = _maxLiquidity(tokenA, tokenB);
     }
 
