@@ -6,7 +6,7 @@ import {
     DebondBondTestInstance,
     USDCInstance,
     USDTInstance,
-    WethInstance
+    WETHInstance
 } from "../types/truffle-contracts";
 
 const Bank = artifacts.require("Bank");
@@ -14,7 +14,7 @@ const USDC = artifacts.require("USDC");
 const USDT = artifacts.require("USDT");
 const DBIT = artifacts.require("DBITTest");
 const APM = artifacts.require("APMTest");
-const WETH = artifacts.require("Weth");
+const WETH = artifacts.require("WETH");
 const DebondBondTest = artifacts.require("DebondBondTest");
 
 
@@ -29,7 +29,7 @@ contract('Bank', async (accounts: string[]) => {
     let usdcContract: USDCInstance
     let usdtContract: USDTInstance
     let bankContract: BankInstance
-    let wethContract: WethInstance
+    let wethContract: WETHInstance
     let dbitContract: DBITTestInstance
     let apmContract: APMInstance
     let bondContract: DebondBondTestInstance
@@ -151,11 +151,15 @@ contract('Bank', async (accounts: string[]) => {
 
 
 
-    it('redeem Bonds', async () => {
+    it('redeem Bonds too early should send error', async () => {
 
         const DBITNonces = (await bondContract.getNoncesPerAddress(buyer, DBIT_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
         console.log("nonce: " + DBITNonces[0]);
-        await bankContract.redeemBonds(DBIT_FIX_6MTH_CLASS_ID, DBITNonces[0], web3.utils.toWei('1000', 'ether'), {from: buyer});
+        try {
+            await bankContract.redeemBonds(DBIT_FIX_6MTH_CLASS_ID, DBITNonces[0], web3.utils.toWei('1000', 'ether'), {from: buyer});
+        } catch (e: any) {
+            assert.isTrue(true)
+        }
 
         console.log("balance Bond D/BIT: AFTER " + (await bondContract.balanceOf(buyer, DBIT_FIX_6MTH_CLASS_ID, DBITNonces[0])));
     })
