@@ -43,7 +43,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     address immutable DBITAddress;
     address immutable DGOVAddress;
     address immutable USDCAddress;
-    address immutable WETHAddress; //TODO
+    address immutable WETHAddress;
 
     event test(uint amount);
     event test1(uint amount);
@@ -63,9 +63,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         address _weth,
         uint256 baseTimeStamp
     ) APMRouter(apmAddress) BankBondManager(governanceAddress, bondAddress, baseTimeStamp){
-        //debondData = IData(dataAddress);
-        //bond = IDebondBond(bondAddress);
-        //debondBondAddress = bondAddress;
         DBITAddress = _DBITAddress;
         DGOVAddress = _DGOVAddress;
         oracle = IOracle(oracleAddress);
@@ -187,8 +184,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         * @param _interestRate fixed rate or floating rate
         * @param minRate minimum Rate that a user is willing to accept. similar to slippage    
         */
-
-
     function _issuingProcess(//todo : _ for internal
         PurchaseMethod purchaseMethod,
         uint purchaseClassId,
@@ -819,8 +814,8 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             * @dev gives the amount of dgov which should be minted for 1 dbit of input
         * @return amountDGOV the amount of DGOV which should be minted
         */
-    function _cdpDbitToDgov(address dgovAddress) private view returns (uint256 amountDGOV) {
-        uint256 _sCollateralised = IDebondToken(dgovAddress).getTotalCollateralisedSupply();
+    function _cdpDbitToDgov() private view returns (uint256 amountDGOV) {
+        uint256 _sCollateralised = IDebondToken(DGOVAddress).getTotalCollateralisedSupply();
         amountDGOV = (100 ether + (_sCollateralised).div(33333).pow(2)).inv();
     }
     /**
@@ -829,7 +824,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     * @return amountDGOV the amount of DGOV to mint
     */
     function mintDgovFromDbit(uint256 _amountDBIT) private view returns (uint256 amountDGOV) {//todo: change name to convertDbitToDgov
-        uint256 rate = _cdpDbitToDgov(DGOVAddress);
+        uint256 rate = _cdpDbitToDgov();
         amountDGOV = _amountDBIT.mul(rate);
     }
 }
