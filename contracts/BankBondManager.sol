@@ -27,7 +27,6 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
     mapping(address => mapping(InterestRateType => uint256)) public tokenRateTypeTotalSupply; // needed for interest rate calculation also
     mapping(address => mapping(uint256 => uint256)) public tokenTotalSupplyAtNonce;
     mapping(address => uint256[]) public classIdsPerTokenAddress;
-    mapping(uint256 => mapping(uint256 => bool)) public canPurchase; // can u get second input classId token from providing first input classId token
 
     mapping(uint256 => address) public fromBondValueToTokenAddress;
     mapping(address => uint256) public tokenAddressValueMapping;
@@ -65,14 +64,6 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
         values[2] = periodTimestamp;
         IDebondBond(debondBondAddress).createClass(classId, _symbol, values);
         classIdsPerTokenAddress[tokenAddress].push(classId);
-    }
-
-    function updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) external onlyGovernance {
-        _updateCanPurchase(classIdIn, classIdOut, _canPurchase);
-    }
-
-    function _updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) internal {
-        canPurchase[classIdIn][classIdOut] = _canPurchase;
     }
 
     function issueBonds(address to, uint256 classId, uint256 amount) internal {

@@ -46,6 +46,9 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     address immutable USDCAddress;
     address immutable WETHAddress;
 
+    mapping(uint256 => mapping(uint256 => bool)) public canPurchase; // can u get second input classId token from providing first input classId token
+
+
     event test(uint amount);
     event test1(uint amount);
     event test2(uint amount);
@@ -122,6 +125,20 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             revert Deadline(deadline, block.timestamp);
         }
         _;
+    }
+
+    function canPurchaseDBITWithETH(uint WETHclassId, uint debondClassId) private view returns (bool) {
+        // 1.check si WETHClassID == 10 ou 11
+        // 2.si WETHclassId 10 ==>> on check debondClassId 0 ou 4
+        // 3.si WETHclassId 11 ==>> on check debondClassId 5 ou 9
+    }
+
+    function updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) external onlyGovernance {
+        _updateCanPurchase(classIdIn, classIdOut, _canPurchase);
+    }
+
+    function _updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) internal {
+        canPurchase[classIdIn][classIdOut] = _canPurchase;
     }
 
     //##############BUY BONDS#############
