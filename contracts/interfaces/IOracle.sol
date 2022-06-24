@@ -21,17 +21,15 @@ pragma solidity ^0.8.0;
 interface IOracle {
 
 
-/// @dev determines the approximate amount for the issuance of the 
+/// @dev determines the approximate amount for the issuance of the amountsOut of the USD equivalent of tokens.
 /// @param tokenIn is  address of token that is to be deposited as collateral for bond issuance
 /// @param tokenOut is the address of the stablecoin token (USDC/USDT) in which you want to denominate.
 /// @param amountIn is the amount of ERC20 tokens of address `tokenIn` you need to be denominated .
-/// @param fee is the fees paid to the oracle for recovering each of the 
 /// @return amountOut is the amount(in USD denominated stablecoin) for the given token. 
     function estimateAmountOut(
         address tokenIn,
         uint128 amountIn,
         address tokenOut,
-        uint24 fee,
         uint32 secondsAgo
     ) external view returns (uint amountOut);
 }

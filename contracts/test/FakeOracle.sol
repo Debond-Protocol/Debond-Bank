@@ -1,6 +1,6 @@
 pragma solidity ^0.8.0;
 
-import "../interfaces/IOracle.sol";
+import "debond-oracle-contracts/interfaces/IOracle.sol";
 
 // SPDX-License-Identifier: apache 2.0
 /*
@@ -22,7 +22,6 @@ contract FakeOracle is IOracle{
         address tokenIn,
         uint128 amountIn,
         address tokenOut,
-        uint24 fee,
         uint32 secondsAgo
     ) external view returns (uint amountOut) {
         // as real oracle, result is given on base 6

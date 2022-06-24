@@ -16,6 +16,7 @@
     "apm-contracts": "^0.0.1",
     "debond-erc3475-contracts": "^0.0.1",
     "debond-governance-contracts": "^0.0.1",
+    "debond-oracle-contracts": "0.0.1",
     "debond-token-contracts": "^0.0.2",
     "dotenv": "^16.0.0",
     "erc3475": "^0.0.1",
