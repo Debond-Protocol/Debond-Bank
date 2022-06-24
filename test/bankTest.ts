@@ -173,17 +173,11 @@ contract('Bank', async (accounts: string[]) => {
         bondContract = await DebondBondTest.deployed();
 
 
-        // await apmContract.updateTotalReserve(usdcContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve
-        // await apmContract.updateTotalReserve(dbitContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve
-
-        await usdcContract.mint(buyer, web3.utils.toWei('100000', 'ether'));
-
-        let balance = await usdcContract.balanceOf(buyer);
-        console.log("usdcBalance" + balance.toString());
         
+        await wethContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        await bankContract.stakeForDbitBondWithEth(DBIT_FIX_6MTH_CLASS_ID, 0, 2000, buyer, {from: buyer, value: web3.utils.toWei('2', 'ether').toString()});
-        
+        await bankContract.stakeForDbitBondWithEth(10, DBIT_FIX_6MTH_CLASS_ID, 0, 2000, buyer, {from: buyer, value: web3.utils.toWei('2', 'ether').toString()});
+
 
         const DBITNonces = (await bondContract.getNoncesPerAddress(buyer, DBIT_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
         console.log("nonce: " + DBITNonces[0]);
@@ -208,6 +202,9 @@ contract('Bank', async (accounts: string[]) => {
 
         let APMbalanceDBIT = await dbitContract.balanceOf(apmContract.address);
         console.log("apmbalanceDBIT :" , APMbalanceDBIT.toString());
+
+        const WETHbalanceOfAPM = (await wethContract.balanceOf(apmContract.address)).toString()
+        console.log("WETH Balance of APM: " + WETHbalanceOfAPM);
 
 
 
