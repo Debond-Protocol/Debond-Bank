@@ -158,56 +158,17 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
         return DebondMath.floatingETA(_maturityDate, BsumN, BENCHMARK_RATE_DECIMAL_18, BsumNL, EPOCH, Umonth);
     }
 
-
-    function interestRateByBuying(
-        uint classId,
-        uint amount
-    ) internal view returns (uint fixRate, uint floatRate) {
-
-        (address debondTokenAddress, InterestRateType interestRateType,) = classValues(classId);
-        (uint fixRateSupply, uint floatRateSupply) = getRateSupplies(debondTokenAddress, amount, interestRateType);
-
-        (fixRate, floatRate) = _getCalculatedRate(fixRateSupply, floatRateSupply);
-
-    }
-
-    function interestRateByStaking(
-        uint classId,
-        uint amount
-    ) internal view returns (uint fixRate, uint floatRate) {
-        (address purchaseTokenAddress, InterestRateType interestRateType,) = classValues(classId);
-        (uint fixRateSupply, uint floatRateSupply) = getRateSupplies(purchaseTokenAddress, amount, interestRateType);
-
-        (fixRate, floatRate) = _getCalculatedRate(fixRateSupply, floatRateSupply);
-    }
-
-    function getRateSupplies(address tokenAddress, uint tokenAmount, InterestRateType interestRateType) private view returns (uint fixRateSupply, uint floatRateSupply) {
+    function _getSupplies(address tokenAddress, InterestRateType interestRateType, uint supplyToAdd) internal view returns (uint fixRateSupply, uint floatRateSupply) {
         fixRateSupply = tokenRateTypeTotalSupply[tokenAddress][InterestRateType.FixedRate];
         floatRateSupply = tokenRateTypeTotalSupply[tokenAddress][InterestRateType.FloatingRate];
 
         // we had the client amount to the according bond balance to calculate interest rate after deposit
-        if (tokenAmount > 0 && interestRateType == InterestRateType.FixedRate) {
-            fixRateSupply += tokenAmount;
+        if (supplyToAdd > 0 && interestRateType == InterestRateType.FixedRate) {
+            fixRateSupply += supplyToAdd;
         }
-        if (tokenAmount > 0 && interestRateType == InterestRateType.FloatingRate) {
-            floatRateSupply += tokenAmount;
+        if (supplyToAdd > 0 && interestRateType == InterestRateType.FloatingRate) {
+            floatRateSupply += supplyToAdd;
         }
-    }
-
-    function _getCalculatedRate(uint fixRateSupply, uint floatRateSupply) private pure returns (uint fixRate, uint floatRate) {
-        // TODO Need to define a min liquidity
-        if (fixRateSupply == 0 || floatRateSupply == 0) {
-            fixRate = 2 * BENCHMARK_RATE_DECIMAL_18 / 3;
-            floatRate = 2 * fixRate;
-        } else {
-            (fixRate, floatRate) = _interestRate(fixRateSupply, floatRateSupply, BENCHMARK_RATE_DECIMAL_18);
-        }
-    }
-
-    //TODO TEST
-    function _interestRate(uint fixRateSupply, uint floatRateSupply, uint benchmarkInterest) private pure returns (uint fixedRate, uint floatingRate) {
-        floatingRate = DebondMath.floatingInterestRate(fixRateSupply, floatRateSupply, benchmarkInterest);
-        fixedRate = 2 * benchmarkInterest - floatingRate;
     }
 
 

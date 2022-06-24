@@ -182,7 +182,7 @@ contract('Bank', async (accounts: string[]) => {
         console.log("usdcBalance" + balance.toString());
         
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        await bankContract.stakeForDbitBondWithEth(DBIT_FIX_6MTH_CLASS_ID, 0, 2000, buyer, {from: buyer, value: web3.utils.toWei('2', 'ether').toString()});
+        await bankContract.stakeForDbitBondWithEth(10, DBIT_FIX_6MTH_CLASS_ID, 0, 2000, buyer, {from: buyer, value: web3.utils.toWei('2', 'ether').toString()});
         
 
         const DBITNonces = (await bondContract.getNoncesPerAddress(buyer, DBIT_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
