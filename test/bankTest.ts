@@ -203,6 +203,9 @@ contract('Bank', async (accounts: string[]) => {
         let APMbalanceDBIT = await dbitContract.balanceOf(apmContract.address);
         console.log("apmbalanceDBIT :" , APMbalanceDBIT.toString());
 
+        const WETHbalanceOfAPM = (await wethContract.balanceOf(apmContract.address)).toString()
+        console.log("WETH Balance of APM: " + WETHbalanceOfAPM);
+
 
 
     })
