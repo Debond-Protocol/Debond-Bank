@@ -163,7 +163,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
             
 
-            if ( ! canPurchase[bankData.purchaseClassId][bankData.debondClassId]) {   //todo : changer les 3 lignes
+            if (!canPurchase[bankData.purchaseClassId][bankData.debondClassId]) {   //todo : changer les 3 lignes
                 revert PairNotAllowed();
             } 
             (address purchaseTokenAddress,,) = classValues(bankData.purchaseClassId);
@@ -285,7 +285,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             bankData.to = _to;
             bankData.minRate = _minRate;
 
-            if ( ! canPurchase[bankData.purchaseClassId][bankData.debondClassId]) {
+            if (!canPurchase[bankData.purchaseClassId][bankData.debondClassId]) {
                 revert PairNotAllowed();
             } 
 
