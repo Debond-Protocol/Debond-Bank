@@ -78,6 +78,9 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     
     }
 
+    /// @notice creation of some initial bond classes, nonces and their corresponding metadata 
+    /// @dev this will be only callable by the deployer, and needs to be set based on the initial classparams(or maybe called by governance params).
+    /// @param daiAddress address of the stablecoin ERC20 that are  paired with bonds.
     function initializeApp(address daiAddress, address usdtAddress) external onlyOwner {
         require(!init, "BankContract Error: already initiated");
         init = true;
@@ -180,7 +183,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
 
         /**
-        * @dev mint the bond to the user
+        * @dev Issues the bond to the user
         * @param purchaseMethod buying method or Staking method
         * @param purchaseClassId classId of the token added by the user (given by frontend)
         * @param purchaseTokenAmount amount of token to add
@@ -269,6 +272,14 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
     //############buybonds staking method  dbit with else (else is Not eth, not dgov, not dbit)  ##############
 
+/// @notice another function allowing  users to stake with  DBIT tokens and then receive the Bonds of DBIT and other ERC20 (defined by purchaseClassId).
+/// @dev similar to uniswap interface.
+///  @param _purchaseClassId is the classId of the ERC20 bond(approved by bank) that will be deposited by user. 
+/// @param _DbitClassId is the classId of the DBIT bond.
+/// @param _purchaseTokenAmount is the amount of tokens that are to be purchased from the  
+/// @param _minRate is the min amount  that user has to receive in the swap in the APM in order the function succeed.
+/// @param  deadline is the time  elapsed (in seconds) to wait during  order to be swapped successfully, else the order is void and amount is returned.
+/// @param _to is the destination address of  delegator receiving the bonds.
         function stakeForDbitBondWithElse(
             uint _purchaseClassId,
             uint _DbitClassId, 
@@ -331,6 +342,15 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
     //############buybonds Staking method  DbitToDgov##############
 
+
+/// @notice staking method for an address allowing DGOV tokens to be staked for getting DGOV bonds and some DBIT bonds.
+/// @dev similar to uniswap swap-for-to..
+///  @param _purchaseClassId is the classId of the DBIT bond(approved by bank) that will be deposited by user.
+/// @param _debondClassId is the classId of the DGOV bond (that will be bought by the user)
+/// @param _purchaseTokenAmount is the amount of DBIT tokens  that are to be purchased to get the necessary DBIT bond.  
+/// @param _minRate is the min amount  that user has to receive in the swap in the APM in order the function succeed.
+/// @param  deadline is the time  elapsed (in seconds) to wait during  order to be swapped successfully, else the order is void and amount is returned.
+/// @param _to is the destination address of  delegator receiving the bonds.
         function stakeForDgovBondWithDbit(
             uint _purchaseClassId, //should it be hardcode? or it can change in debond data?
             uint _debondClassId, 
@@ -359,6 +379,9 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             _issuingProcessStaking(bankData.purchaseClassId, bankData.purchaseTokenAmount, purchaseTokenAddress, bankData.debondClassId, interestRateType, fixedRate, floatingRate, bankData.minRate, bankData.to);
         }
 
+
+
+
         function _mintingProcessDgovWithDbit(
             address debondTokenAddress,
             uint purchaseTokenAmount,
@@ -371,6 +394,17 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         }
 
     //############buybonds Staking method  else ToDgov############## else is not dbit not eth not dgov
+
+
+
+/// @notice staking method for caller to stake in  DGOV bonds  in denomination of ERC20 tokens.
+/// @dev similar to uniswap  
+///  @param _purchaseClassId is the classId of the DGOV bond(approved by bank) that will be deposited by user.
+/// @param _debondClassId is the classId of the ERC20  bond (that will be bought by the user from the given classes)
+/// @param _purchaseTokenAmount is the amount of DGOV tokens  that are to be purchased to get the necessary ERC20  bond.  
+/// @param _minRate is the min interest rate  that user has to receive in the staking process(during redemption).
+/// @param  deadline is the time  elapsed (in seconds) to wait during  order to be staked successfully.
+/// @param _to is the  address staking / receiving the rewards
 
         function stakeForDgovBondWithElse(
             uint _purchaseClassId,
@@ -416,6 +450,13 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         }
         
     //############buybonds Buying method not eth to dbit##############
+/// @notice buys DBIT bond  by sending purchasable ERC20 as collateral. 
+/// @dev 
+/// @param _purchaseClassId  is the ERC20 bond class Id to be purchased.
+/// @param _debondClassId is the  DBIT bond classId. 
+/// @param _minRate is the min interest rate  that user has to receive in the staking process(during redemption).
+/// @param  deadline is the time  elapsed (in seconds) to wait during  order to be staked successfully.
+/// @param _to is the  address staking / receiving the rewards
 
         function buyforDbitBondWithElse( //else is not eth not dbit   
             uint _purchaseClassId,
@@ -467,6 +508,13 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
 
     //############buybonds Buying method DbitToDgov##############
+/// @notice buys DGOV bond  by sending DBIT as collateral. 
+/// @dev 
+/// @param _purchaseClassId  is the   class Id (of DGOV bond) to be purchased.
+/// @param _debondClassId is the   classId of DBIT bond that is generated (and submitted by user as collateral).
+/// @param _minRate is the min interest rate  that user has to receive in the staking process(during redemption).
+/// @param  deadline is the time  elapsed (in seconds) to wait during  order to be staked successfully.
+/// @param _to is the  address staking / receiving the rewards
 
 
         function buyForDgovBondWithDbit(
@@ -499,6 +547,13 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         
 
     //############buybonds Buying method else ToDgov############## else is not dbit not eth
+/// @notice buys DGOV bond   by sending purchasable WETH   as collateral. 
+/// @param _purchaseClassId  is the   class Id (of DGOV bond) to be purchased.
+/// @param _debondClassId is the   classId of WETH bond that is generated (and submitted by user as collateral).
+/// @param _minRate is the min interest rate  that user has to receive in the staking process(during redemption).
+/// @param  deadline is the time  elapsed (in seconds) to wait during  order to be staked successfully.
+/// @param _to is the  address staking / receiving the rewards
+
 
         function buyForDgovBondWithElse(
             uint _purchaseClassId,
@@ -530,6 +585,14 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
 
     //############buybonds Staking method  ETH To DBIT############## 
+
+/// @notice stakes WETH _amount  to receive DBIT  bond as principle during redemption.
+/// @dev similar to  stakeForDbitBondWithElse but for WETH token.
+/// @param _purchaseClassId  is the   class Id (of DBIT bond) to be purchased.
+/// @param _debondClassId is the   classId of WETH bond that is generated (and submitted by user as collateral).
+/// @param _minRate is the min interest rate  that user has to receive in the staking process(during redemption).
+/// @param  deadline is the time  elapsed (in seconds) to wait during  order to be staked successfully.
+/// @param _to is the  address staking / receiving the rewards
 
         function stakeForDbitBondWithEth(
                 //uint _purchaseClassId, // token added  //here it's eth
@@ -572,6 +635,16 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
 
     //############buybonds Staking method  ETH To Dgov############## 
+
+
+/// @notice stakes to receive  DGOV bond (and  some ERC20 bonds)  by sending purchasable WETH token  as collateral. 
+/// @dev similar to  stakeForDbitBondWithElse but for WETH token.
+/// @param _purchaseClassId  is the   class Id (of DBIT bond) to be purchased.
+/// @param _debondClassId is the   classId of WETH bond that is generated (and submitted by user as collateral).
+/// @param _minRate is the min interest rate  that user has to receive in the staking process(during redemption).
+/// @param  deadline is the time  elapsed (in seconds) to wait during  order to be staked successfully.
+/// @param _to is the  address staking / receiving the rewards
+
 
      function stakeForDgovBondWithEth(
             //uint _purchaseClassId, // token added  //here it's eth
@@ -620,6 +693,15 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
 
     //############buybonds Buying method  ETH To DBIT############## 
+
+/// @notice buys DBIT bond  by sending WETH  as collateral. 
+/// @dev 
+/// @param _purchaseClassId  is the DBIT bond class Id to be purchased.
+/// @param _debondClassId is the  WETH bond classId. 
+/// @param _minRate is the min interest rate  that user has to receive in the staking process(during redemption).
+/// @param  deadline is the time  elapsed (in seconds) to wait during  order to be staked successfully.
+/// @param _to is the  address staking / receiving the redemption when redeemed.
+
         function buyforDbitBondWithEth( //else is not eth not dbit   
                 uint _purchaseClassId,
                 uint _debondClassId, 
@@ -658,6 +740,13 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
         
     //############buybonds Buying method  ETH To Dgov##############
+/// @notice buys DGOV bond  by sending WETH  as collateral. 
+/// @dev 
+/// @param _purchaseClassId  is the WETH bond class Id to be purchased.
+/// @param _debondClassId is the  DBIT/DGOV bond classId. 
+/// @param _minRate is the min interest rate  that user has to receive in the staking process(during redemption).
+/// @param  deadline is the time  elapsed (in seconds) to wait during  order to be staked successfully.
+/// @param _to is the  address staking / receiving the redemption when redeemed.
 
         function buyforDgovBondWithEth( //else is not eth not dbit   
                 uint _purchaseClassId,
@@ -697,7 +786,15 @@ contract Bank is APMRouter, BankBondManager, Ownable {
                 updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint,  purchaseTokenAddress,  DBITAddress);
                 updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint,  DBITAddress,  DGOVAddress);
             }
+
+
 //##############REDEEM BONDS ##############:
+
+/// @notice redeeming the bonds of the caller.
+/// @dev based on the nature of the bond staked by user, you still have the following based.
+/// @param classId the classId of the bond.
+/// @param nonceId is the nonceId of the bond to be redeemed.
+/// @param amount is the amount of bond to be redeemed of the caller.
 
     function redeemBonds(
         uint classId,
@@ -710,6 +807,14 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         (address tokenAddress,,) = classValues(classId);
         removeLiquidity(msg.sender, tokenAddress, amount);
     }
+
+
+
+/// @notice returns the (virtual) interest rate of the bond from the given  (classId , nonceId , amount and purchaseMethod).
+/// @dev used for the frontend for displaying the interest rate, consist of various interenal functions based on purchase method.
+/// @param _purchaseTokenClassId is the classId of the bond to be bought. 
+/// @param _debondTokenClassId is the classId   of the DBIT/DGOV token bond to be staked/ transferred as collateral. 
+/// @param _purchaseTokenAmount is the amount to bonds to be bought
 
     function interestRate(
         uint _purchaseTokenClassId,
