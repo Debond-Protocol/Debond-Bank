@@ -172,16 +172,9 @@ contract('Bank', async (accounts: string[]) => {
         apmContract = await APM.deployed();
         bondContract = await DebondBondTest.deployed();
 
-
-        // await apmContract.updateTotalReserve(usdcContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve
-        // await apmContract.updateTotalReserve(dbitContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve
-
-        await usdcContract.mint(buyer, web3.utils.toWei('100000', 'ether'));
-
-        let balance = await usdcContract.balanceOf(buyer);
-        console.log("usdcBalance" + balance.toString());
         
-        await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
+        
+        await wethContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
         await bankContract.stakeForDbitBondWithEth(DBIT_FIX_6MTH_CLASS_ID, 0, 2000, buyer, {from: buyer, value: web3.utils.toWei('2', 'ether').toString()});
         
 
