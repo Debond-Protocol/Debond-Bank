@@ -409,20 +409,17 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         (address purchaseTokenAddress,,) = classValues(purchaseClassId);
 
         _mintingProcessForDbitWithElse(purchaseTokenAmount, purchaseTokenAddress, to);
-        _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, DBITAddress, debondClassId, _interestRate, to);
+        _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, debondClassId, _interestRate, to);
         }
 
         function _issuingProcessBuying(
             uint purchaseTokenAmount,
             address purchaseTokenAddress,
-            address debondTokenAddress,
             uint debondClassId,
             uint rate,
             address to
             ) internal {
-                (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
-                uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
-
+                uint amount = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress);
                 issueBonds(to, debondClassId, amount + amount.mul(rate));
         }
 
@@ -453,7 +450,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             revert RateNotHighEnough(_interestRate, minRate);
         }
         _mintingProcessDgovWithDbit(purchaseTokenAmount, to);
-        _issuingProcessBuying(purchaseTokenAmount, DBITAddress, DGOVAddress, debondClassId, _interestRate, to);
+        _issuingProcessBuying(purchaseTokenAmount, DBITAddress, debondClassId, _interestRate, to);
         }
         
 
@@ -478,7 +475,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         }
         (address purchaseTokenAddress,,) = classValues(purchaseClassId);
         _mintingProcessForDgovWithElse(debondTokenAddress, purchaseTokenAmount, purchaseTokenAddress, to);
-        _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, DBITAddress, debondClassId, _interestRate, to);
+        _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, debondClassId, _interestRate, to);
         }
 
 
@@ -585,7 +582,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
         (address purchaseTokenAddress,,) = classValues(WETHClassId);
         _mintingProcessForDbitWithEth(purchaseTokenAmount, purchaseTokenAddress);
-        _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, DBITAddress, debondClassId, _interestRate, to);
+        _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, debondClassId, _interestRate, to);
             }
 
             function _mintingProcessForDbitWithEth(
@@ -618,7 +615,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         }
         (address purchaseTokenAddress,,) = classValues(purchaseClassId);
         _mintingProcessForDgovWithEth(purchaseTokenAmount, purchaseTokenAddress);
-        _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, DBITAddress, debondClassId, _interestRate, to);
+        _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, debondClassId, _interestRate, to);
             }
 
             function _mintingProcessForDgovWithEth(
