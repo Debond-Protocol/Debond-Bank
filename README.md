@@ -41,9 +41,29 @@ for the bond issuance / redemption, we follow different logic based on the diffe
 
 
 
-### for interfaces 
+### running the test.
+
+```bash
+> npm install  
+
+> npx truffle compile / truffle compile. 
 
 
+> npm run generate-types # for tests in typescript.
+
+## and  finally running tyhe command in parallel.
+
+> npx run ganache -p 7545 
+&&
+> npx truffle run test
+
+```
+
+
+## inheritance diagram: 
+
+
+[bank contracts dependencies general diagram](./docs/BankContracts.png).
 
 ## Deployed contracts: 
 Verifying DAI
