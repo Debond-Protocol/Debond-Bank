@@ -301,7 +301,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         ) public {
             issueBonds(to, purchaseClassId, purchaseTokenAmount);
             uint amount = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); 
-            //todo : do the same everywhere.
             issueBonds(to, debondClassId, amount.mul(rate));
     }
 
@@ -320,7 +319,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 //############buybonds Staking method  DbitToDgov##############
 
         function stakeForDgovBondWithDbit(
-        uint purchaseClassId, //should it be hardcode? or it can change in debond data?
+        uint purchaseClassId,
         uint debondClassId,
         uint purchaseTokenAmount,
         uint minRate,
