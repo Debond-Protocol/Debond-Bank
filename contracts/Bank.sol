@@ -19,6 +19,7 @@ pragma solidity ^0.8.0;
     error RateNotHighEnough(uint currentRate, uint minRate);
     error INSUFFICIENT_AMOUNT(uint amount);
     error INSUFFICIENT_LIQUIDITY(uint liquidity);
+    error WrongTokenAddress(address tokenAddress);
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -264,50 +265,57 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
     function stakeForDbitBondWithElse(
         uint purchaseClassId,
-        uint debondClassId,
+        uint dbitClassId,
         uint purchaseTokenAmount,
         uint minRate,
         uint deadline,
         address to
     ) external ensure(deadline) {
 
-        if (!canPurchase[purchaseClassId][debondClassId]) {
+        if (!canPurchase[purchaseClassId][dbitClassId]) {
             revert PairNotAllowed();
         }
-        uint _interestRate = interestRate(purchaseClassId, debondClassId, purchaseTokenAmount, PurchaseMethod.Staking);
+        (address debondTokenAddress,,) = classValues(purchaseClassId);
+        if (debondTokenAddress != DBITAddress) {
+                revert WrongTokenAddress(debondTokenAddress);
+        }
+        (address purchaseTokenAddress,,) = classValues(purchaseClassId);
+        if ( purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress || purchaseTokenAddress == WETHAddress) {
+                revert WrongTokenAddress(purchaseTokenAddress);
+        }
+        uint _interestRate = interestRate(purchaseClassId, dbitClassId, purchaseTokenAmount, PurchaseMethod.Staking);
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
         }
-        (address purchaseTokenAddress,,) = classValues(purchaseClassId);
         _mintingProcessForDbitWithElse(purchaseTokenAmount, purchaseTokenAddress, to);
-        _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, debondClassId, _interestRate, to);
+        _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, dbitClassId, _interestRate, to);
     }
 
-        function _issuingProcessStaking(
-            uint purchaseClassId,
-            uint purchaseTokenAmount,
-            address purchaseTokenAddress,
-            uint debondClassId,
-            uint rate,
-            address to
-            ) public {
-                issueBonds(to, purchaseClassId, purchaseTokenAmount);
-                uint amount = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); 
-                //todo : do the same everywhere.
-                issueBonds(to, debondClassId, amount.mul(rate));
-        }
+    function _issuingProcessStaking(
+        uint purchaseClassId,
+        uint purchaseTokenAmount,
+        address purchaseTokenAddress,
+        uint debondClassId,
+        uint rate,
+        address to
+        ) public {
+            issueBonds(to, purchaseClassId, purchaseTokenAmount);
+            uint amount = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); 
+            //todo : do the same everywhere.
+            issueBonds(to, debondClassId, amount.mul(rate));
+    }
 
-        function _mintingProcessForDbitWithElse(
-            uint purchaseTokenAmount,
-            address purchaseTokenAddress,
-            address to
-            ) internal {
-                uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); 
-                //todo : verify if conversion is possible.
-                IERC20(purchaseTokenAddress).transferFrom(to, address(apm), purchaseTokenAmount);
-                IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
-                updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
-        }
+    function _mintingProcessForDbitWithElse(
+        uint purchaseTokenAmount,
+        address purchaseTokenAddress,
+        address to
+        ) internal {
+            uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); 
+            //todo : verify if conversion is possible.
+            IERC20(purchaseTokenAddress).transferFrom(to, address(apm), purchaseTokenAmount);
+            IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
+            updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
+    }
 
 //############buybonds Staking method  DbitToDgov##############
 
