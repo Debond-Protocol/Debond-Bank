@@ -48,12 +48,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
     mapping(uint256 => mapping(uint256 => bool)) public canPurchase; // can u get second input classId token from providing first input classId token
 
-
-    event test(uint amount);
-    event test1(uint amount);
-    event test2(uint amount);
-    event test3(uint amount);
-
     bool init;
 
     constructor(
@@ -141,13 +135,12 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         canPurchase[classIdIn][classIdOut] = _canPurchase;
     }
 
-    //##############BUY BONDS#############
 
     //todo : make sure that we can't call a function dbit to dgov with someting else that dbit (for exemple with usdc)
-    //############buybonds old version##############
+//############buybonds old version##############
 
-    /**
-    * @dev let the user buy a bond
+        /**
+        * @dev let the user buy a bond
         * @param _purchaseClassId classId of the token added by the user (given by frontend)
         * @param _debondClassId  classId of the debond token to mint (dgov or dbit)
         * @param _purchaseTokenAmount amount of token to add
@@ -155,13 +148,13 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         * @param _minRate minimum Rate that a user is willing to accept. similar to slippage    
         */
 
-    function buyBond(
-        uint _purchaseClassId,
-        uint _debondClassId,
-        uint _purchaseTokenAmount,
-        PurchaseMethod _purchaseMethod,
-        uint _minRate
-    ) external {
+        function buyBond(
+            uint _purchaseClassId,
+            uint _debondClassId, 
+            uint _purchaseTokenAmount,
+            PurchaseMethod _purchaseMethod,
+            uint _minRate
+            ) external {
 
         uint purchaseClassId = _purchaseClassId;
         uint debondClassId = _debondClassId;
@@ -267,7 +260,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
 
 
-    //############buybonds staking method  dbit with else (else is Not eth, not dgov, not dbit)  ##############
+//############buybonds staking method  dbit with else (else is Not eth, not dgov, not dbit)  ##############
 
     function stakeForDbitBondWithElse(
         uint purchaseClassId,
@@ -290,35 +283,35 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, debondClassId, _interestRate, to);
     }
 
-    function _issuingProcessStaking(
-        uint purchaseClassId,
-        uint purchaseTokenAmount,
-        address purchaseTokenAddress,
-        uint debondClassId,
-        uint rate,
-        address to
-    ) public {
-        issueBonds(to, purchaseClassId, purchaseTokenAmount);
-        uint amount = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress);
-        //todo : do the same everywhere.
-        issueBonds(to, debondClassId, amount.mul(rate));
-    }
+        function _issuingProcessStaking(
+            uint purchaseClassId,
+            uint purchaseTokenAmount,
+            address purchaseTokenAddress,
+            uint debondClassId,
+            uint rate,
+            address to
+            ) public {
+                issueBonds(to, purchaseClassId, purchaseTokenAmount);
+                uint amount = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); 
+                //todo : do the same everywhere.
+                issueBonds(to, debondClassId, amount.mul(rate));
+        }
 
-    function _mintingProcessForDbitWithElse(
-        uint purchaseTokenAmount,
-        address purchaseTokenAddress,
-        address to
-    ) internal {
-        uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress);
-        //todo : verify if conversion is possible.
-        IERC20(purchaseTokenAddress).transferFrom(to, address(apm), purchaseTokenAmount);
-        IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
-        updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
-    }
+        function _mintingProcessForDbitWithElse(
+            uint purchaseTokenAmount,
+            address purchaseTokenAddress,
+            address to
+            ) internal {
+                uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress); 
+                //todo : verify if conversion is possible.
+                IERC20(purchaseTokenAddress).transferFrom(to, address(apm), purchaseTokenAmount);
+                IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
+                updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
+        }
 
-    //############buybonds Staking method  DbitToDgov##############
+//############buybonds Staking method  DbitToDgov##############
 
-    function stakeForDgovBondWithDbit(
+        function stakeForDgovBondWithDbit(
         uint purchaseClassId, //should it be hardcode? or it can change in debond data?
         uint debondClassId,
         uint purchaseTokenAmount,
@@ -327,18 +320,18 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         address to
     ) external ensure(deadline) {
 
-        if (!canPurchase[purchaseClassId][debondClassId]) {
-            revert PairNotAllowed();
+            if (!canPurchase[purchaseClassId][debondClassId]) {
+                revert PairNotAllowed();
+            }
+            uint _interestRate = interestRate(purchaseClassId, debondClassId, purchaseTokenAmount, PurchaseMethod.Staking);
+            if (_interestRate < minRate) {
+                revert RateNotHighEnough(_interestRate, minRate);
+            }
+            _mintingProcessDgovWithDbit(purchaseTokenAmount, to);
+            _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, DBITAddress, debondClassId, _interestRate, to);
         }
-        uint _interestRate = interestRate(purchaseClassId, debondClassId, purchaseTokenAmount, PurchaseMethod.Staking);
-        if (_interestRate < minRate) {
-            revert RateNotHighEnough(_interestRate, minRate);
-        }
-        _mintingProcessDgovWithDbit(purchaseTokenAmount, to);
-        _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, DBITAddress, debondClassId, _interestRate, to);
-    }
 
-    function _mintingProcessDgovWithDbit(
+        function _mintingProcessDgovWithDbit(
         uint purchaseDbitAmount,
         address to
     ) internal {
@@ -348,7 +341,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         updateWhenAddLiquidity(purchaseDbitAmount, amountDGOVToMint, DBITAddress, DGOVAddress);
     }
 
-    //############buybonds Staking method  else ToDgov############## else is not dbit not eth not dgov
+//############buybonds Staking method  else ToDgov############## else is not dbit not eth not dgov
 
     function stakeForDgovBondWithElse(
         uint purchaseClassId,
@@ -371,26 +364,25 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
         _mintingProcessForDgovWithElse(debondTokenAddress, purchaseTokenAmount, purchaseTokenAddress, to);
         _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, debondClassId, _interestRate, to);
+        }
+
+        function _mintingProcessForDgovWithElse(
+            address debondTokenAddress,
+            uint purchaseTokenAmount,
+            address purchaseTokenAddress,
+            address to
+            ) internal {
+                uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress);
+                uint amountDGOVToMint = convertDbitToDgov(amountDBITToMint);
+                IERC20(purchaseTokenAddress).transferFrom(to, address(apm), purchaseTokenAmount);
+                IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
+                IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);
+                updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
+                updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, debondTokenAddress);
+
     }
 
-    function _mintingProcessForDgovWithElse(
-        address debondTokenAddress,
-        uint purchaseTokenAmount,
-        address purchaseTokenAddress,
-        address to
-    ) internal {
-        uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress);
-        //need cdp from usd to dgov
-        uint amountDGOVToMint = convertDbitToDgov(amountDBITToMint);
-        IERC20(purchaseTokenAddress).transferFrom(to, address(apm), purchaseTokenAmount);
-        IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
-        IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);
-        updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
-        updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, debondTokenAddress);
-
-    }
-
-    //############buybonds Buying method not eth to dbit##############
+//############buybonds Buying method not eth to dbit##############
 
     function buyforDbitBondWithElse(//else is not eth not dbit
         uint _purchaseClassId,
@@ -418,24 +410,24 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
         _mintingProcessForDbitWithElse(purchaseTokenAmount, purchaseTokenAddress, to);
         _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, DBITAddress, debondClassId, _interestRate, to);
-    }
+        }
 
-    function _issuingProcessBuying(
-        uint purchaseTokenAmount,
-        address purchaseTokenAddress,
-        address debondTokenAddress,
-        uint debondClassId,
-        uint rate,
-        address to
-    ) internal {
-        (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
-        uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
+        function _issuingProcessBuying(
+            uint purchaseTokenAmount,
+            address purchaseTokenAddress,
+            address debondTokenAddress,
+            uint debondClassId,
+            uint rate,
+            address to
+            ) internal {
+                (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
+                uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
 
-        issueBonds(to, debondClassId, amount + amount.mul(rate));
-    }
+                issueBonds(to, debondClassId, amount + amount.mul(rate));
+        }
 
 
-    //############buybonds Buying method DbitToDgov##############
+//############buybonds Buying method DbitToDgov##############
 
 
     function buyForDgovBondWithDbit(
@@ -462,10 +454,10 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         }
         _mintingProcessDgovWithDbit(purchaseTokenAmount, to);
         _issuingProcessBuying(purchaseTokenAmount, DBITAddress, DGOVAddress, debondClassId, _interestRate, to);
-    }
+        }
+        
 
-
-    //############buybonds Buying method else ToDgov############## else is not dbit not eth
+//############buybonds Buying method else ToDgov############## else is not dbit not eth
 
     function buyForDgovBondWithElse(
         uint purchaseClassId,
@@ -487,10 +479,10 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         (address purchaseTokenAddress,,) = classValues(purchaseClassId);
         _mintingProcessForDgovWithElse(debondTokenAddress, purchaseTokenAmount, purchaseTokenAddress, to);
         _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, DBITAddress, debondClassId, _interestRate, to);
-    }
+        }
 
 
-    //############buybonds Staking method  ETH To DBIT############## 
+//############buybonds Staking method  ETH To DBIT############## 
 
     function stakeForDbitBondWithEth(
         uint WETHClassId,
@@ -501,7 +493,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     ) external payable ensure(deadline) {
 
         uint purchaseTokenAmount = msg.value;
-
+        
         if (!canPurchase[WETHClassId][debondClassId]) {
             revert PairNotAllowed();
         }
@@ -530,9 +522,9 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     }
 
 
-    //############buybonds Staking method  ETH To Dgov############## 
+//############buybonds Staking method  ETH To Dgov############## 
 
-    function stakeForDgovBondWithEth(
+     function stakeForDgovBondWithEth(
         uint _WETHClassId, // token added  //here it's eth
         uint debondClassId, // token to mint
         uint minRate,
@@ -559,24 +551,23 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         _issuingProcessStaking(_WETHClassId, purchaseTokenAmount, purchaseTokenAddress, debondClassId, _interestRate, to);
     }
 
-    function _mintingProcessETHWithDgov(
-        address debondTokenAddress,
-        uint purchaseETHAmount
-    ) internal {
-        uint amountDBITToMint = convertToDbit(uint128(purchaseETHAmount), WETHAddress);
-        //need cdp from usd to dgov
-        uint amountDGOVToMint = convertDbitToDgov(amountDBITToMint);
-        //IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
-        IWeth(WETHAddress).deposit{value : purchaseETHAmount}();
-        assert(IWeth(WETHAddress).transfer(address(apm), purchaseETHAmount));
-        IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
-        IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);
-        updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint, WETHAddress, DBITAddress);
-        updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, debondTokenAddress);
-    }
+        function _mintingProcessETHWithDgov(
+            address debondTokenAddress,
+            uint purchaseETHAmount
+            ) internal {
+            uint amountDBITToMint = convertToDbit(uint128(purchaseETHAmount), WETHAddress);
+            uint amountDGOVToMint = convertDbitToDgov(amountDBITToMint);
+            //IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
+            IWeth(WETHAddress).deposit{value : purchaseETHAmount}();
+            assert(IWeth(WETHAddress).transfer(address(apm), purchaseETHAmount));
+            IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
+            IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);
+            updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint, WETHAddress, DBITAddress);
+            updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, debondTokenAddress);
+        }
 
 
-    //############buybonds Buying method  ETH To DBIT############## 
+//############buybonds Buying method  ETH To DBIT############## 
     function buyforDbitBondWithEth(//else is not eth not dbit
         uint WETHClassId,
         uint debondClassId,
@@ -595,21 +586,21 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         (address purchaseTokenAddress,,) = classValues(WETHClassId);
         _mintingProcessForDbitWithEth(purchaseTokenAmount, purchaseTokenAddress);
         _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, DBITAddress, debondClassId, _interestRate, to);
-    }
+            }
 
-    function _mintingProcessForDbitWithEth(
-        uint purchaseETHAmount,
-        address purchaseTokenAddress
-    ) internal {
-        uint amountDBITToMint = convertToDbit(uint128(purchaseETHAmount), purchaseTokenAddress);
-        IWeth(WETHAddress).deposit{value : purchaseETHAmount}();
-        assert(IWeth(WETHAddress).transfer(address(apm), purchaseETHAmount));
-        IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
-        updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
-    }
+            function _mintingProcessForDbitWithEth(
+                uint purchaseETHAmount,
+                address purchaseTokenAddress
+                ) internal {
+                uint amountDBITToMint = convertToDbit(uint128(purchaseETHAmount), purchaseTokenAddress);
+                IWeth(WETHAddress).deposit{value : purchaseETHAmount}();
+                assert(IWeth(WETHAddress).transfer(address(apm), purchaseETHAmount));
+                IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
+                updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
+            }
 
 
-    //############buybonds Buying method  ETH To Dgov##############
+//############buybonds Buying method  ETH To Dgov##############
 
     function buyforDgovBondWithEth(//else is not eth not dbit
         uint purchaseClassId,
@@ -628,22 +619,22 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         (address purchaseTokenAddress,,) = classValues(purchaseClassId);
         _mintingProcessForDgovWithEth(purchaseTokenAmount, purchaseTokenAddress);
         _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, DBITAddress, debondClassId, _interestRate, to);
-    }
+            }
 
-    function _mintingProcessForDgovWithEth(
-        uint purchaseETHAmount,
-        address purchaseTokenAddress
-    ) internal {
-        uint amountDBITToMint = convertToDbit(uint128(purchaseETHAmount), purchaseTokenAddress);
-        uint amountDGOVToMint = convertDbitToDgov(amountDBITToMint);
-        IWeth(WETHAddress).deposit{value : purchaseETHAmount}();
-        assert(IWeth(WETHAddress).transfer(address(apm), purchaseETHAmount));
-        IDebondToken(DGOVAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
-        IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);
-        updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
-        updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, DGOVAddress);
-    }
-    //##############REDEEM BONDS ##############:
+            function _mintingProcessForDgovWithEth(
+                uint purchaseETHAmount,
+                address purchaseTokenAddress
+                ) internal {
+                uint amountDBITToMint = convertToDbit(uint128(purchaseETHAmount), purchaseTokenAddress);
+                uint amountDGOVToMint = convertDbitToDgov(amountDBITToMint);
+                IWeth(WETHAddress).deposit{value : purchaseETHAmount}();
+                assert(IWeth(WETHAddress).transfer(address(apm), purchaseETHAmount));
+                IDebondToken(DGOVAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
+                IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);
+                updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
+                updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, DGOVAddress);
+            }
+//##############REDEEM BONDS ##############:
 
     function redeemBonds(
         uint classId,
@@ -709,7 +700,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
 
 
-    //##############CDP##############:
+//##############CDP##############:
 
     // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
     function quote(uint256 amountA, uint256 reserveA, uint256 reserveB) internal pure returns (uint256 amountB) {/// use uint?? int256???
@@ -773,7 +764,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     }
 
 
-    // **** DGOV ****
+// **** DGOV ****
 
     /**
             * @dev gives the amount of dgov which should be minted for 1 dbit of input
