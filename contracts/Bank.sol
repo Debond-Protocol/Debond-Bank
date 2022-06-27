@@ -319,23 +319,31 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 //############buybonds Staking method  DbitToDgov##############
 
         function stakeForDgovBondWithDbit(
-        uint purchaseClassId,
-        uint debondClassId,
-        uint purchaseTokenAmount,
+        uint dbitClassId,
+        uint dgovClassId,
+        uint dbitTokenAmount,
         uint minRate,
         uint deadline,
         address to
     ) external ensure(deadline) {
 
-            if (!canPurchase[purchaseClassId][debondClassId]) {
+            if (!canPurchase[dbitClassId][dgovClassId]) {
                 revert PairNotAllowed();
             }
-            uint _interestRate = interestRate(purchaseClassId, debondClassId, purchaseTokenAmount, PurchaseMethod.Staking);
+            (address purchaseTokenAddress,,) = classValues(dbitClassId);
+            if (purchaseTokenAddress != DBITAddress) {
+                revert WrongTokenAddress(purchaseTokenAddress);
+            }
+            (address debondTokenAddress,,) = classValues(dgovClassId);
+            if (debondTokenAddress != DGOVAddress) {
+                revert WrongTokenAddress(debondTokenAddress);
+            }
+            uint _interestRate = interestRate(dbitClassId, dgovClassId, dbitTokenAmount, PurchaseMethod.Staking);
             if (_interestRate < minRate) {
                 revert RateNotHighEnough(_interestRate, minRate);
             }
-            _mintingProcessDgovWithDbit(purchaseTokenAmount, to);
-            _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, DBITAddress, debondClassId, _interestRate, to);
+            _mintingProcessDgovWithDbit(dbitTokenAmount, to);
+            _issuingProcessStaking(dbitClassId, dbitTokenAmount, DBITAddress, dgovClassId, _interestRate, to);
         }
 
         function _mintingProcessDgovWithDbit(
@@ -352,25 +360,25 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
     function stakeForDgovBondWithElse(
         uint purchaseClassId,
-        uint debondClassId,
+        uint dgovClassId,
         uint purchaseTokenAmount,
         uint minRate,
         uint deadline,
         address to
     ) external ensure(deadline) {
 
-        if (!canPurchase[purchaseClassId][debondClassId]) {
+        if (!canPurchase[purchaseClassId][dgovClassId]) {
             revert PairNotAllowed();
         }
-        (address debondTokenAddress,,) = classValues(debondClassId);
-        uint _interestRate = interestRate(purchaseClassId, debondClassId, purchaseTokenAmount, PurchaseMethod.Staking);
+        (address debondTokenAddress,,) = classValues(dgovClassId);
+        uint _interestRate = interestRate(purchaseClassId, dgovClassId, purchaseTokenAmount, PurchaseMethod.Staking);
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
         }
         (address purchaseTokenAddress,,) = classValues(purchaseClassId);
 
         _mintingProcessForDgovWithElse(debondTokenAddress, purchaseTokenAmount, purchaseTokenAddress, to);
-        _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, debondClassId, _interestRate, to);
+        _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, dgovClassId, _interestRate, to);
         }
 
         function _mintingProcessForDgovWithElse(
