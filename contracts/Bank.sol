@@ -48,12 +48,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
     mapping(uint256 => mapping(uint256 => bool)) public canPurchase; // can u get second input classId token from providing first input classId token
 
-
-    event test(uint amount);
-    event test1(uint amount);
-    event test2(uint amount);
-    event test3(uint amount);
-
     bool init;
 
     constructor(
@@ -65,8 +59,9 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         address oracleAddress,
         address usdcAddress,
         address _weth,
+        address _bankData,
         uint256 baseTimeStamp
-    ) APMRouter(apmAddress) BankBondManager(governanceAddress, bondAddress, baseTimeStamp){
+    ) APMRouter(apmAddress) BankBondManager(governanceAddress, bondAddress, _bankData, baseTimeStamp){
         DBITAddress = _DBITAddress;
         DGOVAddress = _DGOVAddress;
         oracle = IOracle(oracleAddress);
@@ -118,6 +113,10 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         _updateCanPurchase(11, 9, true);
     }
 
+
+    function setBankData(address _bankData) external onlyGovernance {
+        bankData = _bankData;
+    }
 
 
     modifier ensure(uint deadline) {

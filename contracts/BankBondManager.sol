@@ -8,6 +8,7 @@ import "debond-erc3475-contracts/interfaces/IDebondBond.sol";
 import "debond-erc3475-contracts/interfaces/IRedeemableBondCalculator.sol";
 import "erc3475/IERC3475.sol";
 import "./libraries/DebondMath.sol";
+import "./interfaces/IBankData.sol";
 
 
 abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnable {
@@ -25,6 +26,7 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
     enum InterestRateType {FixedRate, FloatingRate}
 
     address debondBondAddress;
+    address bankData;
 
     mapping(address => mapping(InterestRateType => uint256)) public tokenRateTypeTotalSupply; // needed for interest rate calculation also
     mapping(address => mapping(uint256 => uint256)) public tokenTotalSupplyAtNonce;
@@ -39,9 +41,11 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
     constructor(
         address _governanceAddress,
         address _debondBondAddress,
+        address _bankData,
         uint256 baseTimeStamp
     ) GovernanceOwnable(_governanceAddress) {
         debondBondAddress = _debondBondAddress;
+        bankData = _bankData;
         BASE_TIMESTAMP = baseTimeStamp;
     }
 
@@ -92,7 +96,7 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
     function _issue(address to, uint256 classId, uint256 nonceId, uint256 amount) internal {
         (address tokenAddress, InterestRateType interestRateType,) = classValues(classId);
         _issueERC3475(to, classId, nonceId, amount);
-        tokenRateTypeTotalSupply[tokenAddress][interestRateType] += amount;
+        IBankData(bankData).  tokenRateTypeTotalSupply[tokenAddress][interestRateType] += amount;
         tokenTotalSupplyAtNonce[tokenAddress][nonceId] = _tokenTotalSupply(tokenAddress);
 
     }
