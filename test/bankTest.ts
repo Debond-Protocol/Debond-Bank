@@ -81,7 +81,7 @@ contract('Bank', async (accounts: string[]) => {
 
 
     })
-
+    //todo : put comments for test
     //we should do this test with something else than usdc
     it('buy Bonds: stakeForDbitBondWithElse', async () => {
         usdcContract = await USDC.deployed();
@@ -176,8 +176,10 @@ contract('Bank', async (accounts: string[]) => {
         
         await wethContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        await bankContract.stakeForDbitBondWithEth(10, DBIT_FIX_6MTH_CLASS_ID, 0, 2000, buyer, {from: buyer, value: web3.utils.toWei('2', 'ether').toString()});
+        await bankContract.stakeForDbitBondWithEth(10, DBIT_FIX_6MTH_CLASS_ID, 0, 2000, buyer, {from: buyer, value: web3.utils.toWei('2', 'ether')});
 
+        const DBITNoncesTest = (await bondContract.getNoncesPerAddress(buyer, DBIT_FIX_6MTH_CLASS_ID));
+        console.log("nonce: " + DBITNoncesTest);
 
         const DBITNonces = (await bondContract.getNoncesPerAddress(buyer, DBIT_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
         console.log("nonce: " + DBITNonces[0]);
@@ -205,8 +207,6 @@ contract('Bank', async (accounts: string[]) => {
 
         const WETHbalanceOfAPM = (await wethContract.balanceOf(apmContract.address)).toString()
         console.log("WETH Balance of APM: " + WETHbalanceOfAPM);
-
-
 
     })
 

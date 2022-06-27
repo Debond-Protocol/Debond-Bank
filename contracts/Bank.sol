@@ -281,8 +281,8 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
         }
-        _mintingProcessForDbitWithElse(purchaseTokenAmount, purchaseTokenAddress, to);
-        _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, dbitClassId, _interestRate, to);
+        //_mintingProcessForDbitWithElse(purchaseTokenAmount, purchaseTokenAddress, to);
+        //_issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, dbitClassId, _interestRate, to);
     }
 
     function _issuingProcessStaking(
