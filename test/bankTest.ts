@@ -38,7 +38,7 @@ contract('Bank', async (accounts: string[]) => {
     const USDC_FIX_6MTH_CLASS_ID = 1;
     const USDT_FIX_6MTH_CLASS_ID = 2;
 
-    it('buy Bonds with USDC', async () => {
+    it('Initialisation', async () => {
         usdcContract = await USDC.deployed();
         usdtContract = await USDT.deployed();
         bankContract = await Bank.deployed();
@@ -46,6 +46,14 @@ contract('Bank', async (accounts: string[]) => {
         wethContract = await WETH.deployed();
         apmContract = await APM.deployed();
         bondContract = await DebondBondTest.deployed();
+    })
+
+    it('should return all the classes', async () => {
+        const classes = (await bankContract.getClasses()).map(c => c.toNumber())
+        console.log("classes: " + classes)
+    })
+
+    it('buy Bonds with USDC', async () => {
 
 
         await usdcContract.mint(buyer, web3.utils.toWei('100000', 'ether'));
@@ -84,14 +92,6 @@ contract('Bank', async (accounts: string[]) => {
 
     //we should do this test with something else than usdc
     it('buy Bonds: stakeForDbitBondWithElse', async () => {
-        usdcContract = await USDC.deployed();
-        usdtContract = await USDT.deployed();
-        bankContract = await Bank.deployed();
-        dbitContract = await DBIT.deployed();
-        wethContract = await WETH.deployed();
-        apmContract = await APM.deployed();
-        bondContract = await DebondBondTest.deployed();
-
 
         // await apmContract.updateTotalReserve(usdcContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve
         // await apmContract.updateTotalReserve(dbitContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve

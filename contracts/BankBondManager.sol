@@ -18,6 +18,8 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
     uint public BASE_TIMESTAMP;
     uint public constant EPOCH = 30; // every 24h we crate a new nonce.
     uint public constant BENCHMARK_RATE_DECIMAL_18 = 5 * 10 ** 16;
+    uint[] public classes;
+
 
 
     enum InterestRateType {FixedRate, FloatingRate}
@@ -64,6 +66,7 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
         values[2] = periodTimestamp;
         IDebondBond(debondBondAddress).createClass(classId, _symbol, values);
         classIdsPerTokenAddress[tokenAddress].push(classId);
+        classes.push(classId);
     }
 
     function issueBonds(address to, uint256 classId, uint256 amount) internal {
@@ -203,6 +206,10 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
         IERC3475.Transaction memory transaction = IERC3475.Transaction(classId, nonceId, amount);
         transactions[0] = transaction;
         IERC3475(debondBondAddress).redeem(from, transactions);
+    }
+
+    function getClasses() external view returns (uint[] memory) {
+        return classes;
     }
 
 
