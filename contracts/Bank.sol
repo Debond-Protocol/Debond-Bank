@@ -46,8 +46,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     address immutable USDCAddress;
     address immutable WETHAddress;
 
-    mapping(uint256 => mapping(uint256 => bool)) public canPurchase; // can u get second input classId token from providing first input classId token
-
     bool init;
 
     constructor(
@@ -59,9 +57,8 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         address oracleAddress,
         address usdcAddress,
         address _weth,
-        address _bankData,
-        uint256 baseTimeStamp
-    ) APMRouter(apmAddress) BankBondManager(governanceAddress, bondAddress, _bankData, baseTimeStamp){
+        address _bankData
+    ) APMRouter(apmAddress) BankBondManager(governanceAddress, bondAddress, _bankData){
         DBITAddress = _DBITAddress;
         DGOVAddress = _DGOVAddress;
         oracle = IOracle(oracleAddress);
@@ -74,7 +71,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     function initializeApp(address daiAddress, address usdtAddress) external onlyOwner {
         require(!init, "BankContract Error: already initiated");
         init = true;
-        uint SIX_M_PERIOD = 180 * 30;
+        uint SIX_M_PERIOD = 180 * EPOCH;
         // 1 hour period for tests
 
         _createClass(0, "DBIT", InterestRateType.FixedRate, DBITAddress, SIX_M_PERIOD);
@@ -126,18 +123,12 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         _;
     }
 
-    function canPurchaseDBITWithETH(uint WETHclassId, uint debondClassId) private view returns (bool) {
-        // 1.check si WETHClassID == 10 ou 11
-        // 2.si WETHclassId 10 ==>> on check debondClassId 0 ou 4
-        // 3.si WETHclassId 11 ==>> on check debondClassId 5 ou 9
-    }
-
     function updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) external onlyGovernance {
         _updateCanPurchase(classIdIn, classIdOut, _canPurchase);
     }
 
     function _updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) internal {
-        canPurchase[classIdIn][classIdOut] = _canPurchase;
+        IBankData(bankData).updateCanPurchase(classIdIn, classIdOut, _canPurchase);
     }
 
     //##############BUY BONDS#############
@@ -169,7 +160,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint minRate = _minRate;
 
 
-        if (!canPurchase[purchaseClassId][debondClassId]) {
+        if (!canPurchase(purchaseClassId, debondClassId)) {
             revert PairNotAllowed();
         }
         (address purchaseTokenAddress,,) = classValues(purchaseClassId);
@@ -283,7 +274,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         address to = _to;
         uint minRate = _minRate;
 
-        if (!canPurchase[purchaseClassId][debondClassId]) {
+        if (!canPurchase(purchaseClassId, debondClassId)) {
             revert PairNotAllowed();
         }
         uint _interestRate = interestRate(purchaseClassId, debondClassId, purchaseTokenAmount, PurchaseMethod.Staking);
@@ -336,7 +327,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         address to = _to;
         uint minRate = _minRate;
 
-            if (!canPurchase[purchaseClassId][debondClassId]) {
+            if (!canPurchase(purchaseClassId, debondClassId)) {
                 revert PairNotAllowed();
             }
             (address debondTokenAddress,,) = classValues(debondClassId);
@@ -378,7 +369,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         address to = _to;
         uint minRate = _minRate;
 
-        if (!canPurchase[purchaseClassId][debondClassId]) {
+        if (!canPurchase(purchaseClassId, debondClassId)) {
             revert PairNotAllowed();
         }
         (address debondTokenAddress,,) = classValues(debondClassId);
@@ -425,7 +416,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         address to = _to;
         uint minRate = _minRate;
 
-        if (!canPurchase[purchaseClassId][debondClassId]) {
+        if (!canPurchase(purchaseClassId, debondClassId)) {
             revert PairNotAllowed();
         }
         uint _interestRate = interestRate(purchaseClassId, debondClassId, purchaseTokenAmount, PurchaseMethod.Buying);
@@ -471,7 +462,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         address to = _to;
         uint minRate = _minRate;
 
-        if (!canPurchase[purchaseClassId][debondClassId]) {
+        if (!canPurchase(purchaseClassId, debondClassId)) {
             revert PairNotAllowed();
         }
         (address debondTokenAddress,,) = classValues(debondClassId);
@@ -503,7 +494,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         address to = _to;
         uint minRate = _minRate;
 
-        if (!canPurchase[purchaseClassId][debondClassId]) {
+        if (!canPurchase(purchaseClassId, debondClassId)) {
             revert PairNotAllowed();
         }
         (address debondTokenAddress,,) = classValues(debondClassId);
@@ -535,7 +526,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         address to = _to;
         uint minRate = _minRate;
 
-        if (!canPurchase[purchaseClassId][debondClassId]) {
+        if (!canPurchase(purchaseClassId, debondClassId)) {
             revert PairNotAllowed();
         }
 
@@ -581,7 +572,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         address to = _to;
         uint minRate = _minRate;
 
-        if (!canPurchase[purchaseClassId][debondClassId]) {
+        if (!canPurchase(purchaseClassId, debondClassId)) {
             revert PairNotAllowed();
         }
 
@@ -712,7 +703,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         PurchaseMethod purchaseMethod
     ) public view returns (uint) {
 
-        if (!canPurchase[_purchaseTokenClassId][_debondTokenClassId]) {
+        if (!canPurchase(_purchaseTokenClassId, _debondTokenClassId)) {
             revert PairNotAllowed();
         }
 
@@ -745,13 +736,15 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         rate = interestRateType == InterestRateType.FixedRate ? fixRate : floatRate;
     }
 
-    function _getCalculatedRate(uint fixRateSupply, uint floatRateSupply) private pure returns (uint fixedRate, uint floatingRate) {
-        floatingRate = DebondMath.floatingInterestRate(fixRateSupply, floatRateSupply, BENCHMARK_RATE_DECIMAL_18);
-        fixedRate = 2 * BENCHMARK_RATE_DECIMAL_18 - floatingRate;
+    function _getCalculatedRate(uint fixRateSupply, uint floatRateSupply) private view returns (uint fixedRate, uint floatingRate) {
+        uint benchmarkInterest = getBenchmarkInterest();
+        floatingRate = DebondMath.floatingInterestRate(fixRateSupply, floatRateSupply, benchmarkInterest);
+        fixedRate = 2 * benchmarkInterest - floatingRate;
     }
 
-    function _getDefaultRate() private pure returns (uint fixRate, uint floatRate) {
-        fixRate = 2 * BENCHMARK_RATE_DECIMAL_18 / 3;
+    function _getDefaultRate() private view returns (uint fixRate, uint floatRate) {
+        uint benchmarkInterest = getBenchmarkInterest();
+        fixRate = 2 * benchmarkInterest / 3;
         floatRate = 2 * fixRate;
     }
 
@@ -838,5 +831,10 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     function convertDbitToDgov(uint256 _amountDBIT) private view returns(uint256 amountDGOV) {
         uint256 rate = _cdpDbitToDgov();
         amountDGOV = _amountDBIT.mul(rate);
+    }
+
+
+    function canPurchase(uint classIdIn, uint classIdOut) public view returns (bool) {
+        return IBankData(bankData).canPurchase(classIdIn, classIdOut);
     }
 }

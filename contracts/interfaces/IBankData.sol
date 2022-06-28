@@ -7,8 +7,6 @@ import "../BankBondManager.sol";
 
 interface IBankData {
 
-    function setBankAddress(address _bankAddress) external;
-
     function updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) external;
 
     function setTokenInterestRateSupply(address tokenAddress, BankBondManager.InterestRateType, uint amount) external;
@@ -16,6 +14,8 @@ interface IBankData {
     function setTokenTotalSupplyAtNonce(address tokenAddress, uint nonceId, uint amount) external;
 
     function pushClassIdPerToken(address tokenAddress, uint classId) external;
+
+    function addNewClassId(uint classId) external;
 
     function setTokenAddressWithBondValue(uint value, address tokenAddress) external;
 
@@ -31,8 +31,6 @@ interface IBankData {
 
 
     function getBaseTimestamp() external view returns (uint);
-
-    function getEpoch() external view returns (uint);
 
     function canPurchase(uint classIdIn, uint classIdOut) external view returns (bool);
 

@@ -15,7 +15,6 @@ contract BankData is IBankData, GovernanceOwnable {
 
     mapping(uint256 => mapping(uint256 => bool)) _canPurchase; // can u get second input classId token from providing first input classId token
     uint public BASE_TIMESTAMP;
-    uint public constant EPOCH = 30; // every 24h we crate a new nonce.
     uint public BENCHMARK_RATE_DECIMAL_18 = 5 * 10 ** 16;
     uint[] public classes;
 
@@ -29,8 +28,9 @@ contract BankData is IBankData, GovernanceOwnable {
     mapping(address => bool) _tokenAddressExist;
     uint256 _tokenAddressCount;
 
-    constructor(address _governanceAddress, address _bankAddress) GovernanceOwnable(_governanceAddress) {
+    constructor(address _governanceAddress, address _bankAddress, uint _baseTimestamp) GovernanceOwnable(_governanceAddress) {
         bankAddress = _bankAddress;
+        BASE_TIMESTAMP = _baseTimestamp;
     }
 
     modifier onlyBank {
@@ -59,6 +59,10 @@ contract BankData is IBankData, GovernanceOwnable {
         classIdsPerTokenAddress[tokenAddress].push(classId);
     }
 
+    function addNewClassId(uint classId) external onlyBank {
+        classes.push(classId);
+    }
+
     function setTokenAddressWithBondValue(uint value, address tokenAddress) external onlyBank {
         fromBondValueToTokenAddress[value] = tokenAddress;
     }
@@ -79,13 +83,8 @@ contract BankData is IBankData, GovernanceOwnable {
         BENCHMARK_RATE_DECIMAL_18 = _benchmarkInterest;
     }
 
-
     function getBaseTimestamp() external view returns (uint) {
         return BASE_TIMESTAMP;
-    }
-
-    function getEpoch() external pure returns (uint) {
-        return EPOCH;
     }
 
     function canPurchase(uint classIdIn, uint classIdOut) external view returns (bool) {
