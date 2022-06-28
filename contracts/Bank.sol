@@ -47,8 +47,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     address immutable USDCAddress;
     address immutable WETHAddress;
 
-    mapping(uint256 => mapping(uint256 => bool)) public canPurchase; // can u get second input classId token from providing first input classId token
-
     bool init;
 
     constructor(
@@ -60,8 +58,8 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         address oracleAddress,
         address usdcAddress,
         address _weth,
-        uint256 baseTimeStamp
-    ) APMRouter(apmAddress) BankBondManager(governanceAddress, bondAddress, baseTimeStamp){
+        address _bankData
+    ) APMRouter(apmAddress) BankBondManager(governanceAddress, bondAddress, _bankData){
         DBITAddress = _DBITAddress;
         DGOVAddress = _DGOVAddress;
         oracle = IOracle(oracleAddress);
@@ -74,7 +72,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     function initializeApp(address daiAddress, address usdtAddress) external onlyOwner {
         require(!init, "BankContract Error: already initiated");
         init = true;
-        uint SIX_M_PERIOD = 180 * 30;
+        uint SIX_M_PERIOD = 180 * EPOCH;
         // 1 hour period for tests
 
         _createClass(0, "DBIT", InterestRateType.FixedRate, DBITAddress, SIX_M_PERIOD);
@@ -114,6 +112,10 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     }
 
 
+    function setBankData(address _bankData) external onlyGovernance {
+        bankData = _bankData;
+    }
+
 
     modifier ensure(uint deadline) {
         if (deadline >= block.timestamp) {
@@ -127,7 +129,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     }
 
     function _updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) internal {
-        canPurchase[classIdIn][classIdOut] = _canPurchase;
+        IBankData(bankData).updateCanPurchase(classIdIn, classIdOut, _canPurchase);
     }
 
 
@@ -158,7 +160,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint minRate = _minRate;
 
 
-        if (!canPurchase[purchaseClassId][debondClassId]) {
+        if (!canPurchase(purchaseClassId, debondClassId)) {
             revert PairNotAllowed();
         }
         (address purchaseTokenAddress,,) = classValues(purchaseClassId);
@@ -265,8 +267,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint deadline,
         address to
     ) external ensure(deadline) {
-
-        if (!canPurchase[purchaseClassId][dbitClassId]) {
+        if (!canPurchase(purchaseClassId, dbitClassId)) {
             revert PairNotAllowed();
         }
         (address debondTokenAddress,,) = classValues(purchaseClassId);
@@ -281,8 +282,8 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
         }
-        //_mintingProcessForDbitWithElse(purchaseTokenAmount, purchaseTokenAddress, to);
-        //_issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, dbitClassId, _interestRate, to);
+        _mintingProcessForDbitWithElse(purchaseTokenAmount, purchaseTokenAddress, to);
+        _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, dbitClassId, _interestRate, to);
     }
 
     function _issuingProcessStaking(
@@ -320,8 +321,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint deadline,
         address to
     ) external ensure(deadline) {
-
-            if (!canPurchase[dbitClassId][dgovClassId]) {
+            if (!canPurchase(dbitClassId, dgovClassId)) {
                 revert PairNotAllowed();
             }
             (address purchaseTokenAddress,,) = classValues(dbitClassId);
@@ -340,7 +340,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             _issuingProcessStaking(dbitClassId, dbitTokenAmount, DBITAddress, dgovClassId, _interestRate, to);
         }
 
-        function _mintingProcessDgovWithDbit(
+    function _mintingProcessDgovWithDbit(
         uint purchaseDbitAmount,
         address to
     ) internal {
@@ -360,8 +360,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint deadline,
         address to
     ) external ensure(deadline) {
-
-        if (!canPurchase[purchaseClassId][dgovClassId]) {
+        if (!canPurchase(purchaseClassId, dgovClassId)) {
             revert PairNotAllowed();
         }
         (address debondTokenAddress,,) = classValues(dgovClassId);
@@ -376,8 +375,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
         }
-        
-
         _mintingProcessForDgovWithElse(purchaseTokenAmount, purchaseTokenAddress, to);
         _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, dgovClassId, _interestRate, to);
         }
@@ -394,7 +391,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
                 IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);
                 updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
                 updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, DGOVAddress);
-
     }
 
 //############buybonds Buying method not eth to dbit##############
@@ -407,8 +403,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint _deadline,
         address _to
     ) external ensure(_deadline) {
-
-        if (!canPurchase[_purchaseClassId][_dbitClassId]) {
+        if (!canPurchase(_purchaseClassId, _dbitClassId)) {
             revert PairNotAllowed();
         }
         (address _debondTokenAddress,,) = classValues(_dbitClassId);
@@ -450,8 +445,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint _deadline,
         address _to
     ) external ensure(_deadline) {
-
-        if (!canPurchase[_dbitClassId][_dgovClassId]) {
+        if (!canPurchase(_dbitClassId, _dgovClassId)) {
             revert PairNotAllowed();
         }
         
@@ -482,8 +476,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint deadline,
         address to
     ) external ensure(deadline) {
-
-        if (!canPurchase[purchaseClassId][dgovClassId]) {
+        if (!canPurchase(purchaseClassId, dgovClassId)) {
             revert PairNotAllowed();
         }
         (address purchaseTokenAddress,,) = classValues(purchaseClassId);
@@ -512,7 +505,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint deadline,
         address to
     ) external payable ensure(deadline) {
-        if (!canPurchase[wethClassId][dbitClassId]) {
+        if (!canPurchase(wethClassId, dbitClassId)) {
             revert PairNotAllowed();
         }
         (address purchaseTokenAddress,,) = classValues(wethClassId);
@@ -552,8 +545,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint deadline,
         address to
     ) external payable ensure(deadline) {
-
-        if (!canPurchase[wethClassId][dgovClassId]) {
+        if (!canPurchase(wethClassId, dgovClassId)) {
             revert PairNotAllowed();
         }
         (address purchaseTokenAddress,,) = classValues(wethClassId);
@@ -596,7 +588,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint deadline,
         address to
     ) external payable ensure(deadline) {
-        if (!canPurchase[wethClassId][dbitClassId]) {
+        if (!canPurchase(wethClassId, dbitClassId)) {
             revert PairNotAllowed();
         }
         (address purchaseTokenAddress,,) = classValues(wethClassId);
@@ -626,7 +618,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint deadline,
         address to
     ) external payable ensure(deadline) {
-        if (!canPurchase[wethClassId][dgovClassId]) {
+        if (!canPurchase(wethClassId, dgovClassId)) {
             revert PairNotAllowed();
         }
         (address purchaseTokenAddress,,) = classValues(wethClassId);
@@ -679,7 +671,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         PurchaseMethod purchaseMethod
     ) public view returns (uint) {
 
-        if (!canPurchase[_purchaseTokenClassId][_debondTokenClassId]) {
+        if (!canPurchase(_purchaseTokenClassId, _debondTokenClassId)) {
             revert PairNotAllowed();
         }
 
@@ -712,13 +704,15 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         rate = interestRateType == InterestRateType.FixedRate ? fixRate : floatRate;
     }
 
-    function _getCalculatedRate(uint fixRateSupply, uint floatRateSupply) private pure returns (uint fixedRate, uint floatingRate) {
-        floatingRate = DebondMath.floatingInterestRate(fixRateSupply, floatRateSupply, BENCHMARK_RATE_DECIMAL_18);
-        fixedRate = 2 * BENCHMARK_RATE_DECIMAL_18 - floatingRate;
+    function _getCalculatedRate(uint fixRateSupply, uint floatRateSupply) private view returns (uint fixedRate, uint floatingRate) {
+        uint benchmarkInterest = getBenchmarkInterest();
+        floatingRate = DebondMath.floatingInterestRate(fixRateSupply, floatRateSupply, benchmarkInterest);
+        fixedRate = 2 * benchmarkInterest - floatingRate;
     }
 
-    function _getDefaultRate() private pure returns (uint fixRate, uint floatRate) {
-        fixRate = 2 * BENCHMARK_RATE_DECIMAL_18 / 3;
+    function _getDefaultRate() private view returns (uint fixRate, uint floatRate) {
+        uint benchmarkInterest = getBenchmarkInterest();
+        fixRate = 2 * benchmarkInterest / 3;
         floatRate = 2 * fixRate;
     }
 
@@ -806,5 +800,10 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     function convertDbitToDgov(uint256 _amountDBIT) private view returns (uint256 amountDGOV) {
         uint256 rate = _cdpDbitToDgov();
         amountDGOV = _amountDBIT.mul(rate);
+    }
+
+
+    function canPurchase(uint classIdIn, uint classIdOut) public view returns (bool) {
+        return IBankData(bankData).canPurchase(classIdIn, classIdOut);
     }
 }
