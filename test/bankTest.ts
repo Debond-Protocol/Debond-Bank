@@ -93,64 +93,38 @@ contract('Bank', async (accounts: string[]) => {
     //we should do this test with something else than usdc
     it('buy Bonds: stakeForDbitBondWithElse', async () => {
 
-        // await apmContract.updateTotalReserve(usdcContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve
-        // await apmContract.updateTotalReserve(dbitContract.address, web3.utils.toWei('10000', 'ether')) // adding reserve
-
+        //mint usdc to the buyer
         await usdcContract.mint(buyer, web3.utils.toWei('100000', 'ether'));
 
+        //log his usdc balance
         let balance = await usdcContract.balanceOf(buyer);
         console.log("usdcBalance" + balance.toString());
-        
+
+        //approve usdc and buy bonds
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
         let amount = await bankContract.stakeForDbitBondWithElse(USDC_FIX_6MTH_CLASS_ID, DBIT_FIX_6MTH_CLASS_ID, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
         
-       
-        //console.log("logs: ", amount.logs);
-        console.log("logs: ", parseInt(amount.receipt.rawLogs[0].topics, 16));
-        
-
-        
-        
-        //console.log("amount: ", amount.logs[0].args[0]["words"][1]);
-
-        /*
-        let amount0 = amount.logs[0].args[0]["words"][1];
-        console.log("amount0: ", amount0);
-
-        let amount1 = amount.logs[1].args[0]["words"][1];
-        console.log("amount1: ", amount1);
-
-        let amount2 = amount.logs[2].args[0]["words"][1];
-        console.log("amount2: ", amount2);
-
-        let amount3 = amount.logs[3].args[0];
-        console.log("amount3: ", amount3);
-
-        let amount4 = amount.logs[4].args[0];
-        console.log("amount4: ", amount4);
-
-        let amount5 = amount.logs[5].args[0];
-        console.log("amount5: ", amount5);
-
-        let amount6 = amount.logs[6].args[0]["words"][1];
-        console.log("amount6: ", amount6);*/
-
-        
-
+       //log his nonce so we can use it to query bond blance
         const DBITNonces = (await bondContract.getNoncesPerAddress(buyer, DBIT_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
         console.log("nonce: " + DBITNonces[0]);
         let dbitbondBalance = await bondContract.balanceOf(buyer, DBIT_FIX_6MTH_CLASS_ID, DBITNonces[0] );
         
+        //same for usdc
         const USDCNonces = (await bondContract.getNoncesPerAddress(buyer, USDC_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
         console.log("nonce: " + USDCNonces[0]);
         let UsdcbondBalance = await bondContract.balanceOf(buyer, USDC_FIX_6MTH_CLASS_ID, DBITNonces[0] );
         
+        //query how much usdc buyer has now after buying
         let USDCBALANCE = await usdcContract.balanceOf(buyer);
-        console.log("DBITbondBalance: " + dbitbondBalance.toString());
-        console.log("USDCbondBalance: " + UsdcbondBalance.toString());
-        expect( UsdcbondBalance.toString()).to.equal(web3.utils.toWei('3000', 'ether').toString());
         console.log("usdcBalance: " + USDCBALANCE.toString());
 
+        //log bond balances
+        console.log("DBITbondBalance: " + dbitbondBalance.toString());
+        console.log("USDCbondBalance: " + UsdcbondBalance.toString());
+
+        //we should have 3000 usdc bond
+        expect( UsdcbondBalance.toString()).to.equal(web3.utils.toWei('3000', 'ether').toString());
+        
         //now we have check bond balances, we check balances in apm
 
         const s = await apmContract.getReserves(usdcContract.address, dbitContract.address);
@@ -158,6 +132,54 @@ contract('Bank', async (accounts: string[]) => {
 
         let APMbalanceUSDC = await usdcContract.balanceOf(apmContract.address);
         console.log("apmbalanceusdc :" + APMbalanceUSDC.toString());
+        expect( APMbalanceUSDC.toString()).to.equal(web3.utils.toWei('3000', 'ether').toString());
+
+        let APMbalanceDBIT = await dbitContract.balanceOf(apmContract.address);
+        console.log("apmbalanceDBIT :" , APMbalanceDBIT.toString());
+    })
+
+    it('buy Bonds: stakeForDgovBondWithDbit', async () => {
+
+        //mint dbit to the buyer
+        await dbitContract.mintCollateralisedSupply(buyer, web3.utils.toWei('100000', 'ether'), {from : bankContract.address});
+
+        //log his dbit balance
+        let balance = await dbitContract.balanceOf(buyer);
+        console.log("dbitBalance" + balance.toString());
+
+        //approve usdc and buy bonds
+        await dbitContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
+        let amount = await bankContract.stakeForDgovBondWithDbit(0, 4, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
+        
+       //log his nonce so we can use it to query bond blance
+        const DGOVNonces = (await bondContract.getNoncesPerAddress(buyer, DBIT_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
+        console.log("nonce: " + DGOVNonces[0]);
+        let dgovbondBalance = await bondContract.balanceOf(buyer, 4, DGOVNonces[0] );
+        
+        //same for DBIT
+        const DBITNonces = (await bondContract.getNoncesPerAddress(buyer, 0)).map(n => n.toNumber());
+        console.log("nonce: " + DBITNonces[0]);
+        let DBITbondBalance = await bondContract.balanceOf(buyer, 0, DBITNonces[0] );
+        
+        //query how much dbit buyer has now after buying
+        let DBITBALANCE = await dbitContract.balanceOf(buyer);
+        console.log("dbitBalance: " + DBITBALANCE.toString());
+
+        //log bond balances
+        console.log("dgovbondBalance: " + dgovbondBalance.toString());
+        console.log("DBITbondBalance: " + DBITbondBalance.toString());
+
+        //we should have 3000 usdc bond
+        expect( DBITbondBalance.toString()).to.equal(web3.utils.toWei('3000', 'ether').toString());
+        
+        //now we have check bond balances, we check balances in apm
+
+        const s = await apmContract.getReserves(dbitContract.address, dgovContract.address);
+        console.log("here we print r0 after stakebonds : " + s[0].toString(), "here we print r1 after stake bonds :" + s[1].toString());
+
+        let APMbalanceUSDC = await usdcContract.balanceOf(apmContract.address);
+        console.log("apmbalanceusdc :" + APMbalanceUSDC.toString());
+        expect( APMbalanceUSDC.toString()).to.equal(web3.utils.toWei('3000', 'ether').toString());
 
         let APMbalanceDBIT = await dbitContract.balanceOf(apmContract.address);
         console.log("apmbalanceDBIT :" , APMbalanceDBIT.toString());

@@ -270,7 +270,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         if (!canPurchase(purchaseClassId, dbitClassId)) {
             revert PairNotAllowed();
         }
-        (address debondTokenAddress,,) = classValues(purchaseClassId);
+        (address debondTokenAddress,,) = classValues(dbitClassId);
         if (debondTokenAddress != DBITAddress) {
                 revert WrongTokenAddress(debondTokenAddress);
         }
