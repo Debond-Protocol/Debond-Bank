@@ -284,6 +284,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         }
         _mintingProcessForDbitWithElse(purchaseTokenAmount, purchaseTokenAddress, to);
         _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, dbitClassId, _interestRate, to);
+        
     }
 
     function _issuingProcessStaking(

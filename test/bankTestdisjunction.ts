@@ -47,6 +47,7 @@ contract('Bank', async (accounts: string[]) => {
         bankContract = await Bank.deployed();
         dbitContract = await DBIT.deployed();
         wethContract = await WETH.deployed();
+        dgovContract = await DGOV.deployed();
         apmContract = await APM.deployed();
         bondContract = await DebondBondTest.deployed();
     })
@@ -69,7 +70,7 @@ contract('Bank', async (accounts: string[]) => {
 
         //approve usdc and buy bonds
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        let amount = await bankContract.stakeForDbitBondWithElse(USDC_FIX_6MTH_CLASS_ID, DBIT_FIX_6MTH_CLASS_ID, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
+        await bankContract.stakeForDbitBondWithElse(1, 0, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
         
        //log his nonce so we can use it to query bond blance
         const DBITNonces = (await bondContract.getNoncesPerAddress(buyer, DBIT_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
@@ -94,6 +95,7 @@ contract('Bank', async (accounts: string[]) => {
         
         //now we have check bond balances, we check balances in apm
 
+        
         const s = await apmContract.getReserves(usdcContract.address, dbitContract.address);
         console.log("here we print r0 after stakebonds : " + s[0].toString(), "here we print r1 after stake bonds :" + s[1].toString());
 
@@ -103,6 +105,7 @@ contract('Bank', async (accounts: string[]) => {
 
         let APMbalanceDBIT = await dbitContract.balanceOf(apmContract.address);
         console.log("apmbalanceDBIT :" , APMbalanceDBIT.toString());
+        
     })
 
     //todo : error to solve : sender account not recognized (mintcoll supply)
@@ -144,7 +147,7 @@ contract('Bank', async (accounts: string[]) => {
         
         //now we have check bond balances, we check balances in apm
 
-        /*
+        
         const s = await apmContract.getReserves(dbitContract.address, dgovContract.address);
         console.log("here we print r0 after stakebonds : " + s[0].toString(), "here we print r1 after stake bonds :" + s[1].toString());
 
@@ -154,10 +157,10 @@ contract('Bank', async (accounts: string[]) => {
         let APMbalanceDBIT = await dbitContract.balanceOf(apmContract.address);
         console.log("apmbalanceDBIT :" , APMbalanceDBIT.toString());
         expect( APMbalanceDBIT.toString()).to.equal(web3.utils.toWei('3000', 'ether').toString());
-        */
+        
     })
 
-    it.only('buy Bonds: stakeFordgovBondWithElse', async () => {
+    it('buy Bonds: stakeFordgovBondWithElse', async () => {
 
         //mint usdc to the buyer
         await usdcContract.mint(buyer, web3.utils.toWei('100000', 'ether'));
@@ -193,7 +196,7 @@ contract('Bank', async (accounts: string[]) => {
         
         //now we have check bond balances, we check balances in apm
 
-        /*
+        
         const s = await apmContract.getReserves(usdcContract.address, dgovContract.address);
         console.log("here we print r0 after stakebonds : " + s[0].toString(), "here we print r1 after stake bonds :" + s[1].toString());
 
@@ -203,7 +206,7 @@ contract('Bank', async (accounts: string[]) => {
 
         let APMbalancedgov = await dgovContract.balanceOf(apmContract.address);
         console.log("apmbalancedgov :" , APMbalancedgov.toString());
-        */
+        
     })
 
     it('buy Bonds: stakeFordgovBondWithEth', async () => {
