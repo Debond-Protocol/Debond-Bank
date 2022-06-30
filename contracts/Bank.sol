@@ -267,21 +267,21 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint deadline,
         address to
     ) external ensure(deadline) {
-        /*if (!canPurchase(purchaseClassId, dbitClassId)) {
+        if (!canPurchase(purchaseClassId, dbitClassId)) {
             revert PairNotAllowed();
         }
         (address debondTokenAddress,,) = classValues(dbitClassId);
         if (debondTokenAddress != DBITAddress) {
                 revert WrongTokenAddress(debondTokenAddress);
-        }*/
-        (address purchaseTokenAddress,,) = classValues(purchaseClassId);/*
+        }
+        (address purchaseTokenAddress,,) = classValues(purchaseClassId);
         if ( purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress || purchaseTokenAddress == WETHAddress) {
                 revert WrongTokenAddress(purchaseTokenAddress);
-        }*/
-        uint _interestRate = interestRate(purchaseClassId, dbitClassId, purchaseTokenAmount, PurchaseMethod.Staking);/*
+        }
+        uint _interestRate = interestRate(purchaseClassId, dbitClassId, purchaseTokenAmount, PurchaseMethod.Staking);
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
-        }*/
+        }
         _mintingProcessForDbitWithElse(purchaseTokenAmount, purchaseTokenAddress, to);
         _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, dbitClassId, _interestRate, to);
         
