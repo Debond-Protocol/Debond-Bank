@@ -129,10 +129,25 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         }
         _;
     }
-
+    //TODO: @drikssy do we need to implement that.
     function canPurchaseDBITWithETH(uint WETHclassId, uint debondClassId) private view returns (bool) {
         // 1.check si WETHClassID == 10 ou 11
         // 2.si WETHclassId 10 ==>> on check debondClassId 0 ou 4
+       // (WETHclassId == 10 || 11) ? (WETHclassId == 10 ? )
+        if(WETHclassId == 10)
+        { 
+            if(debondClassId == 0 || 4) 
+            {
+            return true;    
+            }
+        }
+        
+        else if(WETHclassId == 11) {
+            if(debondClassId == 5 || 9)
+            {
+                return true;
+            }
+        }
         // 3.si WETHclassId 11 ==>> on check debondClassId 5 ou 9
     }
 

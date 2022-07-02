@@ -1,44 +1,75 @@
 ## Debond-Bank:
 
-this repository consist of the contracts  that manage the issuance , redemption and  liquidity  of the bonds. it consist of the following main contracts : 
-
-1.  Bank Contract : This contract acts as orchestrator / wrapper interface  for the by providing wrapper function for  bonds, it handles the portfolio of class and nonce of bonds that are agreed upon by the governance, and primarily does the following : 
-
-    - issuers to buy the bonds , whilst depositing the underlying collateral (issued with equal amount of DBIT token) to APM. 
-    -  redeeming the bonds, based on the condition of redemption time condition .
-    - getter functions for 
-        - fetching the interest rate of staking / buying bonds.
-        - getting  CDP (collateral determined price)  for determining the amount of tokens in LP pair. 
+This repository consist of the contracts  that manage the issuance and  redemption of bonds and interfacing with the APM to permit addition/subtraction of the liquidity respectively, thus being the core part of protocol that  interfaces with Bonds contract.
 
 
-for the bond issuance / redemption, we follow different logic based on the different category of bonds as explained below:
-    - if the bond is bought for the staking purposes, the amount of the bonds issued is equivalent to the (amount * rate-of-interest) of the bond, where the `rate-of-interest` depends on the fixed rate or floating nature bond. 
+It consist of the following main contracts :
+
+1.  Bank Contract :   This contract acts as custodian of bonds by allowing buy/stake bonds with their collaterals being  ERC20 (DBIT/DGOV or other whitelisted tokens)/WETH . Only the class of bonds that are agreed upon by the governance can be issued by the functions of the contract.  Bonds are instantiated into different class  based upon the underlying collateral, nature of issuance/ redemption condition (fixed/floating rate bonds). 
+
+
+
+##TODO: add miro diagram.
+Following is the workflow of the contract:
+    1. first User / external contract selects the type of bond that is to be purchased by two types:
+        - Staking bonds allows users to earn principal interest in the form of DBIT at the time of issuance of the bonds.   user puts some amount of  WETH/ERC20 collateral to get similar amount of ERC20-Bonds and  some part of  DBIT
+            - DBIT  that need to be minted is determined by the ([CDP formula value in USD]() * rateOfInterest).
+            - and the given collateral is added into APM via APMRouter.
+
+        based on whether the staking collateral is Debond Token  and corresponding input collateral is WETH or other whitelisted tokens in pairs, you have the inferface of functions as follows: 
     
-    - else if its bought for issuing the bonds, then the APM receives  `amount(1 + amount* rate)`of bonds. and further rate depends on the nature of bond (fixed / floating).
+        ```solidity
+    function stakeForDbitBondWithEth(
+        uint _WETHClassId, 
+        uint _debondClassId, 
+        uint _minRate,
+        uint deadline,
+        address _to
+    ) external payable ensure(deadline);
 
-2. BankBondManager : this contract implements the core logic for managing the bond lifecycle, for instance :
+    function stakeForDgovBondWithEth(
+        uint _WETHClassId, 
+        uint _debondClassId,
+       uint _minRate,
+        uint deadline,
+        address _to
+    ) external payable ensure(deadline);
+    
+        ```
+
+        - Buying bonds allows issuance of bonds in pair of ERC20 with either DBIT/DGOV. when user deposits the collateral of some amount , he gets equal amount of both type of bonds .  
+
+
+    2. Now user can track the progress of the bonds. based on the nature of the bond redemption condition, the frontend can use the function:
+
+        ```solidity
+        function getETA(uint256 classId, uint256 nonceId) external view returns (uint256);
+        ```
+    which will give time in  seconds when the bond (both fixed rate / floating rate) can be redeemed. 
+        ```NOTE: for fixed rate its consistent whereas for floating rate it will be an approximation and will really depend on the current availablity of liquidity for bonds using the formula ```
+
+
+2. BankBondManager : this contract implements the core logic for integrating the functions of Debond-ERC3475, for instance :
     - instantiating the bond class.
     - overriding the implementation of ERC-3475 implementation like getProgress() , classValues and NonceValues.
     - nonce creation and nonce generation.  
 
+3. APMRouter: 
+    - This  acts as router for the APM contract, and provides the API's for swapping the ERC20's of different bond classes. 
 
 
-2. APM: 
-    -  this contract acts as consolidated pool for all the bonds issued  by the bank for the user. 
 
+
+
+## Security Considerations: 
+
+- Insure that bank contract has addresses for governance and APM correctly set else it might cause loss of the  underlying liquidity as bonds. 
 
 
 
 ## diagram (UML)
 
 ![](docs/Debond-Bank.svg)
-
-
-
-
-
-
-
 
 
 ### running the test.
@@ -66,29 +97,10 @@ for the bond issuance / redemption, we follow different logic based on the diffe
 [bank contracts dependencies general diagram](./docs/BankContracts.png).
 
 ## Deployed contracts: 
-Verifying DAI
-Already Verified: https://rinkeby.etherscan.io/address/0xf3E0bF9A5D4Ac5d48f14361d8Dd0Ba7984238645#code
 
-Verifying DBITTest
-Already Verified: https://rinkeby.etherscan.io/address/0x52a48fbbfF33f936b0B0d7d4e2a9b5bB35779b64#code
-
-Verifying DGOVTest
-Already Verified: https://rinkeby.etherscan.io/address/0x222c41e58C56Ce2A54EF01a2d0d05055BA2CD51D#code
-
-Verifying USDC
-Already Verified: https://rinkeby.etherscan.io/address/0x313d0aaAf4210ae280696C0447c752C2D3A32C3b#code
-
-Verifying USDT
-Already Verified: https://rinkeby.etherscan.io/address/0x9d155EDb3c43093F08B331A84c5D71ebA53f9321#code
-
-Verifying FakeOracle
-Already Verified: https://rinkeby.etherscan.io/address/0xb84bf772166467E5D475Ce38A9a04ECc5EE8B663#code
 
 Verifying Bank
 Pass - Verified: https://rinkeby.etherscan.io/address/0xd9F6aEbEd44ea0071c1929b2bf5a3Dd671c39006#code
-
-Verifying DebondBondTest
-Already Verified: https://rinkeby.etherscan.io/address/0x3BD339C9a8c3321E94Dd1644243b3448f73b7BE8#code
 
 Verifying APMTest
 Already Verified: https://rinkeby.etherscan.io/address/0xA361763C11cf4D55bD0356b4921D781BEa558325#code
