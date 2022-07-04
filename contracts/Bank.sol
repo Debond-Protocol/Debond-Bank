@@ -136,7 +136,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     //todo : make sure that we can't call a function dbit to dgov with someting else that dbit (for exemple with usdc)
 //############buybonds old version##############
 
-        /**
+        /*
         * @dev let the user buy a bond
         * @param _purchaseClassId classId of the token added by the user (given by frontend)
         * @param _debondClassId  classId of the debond token to mint (dgov or dbit)
@@ -145,36 +145,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         * @param _minRate minimum Rate that a user is willing to accept. similar to slippage    
         */
 
-        function buyBond(
-            uint _purchaseClassId,
-            uint _debondClassId, 
-            uint _purchaseTokenAmount,
-            PurchaseMethod _purchaseMethod,
-            uint _minRate
-            ) external {
-
-        uint purchaseClassId = _purchaseClassId;
-        uint debondClassId = _debondClassId;
-        uint purchaseTokenAmount = _purchaseTokenAmount;
-        PurchaseMethod purchaseMethod = _purchaseMethod;
-        uint minRate = _minRate;
-
-
-        if (!canPurchase(purchaseClassId, debondClassId)) {
-            revert PairNotAllowed();
-        }
-        (address purchaseTokenAddress,,) = classValues(purchaseClassId);
-        (address debondTokenAddress,,) = classValues(debondClassId);
-
-        _mintingProcess(debondTokenAddress, purchaseTokenAmount, purchaseTokenAddress);
-
-        uint _interestRate = interestRate(purchaseClassId, debondClassId, purchaseTokenAmount, purchaseMethod);
-        _issuingProcess(purchaseMethod, purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, debondTokenAddress, debondClassId, _interestRate, minRate);
-    }
-
-
-
-    /**
+    /*
     * @dev mint the bond to the user
         * @param purchaseMethod buying method or Staking method
         * @param purchaseClassId classId of the token added by the user (given by frontend)
@@ -185,75 +156,8 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         * @param _interestRate fixed rate or floating rate
         * @param minRate minimum Rate that a user is willing to accept. similar to slippage    
         */
-    function _issuingProcess(//todo : _ for internal
-        PurchaseMethod purchaseMethod,
-        uint purchaseClassId,
-        uint purchaseTokenAmount,
-        address purchaseTokenAddress,
-        address debondTokenAddress,
-        uint debondClassId,
-        uint _interestRate,
-        uint minRate
-    ) internal {
-        if (purchaseMethod == PurchaseMethod.Staking) {
-            issueBonds(msg.sender, purchaseClassId, purchaseTokenAmount);
-            (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
-            //if reserve == 0 : use cdp price instead of quote? See with yu
-            //do we have to handle the case where reserve = 0? or when deploying, we put some liquidity?
-            //we first update reserves when buying bond so it should never be 0
-            uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
-            if (_interestRate < minRate) {
-                revert RateNotHighEnough(_interestRate, minRate);
-            }
-            issueBonds(msg.sender, debondClassId, amount.mul(_interestRate));
-        }
-        else if (purchaseMethod == PurchaseMethod.Buying) {
-            (uint reserveA, uint reserveB) = getReserves(purchaseTokenAddress, debondTokenAddress);
-            uint amount = quote(purchaseTokenAmount, reserveA, reserveB);
-            if (_interestRate < minRate) {
-                revert RateNotHighEnough(_interestRate, minRate);
-            }
-            issueBonds(msg.sender, debondClassId, amount + amount.mul(_interestRate));
-            // here the interest calculation is hardcoded. require the interest is enough high
-        }
-    }
+   
 
-
-    function _mintingProcess(
-        address debondTokenAddress,
-        uint purchaseTokenAmount,
-        address purchaseTokenAddress
-    ) internal {
-        if (debondTokenAddress == DBITAddress) {
-            //TODO : require : purchase token is not dbit, not dgov
-            uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress);
-            //todo : verivy if conversion is possible.
-            IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
-            IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
-            updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, debondTokenAddress);
-        }
-        else {//else address ==dgov?
-            if (purchaseTokenAddress == DBITAddress) {
-                uint amountDGOVToMint = convertDbitToDgov(purchaseTokenAmount);
-                IERC20(DBITAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
-                IDebondToken(debondTokenAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
-                //todo : check amountDGOVToMint
-                updateWhenAddLiquidity(purchaseTokenAmount, amountDGOVToMint, DBITAddress, debondTokenAddress);
-            }
-            else {
-                uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress);
-                //need cdp from usd to dgov
-                uint amountDGOVToMint = convertDbitToDgov(purchaseTokenAmount);
-                IERC20(purchaseTokenAddress).transferFrom(msg.sender, address(apm), purchaseTokenAmount);
-                IDebondToken(DGOVAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
-                IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);
-                //TODO : check here
-                updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
-                updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, debondTokenAddress);
-            }
-
-        }
-    }
 
 
 
