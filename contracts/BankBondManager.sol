@@ -5,13 +5,13 @@ pragma solidity ^0.8.0;
 
 import "debond-governance-contracts/utils/GovernanceOwnable.sol";
 import "debond-erc3475-contracts/interfaces/IDebondBond.sol";
-import "debond-erc3475-contracts/interfaces/IRedeemableBondCalculator.sol";
+import "debond-erc3475-contracts/interfaces/IProgressCalculator.sol";
 import "erc3475/IERC3475.sol";
 import "./libraries/DebondMath.sol";
 import "./interfaces/IBankData.sol";
 
 
-abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnable {
+abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
 
     using DebondMath for uint256;
 
@@ -32,12 +32,19 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
         bankData = _bankData;
     }
 
-    function createClass(uint256 classId, string memory _symbol, InterestRateType interestRateType, address tokenAddress, uint256 periodTimestamp) external onlyGovernance {
-        _createClass(classId, _symbol, interestRateType, tokenAddress, periodTimestamp);
+    function createClassMetadatas(uint256[] calldata metadataIds, IERC3475.Metadata[] calldata metadatas) external onlyBank {
+        -createClassMetadatas(metadataIds, metadatas);
     }
 
-    function _createClass(uint256 classId, string memory _symbol, InterestRateType interestRateType, address tokenAddress, uint256 periodTimestamp) internal {
-        require(!IDebondBond(debondBondAddress).classExists(classId), "ERC3475: cannot create a class that already exists");
+    function _createClassMetadatas(uint256[] calldata metadataIds, IERC3475.Metadata[] calldata metadatas) internal {
+        IDebondBond(debondBondAddress).createClassMetadataBatch(metadataIds, metadatas);
+    }
+
+    function createClass(uint256 classId, uint256[] calldata metadataIds, IERC3475.Values[] calldata values) external onlyGovernance {
+        _createClass(classId, metadataIds, values);
+    }
+
+    function _createClass(uint256 classId, uint256[] calldata metadataIds, IERC3475.Values[] calldata values) internal {
         uint interestRateTypeValue = uint256(interestRateType);
         if (!tokenAddressExist(tokenAddress)) {
             incrementTokenAddressCount();
@@ -155,7 +162,7 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
 
 
     function classValues(uint256 classId) public view returns (address _tokenAddress, InterestRateType _interestRateType, uint256 _periodTimestamp) {
-        uint[] memory _classValues = IERC3475(debondBondAddress).classValues(classId);
+        uint[] memory _classValues = IDebondBond(debondBondAddress).classValues(classId);
 
         _interestRateType = _classValues[1] == 0 ? InterestRateType.FixedRate : InterestRateType.FloatingRate;
         _tokenAddress = getTokenAddressFromBondValue(_classValues[0]);
@@ -163,7 +170,7 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
     }
 
     function nonceValues(uint256 classId, uint256 nonceId) public view returns (uint256 _issuanceDate, uint256 _maturityDate) {
-        uint[] memory _nonceValues = IERC3475(debondBondAddress).nonceValues(classId, nonceId);
+        uint[] memory _nonceValues = IDebondBond(debondBondAddress).nonceValues(classId, nonceId);
         _issuanceDate = _nonceValues[0];
         _maturityDate = _nonceValues[1];
     }
@@ -178,7 +185,7 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
         uint[] memory _classIdsPerTokenAddress = getClassIdsFromTokenAddress(tokenAddress);
         for (uint i = fromNonceId; i <= toNonceId; i++) {
             for (uint j = 0; j < _classIdsPerTokenAddress.length; j++) {
-                supply += (IERC3475(debondBondAddress).activeSupply(_classIdsPerTokenAddress[j], i) + IERC3475(debondBondAddress).redeemedSupply(_classIdsPerTokenAddress[j], i));
+                supply += (IDebondBond(debondBondAddress).activeSupply(_classIdsPerTokenAddress[j], i) + IDebondBond(debondBondAddress).redeemedSupply(_classIdsPerTokenAddress[j], i));
             }
         }
     }
@@ -187,14 +194,14 @@ abstract contract BankBondManager is IRedeemableBondCalculator, GovernanceOwnabl
         IERC3475.Transaction[] memory transactions = new IERC3475.Transaction[](1);
         IERC3475.Transaction memory transaction = IERC3475.Transaction(classId, nonceId, amount);
         transactions[0] = transaction;
-        IERC3475(debondBondAddress).issue(to, transactions);
+        IDebondBond(debondBondAddress).issue(to, transactions);
     }
 
     function _redeemERC3475(address from, uint classId, uint nonceId, uint amount) internal {
         IERC3475.Transaction[] memory transactions = new IERC3475.Transaction[](1);
         IERC3475.Transaction memory transaction = IERC3475.Transaction(classId, nonceId, amount);
         transactions[0] = transaction;
-        IERC3475(debondBondAddress).redeem(from, transactions);
+        IDebondBond(debondBondAddress).redeem(from, transactions);
     }
 
     function setTokenInterestRateSupply(address tokenAddress, BankBondManager.InterestRateType interestRateType, uint amount) internal {

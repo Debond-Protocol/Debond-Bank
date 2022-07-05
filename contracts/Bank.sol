@@ -75,6 +75,19 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint SIX_M_PERIOD = 180 * EPOCH;
         // 1 hour period for tests
 
+        uint256[] memory metadataIds = [0, 1, 2, 3];
+        IERC3475.Metadata[] memory metadatas = [
+            IERC3475.Metadata("symbol", "string", "the collateral token's symbol"),
+            IERC3475.Metadata("token address", "address", "the collateral token's address"),
+            IERC3475.Metadata("interest rate type", "int", "the interest rate type"),
+            IERC3475.Metadata("period", "int", "the base period for the class")
+        ];
+
+
+        _createClassMetadatas(metadataIds, metadatas);
+
+        IERC3475.Values[] memory dbitValues = getValuesFrom("DBIT", DBITAddress, 0, SIX_M_PERIOD);
+
         _createClass(0, "DBIT", InterestRateType.FixedRate, DBITAddress, SIX_M_PERIOD);
         _createClass(1, "USDC", InterestRateType.FixedRate, USDCAddress, SIX_M_PERIOD);
         _createClass(2, "USDT", InterestRateType.FixedRate, usdtAddress, SIX_M_PERIOD);
@@ -109,6 +122,10 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         _updateCanPurchase(7, 9, true);
         _updateCanPurchase(8, 9, true);
         _updateCanPurchase(11, 9, true);
+    }
+
+    function getValuesFrom(string memory symbol, address tokenAddress, uint256 interestRateType, uint256 period) internal view returns (IERC3475.Values memory) {
+
     }
 
 

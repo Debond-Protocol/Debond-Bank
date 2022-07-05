@@ -13,16 +13,16 @@
   "license": "ISC",
   "dependencies": {
     "@openzeppelin/contracts": "^4.5.0",
-    "apm-contracts": "^0.0.1",
-    "debond-erc3475-contracts": "^0.0.1",
+    "debond-apm-contracts": "^0.0.2",
+    "debond-erc3475-contracts": "^0.0.3",
     "debond-governance-contracts": "^0.0.1",
     "debond-oracle-contracts": "0.0.1",
     "debond-token-contracts": "^0.0.2",
-    "dotenv": "^16.0.0",
-    "erc3475": "^0.0.1",
+    "erc3475": "^0.0.2",
     "prb-math": "^2.4.3"
   },
   "devDependencies": {
+    "dotenv": "^16.0.0",
     "@truffle/hdwallet-provider": "^2.0.8",
     "@typechain/truffle-v5": "^5.1.0",
     "@types/chai": "^4.2.22",
