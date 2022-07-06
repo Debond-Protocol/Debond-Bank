@@ -57,8 +57,6 @@ contract('Bank', async (accounts: string[]) => {
         console.log("classes: " + classes)
     })
     
-    //todo : put comments for test
-    
 
     it('stakeForDbitBondWithElse', async () => {
 
@@ -81,7 +79,7 @@ contract('Bank', async (accounts: string[]) => {
         //same for usdc
         const USDCNonces = (await bondContract.getNoncesPerAddress(buyer, USDC_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
         console.log("nonce: " + USDCNonces[0]);
-        let UsdcbondBalance = await bondContract.balanceOf(buyer, USDC_FIX_6MTH_CLASS_ID, DBITNonces[0] );
+        let UsdcbondBalance = await bondContract.balanceOf(buyer, USDC_FIX_6MTH_CLASS_ID, USDCNonces[0] );
         
         //query how much usdc buyer has now after buying
         let USDCBALANCE = await usdcContract.balanceOf(buyer);

@@ -72,7 +72,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     function initializeApp(address daiAddress, address usdtAddress) external onlyOwner {
         require(!init, "BankContract Error: already initiated");
         init = true;
-        uint SIX_M_PERIOD = 180 * EPOCH;
+        uint SIX_M_PERIOD = 0 * EPOCH;
         // 1 hour period for tests
 
         _createClass(0, "DBIT", InterestRateType.FixedRate, DBITAddress, SIX_M_PERIOD);
@@ -179,7 +179,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
                 revert WrongTokenAddress(debondTokenAddress);
         }
         (address purchaseTokenAddress,,) = classValues(purchaseClassId);
-        if ( purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress || purchaseTokenAddress == WETHAddress) {
+        if ( purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress) {
                 revert WrongTokenAddress(purchaseTokenAddress);
         }
         uint _interestRate = interestRate(purchaseClassId, dbitClassId, purchaseTokenAmount, PurchaseMethod.Staking);
@@ -273,7 +273,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             revert WrongTokenAddress(debondTokenAddress);
         }
         (address purchaseTokenAddress,,) = classValues(purchaseClassId);
-        if (purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress || purchaseTokenAddress == WETHAddress) {
+        if (purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
         uint _interestRate = interestRate(purchaseClassId, dgovClassId, purchaseTokenAmount, PurchaseMethod.Staking);
@@ -316,7 +316,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             revert WrongTokenAddress(_debondTokenAddress);
         }
         (address _purchaseTokenAddress,,) = classValues(_purchaseClassId);
-        if( _purchaseTokenAddress == DBITAddress || _purchaseTokenAddress == DGOVAddress || _purchaseTokenAddress == WETHAddress) {
+        if( _purchaseTokenAddress == DBITAddress || _purchaseTokenAddress == DGOVAddress) {
             revert WrongTokenAddress(_purchaseTokenAddress);
         }
         uint _interestRate = interestRate(_purchaseClassId, _dbitClassId, _purchaseTokenAmount, PurchaseMethod.Buying);
@@ -385,7 +385,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
             revert PairNotAllowed();
         }
         (address purchaseTokenAddress,,) = classValues(purchaseClassId);
-        if (purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress || purchaseTokenAddress == WETHAddress) {
+        if (purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
         (address debondTokenAddress,,) = classValues(dgovClassId);
@@ -563,11 +563,26 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         uint amount
     ) external {
         //1. redeem the bonds (will fail if not maturity date exceeded)
-        _redeemERC3475(msg.sender, classId, nonceId, amount);
+        //_redeemERC3475(msg.sender, classId, nonceId, amount);
 
         (address tokenAddress,,) = classValues(classId);
         removeLiquidity(msg.sender, tokenAddress, amount);
     }
+
+    function redeemBondsETH(
+        uint wethClassId,
+        uint nonceId,
+        uint amountETH
+    ) external {
+        //1. redeem the bonds (will fail if not maturity date exceeded)
+        _redeemERC3475(msg.sender, wethClassId, nonceId, amountETH);
+
+        (address tokenAddress,,) = classValues(wethClassId);
+        removeLiquidity(msg.sender, tokenAddress, amountETH);
+        IWeth(WETHAddress).withdraw(amountETH);
+    }
+
+    
 
     function interestRate(
         uint _purchaseTokenClassId,
