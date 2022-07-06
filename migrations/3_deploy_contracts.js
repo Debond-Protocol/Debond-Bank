@@ -68,5 +68,4 @@ module.exports = async function (deployer, networks, accounts) {
   await bankDataInstance.setBankAddress(bankInstance.address);
   await DBITInstance.setBankAddress(bankInstance.address);
   await DGOVInstance.setBankAddress(bankInstance.address);
-  await bankInstance.initializeApp(DAIInstance.address, USDTInstance.address);
 };

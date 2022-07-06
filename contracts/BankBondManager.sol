@@ -20,6 +20,16 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
     address debondBondAddress;
     address bankData;
 
+    // class MetadataIds
+    uint public constant symbolMetadataId = 0;
+    uint public constant tokenAddressMetadataId = 1;
+    uint public constant interestRateTypeMetadataId = 2;
+    uint public constant periodMetadataId = 3;
+
+    // nonce MetadataIds
+    uint public constant issuanceDateMetadataId = 0;
+    uint public constant maturityDateMetadataId = 1;
+
     uint public constant EPOCH = 30;
 
 
@@ -32,36 +42,85 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         bankData = _bankData;
     }
 
-    function createClassMetadatas(uint256[] calldata metadataIds, IERC3475.Metadata[] calldata metadatas) external onlyBank {
-        -createClassMetadatas(metadataIds, metadatas);
+    function mapClassValuesFrom(
+        string memory symbol,
+        address tokenAddress,
+        InterestRateType interestRateType,
+        uint256 period
+    ) internal pure returns (uint[] memory, IERC3475.Values[] memory) {
+        uint[] memory _metadataIds = new uint[](4);
+        _metadataIds[0] = symbolMetadataId;
+        _metadataIds[1] = tokenAddressMetadataId;
+        _metadataIds[2] = interestRateTypeMetadataId;
+        _metadataIds[3] = periodMetadataId;
+
+        IERC3475.Values[] memory _values = new IERC3475.Values[](4);
+        _values[0] = IERC3475.Values(symbol, 0, address(0), false);
+        _values[1] = IERC3475.Values("", 0, tokenAddress, false);
+        _values[2] = IERC3475.Values("", uint(interestRateType), address(0), false);
+        _values[3] = IERC3475.Values("", period, address(0), false);
+        return  (_metadataIds, _values);
     }
 
-    function _createClassMetadatas(uint256[] calldata metadataIds, IERC3475.Metadata[] calldata metadatas) internal {
+    function mapNonceValuesFrom(
+        uint256 issuanceDate,
+        uint256 maturityDate
+    ) internal pure returns (uint[] memory, IERC3475.Values[] memory) {
+        uint[] memory _metadataIds = new uint[](2);
+        _metadataIds[0] = issuanceDateMetadataId;
+        _metadataIds[1] = maturityDateMetadataId;
+
+        IERC3475.Values[] memory _values = new IERC3475.Values[](2);
+        _values[0] = IERC3475.Values("", issuanceDate, address(0), false);
+        _values[1] = IERC3475.Values("", maturityDate, address(0), false);
+
+        return (_metadataIds, _values);
+    }
+
+    function createClassMetadatas(uint256[] memory metadataIds, IERC3475.Metadata[] memory metadatas) external onlyGovernance {
+        _createClassMetadatas(metadataIds, metadatas);
+    }
+
+    function _createClassMetadatas(uint256[] memory metadataIds, IERC3475.Metadata[] memory metadatas) internal {
         IDebondBond(debondBondAddress).createClassMetadataBatch(metadataIds, metadatas);
     }
 
-    function createClass(uint256 classId, uint256[] calldata metadataIds, IERC3475.Values[] calldata values) external onlyGovernance {
-        _createClass(classId, metadataIds, values);
+    function _createInitClassMetadatas() internal {
+        uint256[] memory metadataIds = new uint256[](4);
+        metadataIds[0] = symbolMetadataId;
+        metadataIds[1] = tokenAddressMetadataId;
+        metadataIds[2] = interestRateTypeMetadataId;
+        metadataIds[3] = periodMetadataId;
+
+        IERC3475.Metadata[] memory metadatas = new IERC3475.Metadata[](4);
+        metadatas[0] = IERC3475.Metadata("symbol", "string", "the collateral token's symbol");
+        metadatas[1] = IERC3475.Metadata("token address", "address", "the collateral token's address");
+        metadatas[2] = IERC3475.Metadata("interest rate type", "int", "the interest rate type");
+        metadatas[3] = IERC3475.Metadata("period", "int", "the base period for the class");
+        IDebondBond(debondBondAddress).createClassMetadataBatch(metadataIds, metadatas);
     }
 
-    function _createClass(uint256 classId, uint256[] calldata metadataIds, IERC3475.Values[] calldata values) internal {
-        uint interestRateTypeValue = uint256(interestRateType);
-        if (!tokenAddressExist(tokenAddress)) {
-            incrementTokenAddressCount();
-            uint _tokenAddressCount = tokenAddressCount();
-            setBondValueFromTokenAddress(tokenAddress, _tokenAddressCount);
-            setTokenAddressWithBondValue(_tokenAddressCount, tokenAddress);
-            setTokenAddressExists(tokenAddress, true);
-        }
-        uint tokenAddressValue = getBondValueFromTokenAddress(tokenAddress);
+    function createClass(uint256 classId, string memory symbol, address tokenAddress, InterestRateType interestRateType, uint256 period) external onlyGovernance {
+        _createClass(classId, symbol, tokenAddress, interestRateType, period);
+    }
 
-        uint256[] memory values = new uint[](3);
-        values[0] = tokenAddressValue;
-        values[1] = interestRateTypeValue;
-        values[2] = periodTimestamp;
-        IDebondBond(debondBondAddress).createClass(classId, _symbol, values);
+    function _createClass(uint256 classId, string memory symbol, address tokenAddress, InterestRateType interestRateType, uint256 period) internal {
+        (uint[] memory _metadataIds, IERC3475.Values[] memory _values) = mapClassValuesFrom(symbol, tokenAddress, interestRateType, period);
+        IDebondBond(debondBondAddress).createClass(classId, _metadataIds, _values);
         pushClassIdPerToken(tokenAddress, classId);
         addNewClassId(classId);
+        _createNonceMetadatas(classId);
+    }
+
+    function _createNonceMetadatas(uint256 classId) internal {
+        uint256[] memory metadataIds = new uint256[](2);
+        metadataIds[0] = issuanceDateMetadataId;
+        metadataIds[1] = maturityDateMetadataId;
+
+        IERC3475.Metadata[] memory metadatas = new IERC3475.Metadata[](2);
+        metadatas[0] = IERC3475.Metadata("issuance date", "int", "the issuance date of the bond");
+        metadatas[1] = IERC3475.Metadata("maturity date", "int", "the maturity date of the bond");
+        IDebondBond(debondBondAddress).createNonceMetadataBatch(classId, metadataIds, metadatas);
     }
 
     function issueBonds(address to, uint256 classId, uint256 amount) internal {
@@ -72,16 +131,17 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         (uint _lastNonceCreated,) = IDebondBond(debondBondAddress).getLastNonceCreated(classId);
         if (_nonceToCreate != _lastNonceCreated) {
             createNewNonce(classId, _nonceToCreate, instant);
-            (_lastNonceCreated,) = IDebondBond(debondBondAddress).getLastNonceCreated(classId);
+            _lastNonceCreated = _nonceToCreate;
         }
         _issue(to, classId, _lastNonceCreated, amount);
     }
 
     function createNewNonce(uint classId, uint newNonceId, uint creationTimestamp) private {
-        uint _newNonceId = newNonceId;
         (,, uint period) = classValues(classId);
-        _createNonce(classId, _newNonceId, creationTimestamp + period);
-        _updateLastNonce(classId, _newNonceId, creationTimestamp);
+        (uint[] memory _metadataIds, IERC3475.Values[] memory _values) = mapNonceValuesFrom(creationTimestamp, creationTimestamp + period);
+
+        IDebondBond(debondBondAddress).createNonce(classId, newNonceId, _metadataIds, _values);
+        _updateLastNonce(classId, newNonceId, creationTimestamp);
     }
 
     function _issue(address to, uint256 classId, uint256 nonceId, uint256 amount) internal {
@@ -115,13 +175,6 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
 
         progressRemaining = BsumNInterest < BsumNL ? 0 : 100;
         progressAchieved = 100 - progressRemaining;
-    }
-
-    function _createNonce(uint256 classId, uint256 nonceId, uint256 _maturityDate) internal {
-        uint256[] memory values = new uint[](2);
-        values[0] = block.timestamp;
-        values[1] = _maturityDate;
-        IDebondBond(debondBondAddress).createNonce(classId, nonceId, values);
     }
 
     function _updateLastNonce(uint classId, uint nonceId, uint createdAt) internal {
@@ -162,17 +215,15 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
 
 
     function classValues(uint256 classId) public view returns (address _tokenAddress, InterestRateType _interestRateType, uint256 _periodTimestamp) {
-        uint[] memory _classValues = IDebondBond(debondBondAddress).classValues(classId);
-
-        _interestRateType = _classValues[1] == 0 ? InterestRateType.FixedRate : InterestRateType.FloatingRate;
-        _tokenAddress = getTokenAddressFromBondValue(_classValues[0]);
-        _periodTimestamp = _classValues[2];
+        _tokenAddress = (IERC3475(debondBondAddress).classValues(classId, tokenAddressMetadataId)).addressValue;
+        uint interestType = (IERC3475(debondBondAddress).classValues(classId, interestRateTypeMetadataId)).uintValue;
+        _interestRateType = interestType == 0 ? InterestRateType.FixedRate : InterestRateType.FloatingRate;
+        _periodTimestamp = (IERC3475(debondBondAddress).classValues(classId, periodMetadataId)).uintValue;
     }
 
     function nonceValues(uint256 classId, uint256 nonceId) public view returns (uint256 _issuanceDate, uint256 _maturityDate) {
-        uint[] memory _nonceValues = IDebondBond(debondBondAddress).nonceValues(classId, nonceId);
-        _issuanceDate = _nonceValues[0];
-        _maturityDate = _nonceValues[1];
+        _issuanceDate = (IERC3475(debondBondAddress).nonceValues(classId, nonceId, issuanceDateMetadataId)).uintValue;
+        _maturityDate = (IERC3475(debondBondAddress).nonceValues(classId, nonceId, maturityDateMetadataId)).uintValue;
     }
 
     function _tokenTotalSupply(address tokenAddress) internal view returns (uint256) {
