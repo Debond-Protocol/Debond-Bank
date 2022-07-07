@@ -560,10 +560,10 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     function redeemBonds(
         uint classId,
         uint nonceId,
-        uint amount
+        uint amount //todo : on rajoute address to?
     ) external {
         //1. redeem the bonds (will fail if not maturity date exceeded)
-        //_redeemERC3475(msg.sender, classId, nonceId, amount);
+        _redeemERC3475(msg.sender, classId, nonceId, amount);
 
         (address tokenAddress,,) = classValues(classId);
         removeLiquidity(msg.sender, tokenAddress, amount);
@@ -578,11 +578,14 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         _redeemERC3475(msg.sender, wethClassId, nonceId, amountETH);
 
         (address tokenAddress,,) = classValues(wethClassId);
-        removeLiquidity(msg.sender, tokenAddress, amountETH);
+        removeLiquidity(address(this), tokenAddress, amountETH);
         IWeth(WETHAddress).withdraw(amountETH);
+        payable(msg.sender).transfer(amountETH);
+
     }
 
-    
+    fallback() external payable {}
+    receive() external payable {}
 
     function interestRate(
         uint _purchaseTokenClassId,

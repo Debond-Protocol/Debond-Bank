@@ -494,7 +494,7 @@ contract('Bank', async (accounts: string[]) => {
         expect( WETHbalanceOfAPM.toString()).to.equal(web3.utils.toWei('2', 'ether').toString());
     })
 
-    it('buyforDgovBondWithEth', async () => {
+    it.only('buyforDgovBondWithEth', async () => {
         
         await wethContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
         await bankContract.buyforDgovBondWithEth(10, 4, 0, 2000, buyer, {from: buyer, value: web3.utils.toWei('2', 'ether')});

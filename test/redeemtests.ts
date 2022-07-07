@@ -95,9 +95,16 @@ contract('Bank', async (accounts: string[]) => {
         
     })
 
-    it('stakeForDbitBondWithEthcthen redeem', async () => {
+    it.only('stakeForDbitBondWithEthcthen redeem', async () => {
         
         await wethContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
+        
+        let balancebeforeRedeem = await web3.eth.getBalance(buyer);
+        console.log ("balance avant " , balancebeforeRedeem.toString());
+        let balanceEthBankBefore = await web3.eth.getBalance(bankContract.address);
+        console.log ("balance avant " , balanceEthBankBefore.toString());
+
+
         await bankContract.stakeForDbitBondWithEth(10, DBIT_FIX_6MTH_CLASS_ID, 0, 2000, buyer, {from: buyer, value: web3.utils.toWei('2', 'ether')});
         
 
@@ -113,11 +120,21 @@ contract('Bank', async (accounts: string[]) => {
 
         expect( WETHbalanceOfAPM.toString()).to.equal(web3.utils.toWei('2', 'ether').toString());
 
-        await bankContract.redeemBondsETH(10, ETHNonce[0], web3.utils.toWei('3000', 'ether'), {from : buyer});
+        await bankContract.redeemBondsETH(10, ETHNonce[0], web3.utils.toWei('2', 'ether'), {from : buyer});
 
-        let balanceAfterRedeem = await usdcContract.balanceOf(buyer);
-        console.log ("balance après " , balanceAfterRedeem.toString());
-        expect( balanceAfterRedeem.toString()).to.equal(web3.utils.toWei('100000', 'ether').toString());
+        
+        let balanceAfterRedeem = await web3.eth.getBalance(buyer);
+        console.log ("balance après " , balanceAfterRedeem.toString());        
+        let balanceEthBankAfter = await web3.eth.getBalance(bankContract.address);
+        console.log ("balance après " , balanceEthBankAfter.toString());
+
+       
+        let v1 = parseFloat(web3.utils.fromWei(balanceAfterRedeem, "ether"));
+        let v2 = parseFloat(web3.utils.fromWei(balancebeforeRedeem, "ether"));
+        let v3 = v2-v1;
+        expect(v3).to.greaterThan(-0.01);
+
+
     })
 
     
