@@ -271,22 +271,6 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         IBankData(bankData).addNewClassId(classId);
     }
 
-    function setTokenAddressWithBondValue(uint value, address tokenAddress) internal {
-        IBankData(bankData).setTokenAddressWithBondValue(value, tokenAddress);
-    }
-
-    function setBondValueFromTokenAddress(address tokenAddress, uint value) internal {
-        IBankData(bankData).setBondValueFromTokenAddress(tokenAddress, value);
-    }
-
-    function setTokenAddressExists(address tokenAddress, bool exist) internal {
-        IBankData(bankData).setTokenAddressExists(tokenAddress, exist);
-    }
-
-    function incrementTokenAddressCount() internal {
-        IBankData(bankData).incrementTokenAddressCount();
-    }
-
     function setBenchmarkInterest(uint _benchmarkInterest) internal {
         IBankData(bankData).setBenchmarkInterest(_benchmarkInterest);
     }
@@ -307,24 +291,8 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         return IBankData(bankData).getClassIdsFromTokenAddress(tokenAddress);
     }
 
-    function getTokenAddressFromBondValue(uint value) public view returns (address) {
-        return IBankData(bankData).getTokenAddressFromBondValue(value);
-    }
-
     function getTokenTotalSupplyAtNonce(address tokenAddress, uint nonceId) public view returns (uint) {
         return IBankData(bankData).getTokenTotalSupplyAtNonce(tokenAddress, nonceId);
-    }
-
-    function getBondValueFromTokenAddress(address tokenAddress) public view returns (uint) {
-        return IBankData(bankData).getBondValueFromTokenAddress(tokenAddress);
-    }
-
-    function tokenAddressExist(address tokenAddress) public view returns (bool) {
-        return IBankData(bankData).tokenAddressExist(tokenAddress);
-    }
-
-    function tokenAddressCount() public view returns (uint) {
-        return IBankData(bankData).tokenAddressCount();
     }
 
     function getBenchmarkInterest() public view returns (uint) {

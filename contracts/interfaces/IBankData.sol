@@ -17,14 +17,6 @@ interface IBankData {
 
     function addNewClassId(uint classId) external;
 
-    function setTokenAddressWithBondValue(uint value, address tokenAddress) external;
-
-    function setBondValueFromTokenAddress(address tokenAddress, uint value) external;
-
-    function setTokenAddressExists(address tokenAddress, bool exist) external;
-
-    function incrementTokenAddressCount() external;
-
     function setBenchmarkInterest(uint benchmarkInterest) external;
 
 
@@ -40,15 +32,7 @@ interface IBankData {
 
     function getClassIdsFromTokenAddress(address tokenAddress) external view returns (uint[] memory);
 
-    function getTokenAddressFromBondValue(uint value) external view returns (address);
-
     function getTokenTotalSupplyAtNonce(address tokenAddress, uint nonceId) external view returns (uint);
-
-    function getBondValueFromTokenAddress(address tokenAddress) external view returns (uint);
-
-    function tokenAddressExist(address tokenAddress) external view returns (bool);
-
-    function tokenAddressCount() external view returns (uint);
 
     function getBenchmarkInterest() external view returns (uint);
 
