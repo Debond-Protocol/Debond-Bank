@@ -3,14 +3,24 @@
 This repository consist of the contracts  that manage the issuance and  redemption of bonds and interfacing with the APM to permit addition/subtraction of the liquidity respectively, thus being the core part of protocol that  interfaces with Bonds contract.
 
 
-It consist of the following main contracts :
-
+## Contracts
 1.  Bank Contract :   This contract acts as custodian of bonds by allowing buy/stake bonds with their collaterals being  ERC20 (DBIT/DGOV or other whitelisted tokens)/WETH . Only the class of bonds that are agreed upon by the governance can be issued by the functions of the contract.  Bonds are instantiated into different class  based upon the underlying collateral, nature of issuance/ redemption condition (fixed/floating rate bonds). 
 
 
+2. BankBondManager: abstract contract inherited by Bank contract  for interacting directly with the  DebondBond contract to issue bonds, creating nonce , finding the bondProgress towards maturity, etc. 
 
-##TODO: add miro diagram.
-Following is the workflow of the contract:
+3. BankData: Storage contract with  bank structures defined below: 
+```solidity
+
+    mapping(uint256 => mapping(uint256 => bool)) _canPurchase; // mapping(class(BondERC20) => class(DebondTokenBond) => bool isPurchasable).
+
+    // other structures for finding the average liquidity and other parameters. 
+
+    //classIdsPerTokenAddress(ERC20 => associated classIds)....etc
+
+```
+
+## Workflow:
     1. first User / external contract selects the type of bond that is to be purchased by two types:
         - Staking bonds allows users to earn principal interest in the form of DBIT at the time of issuance of the bonds.   user puts some amount of  WETH/ERC20 collateral to get similar amount of ERC20-Bonds and  some part of  DBIT
             - DBIT  that need to be minted is determined by the ([CDP formula value in USD]() * rateOfInterest).
@@ -36,7 +46,6 @@ Following is the workflow of the contract:
     ) external payable ensure(deadline);
     
         ```
-
         - Buying bonds allows issuance of bonds in pair of ERC20 with either DBIT/DGOV. when user deposits the collateral of some amount , he gets equal amount of both type of bonds .  
 
 
@@ -46,20 +55,9 @@ Following is the workflow of the contract:
         function getETA(uint256 classId, uint256 nonceId) external view returns (uint256);
         ```
     which will give time in  seconds when the bond (both fixed rate / floating rate) can be redeemed. 
-        ```NOTE: for fixed rate its consistent whereas for floating rate it will be an approximation and will really depend on the current availablity of liquidity for bonds using the formula ```
+        ```
 
-
-2. BankBondManager : this contract implements the core logic for integrating the functions of Debond-ERC3475, for instance :
-    - instantiating the bond class.
-    - overriding the implementation of ERC-3475 implementation like getProgress() , classValues and NonceValues.
-    - nonce creation and nonce generation.  
-
-3. APMRouter: 
-    - This  acts as router for the APM contract, and provides the API's for swapping the ERC20's of different bond classes. 
-
-
-
-
+**NOTE:** for fixed rate its consistent whereas for floating rate it will be an approximation and will really depend on the current availablity of liquidity for bonds using the formula ```
 
 ## Security Considerations: 
 

@@ -1,0 +1,26 @@
+name: NPM package.
+
+
+on: [push]
+branches: [main,master]
+
+
+jobs: 
+  publish:
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with: 
+          node-version: [14.X]
+      
+      - name: installing packages
+        run: npm install 
+      - name: compiling the packages
+        run: npx truffle compile
+
+      - name: generating the types
+        run: npm run generate-types
+
+      - name: running the tests
+        run: truffle test 

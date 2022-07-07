@@ -5,11 +5,8 @@ import "apm-contracts/interfaces/IAPM.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
-
 abstract contract APMRouter {
-
     IAPM apm;
-
     constructor(
         address apmAddress
     ) {
