@@ -7,6 +7,7 @@ const WETH = artifacts.require("WETH");
 const FakeOracle = artifacts.require("FakeOracle");
 
 const Bank = artifacts.require("Bank");
+const BankData = artifacts.require("BankData");
 const DebondBondTest = artifacts.require("DebondBondTest");
 const APMTest = artifacts.require("APMTest");
 
@@ -32,6 +33,12 @@ module.exports = async function (deployer, networks, accounts) {
   await deployer.deploy(APMTest, governanceAddress);
   const apmInstance = await APMTest.deployed();
 
+
+  let d = new Date();
+  d.setHours(0,0,0,0);
+  await deployer.deploy(BankData, governanceAddress, governanceAddress, d.getTime()/10**3);
+  const bankDataInstance = await BankData.deployed();
+
   await deployer.deploy(DebondBondTest, governanceAddress);
   const debondBondInstance = await DebondBondTest.deployed()
 
@@ -43,9 +50,6 @@ module.exports = async function (deployer, networks, accounts) {
   const USDCAddress = USDCInstance.address
   const WETHAddress = WETHInstance.address
 
-  let d = new Date();
-  d.setHours(0,0,0,0);
-
   console.log(d.getTime());
   await deployer.deploy(Bank,
       governanceAddress,
@@ -56,11 +60,12 @@ module.exports = async function (deployer, networks, accounts) {
       oracleAddress,
       USDCAddress,
       WETHAddress,
-      d.getTime()/10**3);  //oracle and usdc for polygon
+      bankDataInstance.address);  //oracle and usdc for polygon
 
   const bankInstance = await Bank.deployed();
   await apmInstance.setBankAddress(bankInstance.address);
   await debondBondInstance.setBankAddress(bankInstance.address);
+  await bankDataInstance.setBankAddress(bankInstance.address);
   await DBITInstance.setBankAddress(bankInstance.address);
   await DGOVInstance.setBankAddress(bankInstance.address);
   await bankInstance.initializeApp(DAIInstance.address, USDTInstance.address);
