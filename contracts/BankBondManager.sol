@@ -30,7 +30,7 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
     uint public constant issuanceDateMetadataId = 0;
     uint public constant maturityDateMetadataId = 1;
 
-    uint public constant EPOCH = 30;
+    uint public constant EPOCH = 1 days; // should Be 24 hours
 
 
     constructor(
@@ -40,6 +40,70 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
     ) GovernanceOwnable(_governanceAddress) {
         debondBondAddress = _debondBondAddress;
         bankData = _bankData;
+
+        uint SIX_M_PERIOD = 180 * EPOCH;
+        // 1 hour period for tests
+
+        _createInitClassMetadatas();
+
+        _createClass(0, "DBIT", DBITAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
+        _createClass(1, "USDC", USDCAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
+        _createClass(2, "USDT",usdtAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
+        _createClass(3, "DAI", daiAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
+        _createClass(4, "DGOV", DGOVAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
+        _createClass(10, "WETH", WETHAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
+
+        _createClass(5, "DBIT", DBITAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
+        _createClass(6, "USDC", USDCAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
+        _createClass(7, "USDT", usdtAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
+        _createClass(8, "DAI", daiAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
+        _createClass(9, "DGOV", DGOVAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
+        _createClass(11, "WETH", WETHAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
+
+
+        _updateCanPurchase(1, 0, true);
+        _updateCanPurchase(2, 0, true);
+        _updateCanPurchase(3, 0, true);
+        _updateCanPurchase(10, 0, true);
+        _updateCanPurchase(0, 4, true);
+        _updateCanPurchase(1, 4, true);
+        _updateCanPurchase(2, 4, true);
+        _updateCanPurchase(3, 4, true);
+        _updateCanPurchase(10, 4, true);
+
+        _updateCanPurchase(6, 5, true);
+        _updateCanPurchase(7, 5, true);
+        _updateCanPurchase(8, 5, true);
+        _updateCanPurchase(11, 5, true);
+        _updateCanPurchase(5, 9, true);
+        _updateCanPurchase(6, 9, true);
+        _updateCanPurchase(7, 9, true);
+        _updateCanPurchase(8, 9, true);
+        _updateCanPurchase(11, 9, true);
+    }
+
+    function setBankData(address _bankData) external onlyGovernance {
+        bankData = _bankData;
+    }
+
+    function updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) external onlyGovernance {
+        _updateCanPurchase(classIdIn, classIdOut, _canPurchase);
+    }
+
+    function _updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) private {
+        IBankData(bankData).updateCanPurchase(classIdIn, classIdOut, _canPurchase);
+    }
+
+    function createClassMetadatas(uint256[] memory metadataIds, IERC3475.Metadata[] memory metadatas) external onlyGovernance {
+        _createClassMetadatas(metadataIds, metadatas);
+    }
+
+    function _createClassMetadatas(uint256[] memory metadataIds, IERC3475.Metadata[] memory metadatas) internal {
+        IDebondBond(debondBondAddress).createClassMetadataBatch(metadataIds, metadatas);
+    }
+
+    function canPurchase(uint classIdIn, uint classIdOut) public view returns (bool) {
+        return IBankData(bankData).canPurchase(classIdIn, classIdOut);
     }
 
     function mapClassValuesFrom(
@@ -47,7 +111,7 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         address tokenAddress,
         InterestRateType interestRateType,
         uint256 period
-    ) internal pure returns (uint[] memory, IERC3475.Values[] memory) {
+    ) private pure returns (uint[] memory, IERC3475.Values[] memory) {
         uint[] memory _metadataIds = new uint[](4);
         _metadataIds[0] = symbolMetadataId;
         _metadataIds[1] = tokenAddressMetadataId;
@@ -65,7 +129,7 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
     function mapNonceValuesFrom(
         uint256 issuanceDate,
         uint256 maturityDate
-    ) internal pure returns (uint[] memory, IERC3475.Values[] memory) {
+    ) private pure returns (uint[] memory, IERC3475.Values[] memory) {
         uint[] memory _metadataIds = new uint[](2);
         _metadataIds[0] = issuanceDateMetadataId;
         _metadataIds[1] = maturityDateMetadataId;
@@ -77,15 +141,7 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         return (_metadataIds, _values);
     }
 
-    function createClassMetadatas(uint256[] memory metadataIds, IERC3475.Metadata[] memory metadatas) external onlyGovernance {
-        _createClassMetadatas(metadataIds, metadatas);
-    }
-
-    function _createClassMetadatas(uint256[] memory metadataIds, IERC3475.Metadata[] memory metadatas) internal {
-        IDebondBond(debondBondAddress).createClassMetadataBatch(metadataIds, metadatas);
-    }
-
-    function _createInitClassMetadatas() internal {
+    function _createInitClassMetadatas() private {
         uint256[] memory metadataIds = new uint256[](4);
         metadataIds[0] = symbolMetadataId;
         metadataIds[1] = tokenAddressMetadataId;
@@ -104,7 +160,7 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         _createClass(classId, symbol, tokenAddress, interestRateType, period);
     }
 
-    function _createClass(uint256 classId, string memory symbol, address tokenAddress, InterestRateType interestRateType, uint256 period) internal {
+    function _createClass(uint256 classId, string memory symbol, address tokenAddress, InterestRateType interestRateType, uint256 period) private {
         (uint[] memory _metadataIds, IERC3475.Values[] memory _values) = mapClassValuesFrom(symbol, tokenAddress, interestRateType, period);
         IDebondBond(debondBondAddress).createClass(classId, _metadataIds, _values);
         pushClassIdPerToken(tokenAddress, classId);
@@ -112,7 +168,7 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         _createNonceMetadatas(classId);
     }
 
-    function _createNonceMetadatas(uint256 classId) internal {
+    function _createNonceMetadatas(uint256 classId) private {
         uint256[] memory metadataIds = new uint256[](2);
         metadataIds[0] = issuanceDateMetadataId;
         metadataIds[1] = maturityDateMetadataId;
@@ -123,7 +179,7 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         IDebondBond(debondBondAddress).createNonceMetadataBatch(classId, metadataIds, metadatas);
     }
 
-    function issueBonds(address to, uint256 classId, uint256 amount) internal {
+    function issueBonds(address to, uint256 classId, uint256 amount) external onlyBank {
         uint instant = block.timestamp;
         uint _nowNonce = getNonceFromDate(block.timestamp);
         (,, uint period) = classValues(classId);

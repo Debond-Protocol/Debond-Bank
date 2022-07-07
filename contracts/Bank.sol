@@ -34,7 +34,7 @@ import "./APMRouter.sol";
 
 //todo : grammaire( _ internal, majuscules etc), commentaires
 
-contract Bank is APMRouter, BankBondManager, Ownable {
+contract Bank is APMRouter, BankBondManager {
 
     using DebondMath for uint256;
     using SafeERC20 for IERC20;
@@ -46,9 +46,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     address immutable DGOVAddress;
     address immutable USDCAddress;
     address immutable WETHAddress;
-
-    bool init;
-
     constructor(
         address governanceAddress,
         address apmAddress,
@@ -69,69 +66,12 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
     }
 
-    function initializeApp(address daiAddress, address usdtAddress) external onlyOwner {
-        require(!init, "BankContract Error: already initiated");
-        init = true;
-        uint SIX_M_PERIOD = 180 * EPOCH;
-        // 1 hour period for tests
-
-        _createInitClassMetadatas();
-
-        _createClass(0, "DBIT", DBITAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
-        _createClass(1, "USDC", USDCAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
-        _createClass(2, "USDT",usdtAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
-        _createClass(3, "DAI", daiAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
-        _createClass(4, "DGOV", DGOVAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
-        _createClass(10, "WETH", WETHAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
-
-        _createClass(5, "DBIT", DBITAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
-        _createClass(6, "USDC", USDCAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
-        _createClass(7, "USDT", usdtAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
-        _createClass(8, "DAI", daiAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
-        _createClass(9, "DGOV", DGOVAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
-        _createClass(11, "WETH", WETHAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
-
-
-        _updateCanPurchase(1, 0, true);
-        _updateCanPurchase(2, 0, true);
-        _updateCanPurchase(3, 0, true);
-        _updateCanPurchase(10, 0, true);
-        _updateCanPurchase(0, 4, true);
-        _updateCanPurchase(1, 4, true);
-        _updateCanPurchase(2, 4, true);
-        _updateCanPurchase(3, 4, true);
-        _updateCanPurchase(10, 4, true);
-
-        _updateCanPurchase(6, 5, true);
-        _updateCanPurchase(7, 5, true);
-        _updateCanPurchase(8, 5, true);
-        _updateCanPurchase(11, 5, true);
-        _updateCanPurchase(5, 9, true);
-        _updateCanPurchase(6, 9, true);
-        _updateCanPurchase(7, 9, true);
-        _updateCanPurchase(8, 9, true);
-        _updateCanPurchase(11, 9, true);
-    }
-
-
-    function setBankData(address _bankData) external onlyGovernance {
-        bankData = _bankData;
-    }
-
 
     modifier ensure(uint deadline) {
         if (deadline >= block.timestamp) {
             revert Deadline(deadline, block.timestamp);
         }
         _;
-    }
-
-    function updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) external onlyGovernance {
-        _updateCanPurchase(classIdIn, classIdOut, _canPurchase);
-    }
-
-    function _updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) internal {
-        IBankData(bankData).updateCanPurchase(classIdIn, classIdOut, _canPurchase);
     }
 
 
@@ -707,10 +647,5 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     function convertDbitToDgov(uint256 _amountDBIT) private view returns (uint256 amountDGOV) {
         uint256 rate = _cdpDbitToDgov();
         amountDGOV = _amountDBIT.mul(rate);
-    }
-
-
-    function canPurchase(uint classIdIn, uint classIdOut) public view returns (bool) {
-        return IBankData(bankData).canPurchase(classIdIn, classIdOut);
     }
 }
