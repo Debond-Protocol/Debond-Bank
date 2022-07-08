@@ -157,10 +157,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         * @param minRate minimum Rate that a user is willing to accept. similar to slippage    
         */
    
-
-
-
-
 //############buybonds staking method  dbit with else (else is Not eth, not dgov, not dbit)  ##############
 
     function stakeForDbitBondWithElse(

@@ -56,7 +56,6 @@ contract('Bank', async (accounts: string[]) => {
         const classes = (await bankContract.getClasses()).map(c => c.toNumber())
         console.log("classes: " + classes)
     })
-    
 
     it('stakeForDbitBondWithElse', async () => {
 
@@ -157,7 +156,6 @@ contract('Bank', async (accounts: string[]) => {
 
         let APMbalanceDGOV = await dgovContract.balanceOf(apmContract.address);
         console.log("apmbalanceusdc :" + APMbalanceDGOV.toString());
-
         let APMbalanceDBIT = await dbitContract.balanceOf(apmContract.address);
         console.log("apmbalanceDBIT :" , APMbalanceDBIT.toString());
         expect( APMbalanceDBIT.toString()).to.equal(web3.utils.toWei('3000', 'ether').toString());
@@ -494,7 +492,7 @@ contract('Bank', async (accounts: string[]) => {
         expect( WETHbalanceOfAPM.toString()).to.equal(web3.utils.toWei('2', 'ether').toString());
     })
 
-    it.only('buyforDgovBondWithEth', async () => {
+    it('buyforDgovBondWithEth', async () => {
         
         await wethContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
         await bankContract.buyforDgovBondWithEth(10, 4, 0, 2000, buyer, {from: buyer, value: web3.utils.toWei('2', 'ether')});
