@@ -9,13 +9,12 @@ import "debond-erc3475-contracts/interfaces/IProgressCalculator.sol";
 import "erc3475/IERC3475.sol";
 import "./libraries/DebondMath.sol";
 import "./interfaces/IBankData.sol";
+import "./interfaces/IBankBondManager.sol";
 
 
-abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
+abstract contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwnable {
 
     using DebondMath for uint256;
-
-    enum InterestRateType {FixedRate, FloatingRate}
 
     address debondBondAddress;
     address bankData;
@@ -82,8 +81,62 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         _updateCanPurchase(11, 9, true);
     }
 
+    modifier onlyBank {
+        require(msg.sender == bankAddress, "BankBondManager Error, only Bank Authorised");
+        _;
+    }
+
     function setBankData(address _bankData) external onlyGovernance {
         bankData = _bankData;
+    }
+
+    function setBenchmarkInterest(uint _benchmarkInterest) external onlyGovernance {
+        IBankData(bankData).setBenchmarkInterest(_benchmarkInterest);
+    }
+
+    function issueBonds(address to, uint256[] memory classIds, uint256[] memory amounts) external onlyBank {
+        require(classIds.length == amounts.length, "BankBondManager: Incorrect Inputs");
+        uint instant = block.timestamp;
+        uint _nowNonce = getNonceFromDate(block.timestamp);
+        uint _nonceToCreate = _nowNonce + getNonceFromPeriod(period);
+        uint[] memory nonceIds = new uint[](classIds.length);
+        IERC3475.Transaction[] memory transactions = new IERC3475.Transaction[](classIds.length);
+        for (uint i; i < classIds.length; i++) {
+            (,, uint period) = classValues(classIds[i]);
+            (uint _lastNonceCreated,) = IDebondBond(debondBondAddress).getLastNonceCreated(classIds[i]);
+            if (_nonceToCreate != _lastNonceCreated) {
+                createNewNonce(classIds[i], _nonceToCreate, instant);
+                _lastNonceCreated = _nonceToCreate;
+            }
+            nonceIds[i] = _lastNonceCreated;
+
+            (address tokenAddress, InterestRateType interestRateType,) = classValues(classIds[i]);
+            setTokenInterestRateSupply(tokenAddress, interestRateType, amount);
+            setTokenTotalSupplyAtNonce(tokenAddress, nonceIds[i], _tokenTotalSupply(tokenAddress));
+
+            IERC3475.Transaction memory transaction = IERC3475.Transaction(classIds[i], nonceIds[i], amounts[i]);
+            transactions[i] = transaction;
+            IDebondBond(debondBondAddress).issue(to, transactions);
+        }
+
+        _issue(to, classIds, nonceIds, amounts);
+    }
+
+    function getProgress(uint256 classId, uint256 nonceId) external view returns (uint256 progressAchieved, uint256 progressRemaining) {
+        (address _tokenAddress, InterestRateType _interestRateType, uint _periodTimestamp) = classValues(classId);
+        (, uint256 _maturityDate) = nonceValues(classId, nonceId);
+        if (_interestRateType == InterestRateType.FixedRate) {
+            progressRemaining = _maturityDate <= block.timestamp ? 0 : (_maturityDate - block.timestamp) * 100 / _periodTimestamp;
+            progressAchieved = 100 - progressRemaining;
+            return (progressAchieved, progressRemaining);
+        }
+
+        uint BsumNL = _tokenTotalSupply(_tokenAddress);
+        uint BsumN = getTokenTotalSupplyAtNonce(_tokenAddress, nonceId);
+        uint BsumNInterest = BsumN + BsumN.mul(getBenchmarkInterest());
+
+        progressRemaining = BsumNInterest < BsumNL ? 0 : 100;
+        progressAchieved = 100 - progressRemaining;
     }
 
     function updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) external onlyGovernance {
@@ -102,16 +155,7 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         IDebondBond(debondBondAddress).createClassMetadataBatch(metadataIds, metadatas);
     }
 
-    function canPurchase(uint classIdIn, uint classIdOut) public view returns (bool) {
-        return IBankData(bankData).canPurchase(classIdIn, classIdOut);
-    }
-
-    function mapClassValuesFrom(
-        string memory symbol,
-        address tokenAddress,
-        InterestRateType interestRateType,
-        uint256 period
-    ) private pure returns (uint[] memory, IERC3475.Values[] memory) {
+    function mapClassValuesFrom(string memory symbol, address tokenAddress, InterestRateType interestRateType, uint256 period) private pure returns (uint[] memory, IERC3475.Values[] memory) {
         uint[] memory _metadataIds = new uint[](4);
         _metadataIds[0] = symbolMetadataId;
         _metadataIds[1] = tokenAddressMetadataId;
@@ -126,10 +170,7 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         return  (_metadataIds, _values);
     }
 
-    function mapNonceValuesFrom(
-        uint256 issuanceDate,
-        uint256 maturityDate
-    ) private pure returns (uint[] memory, IERC3475.Values[] memory) {
+    function mapNonceValuesFrom(uint256 issuanceDate, uint256 maturityDate) private pure returns (uint[] memory, IERC3475.Values[] memory) {
         uint[] memory _metadataIds = new uint[](2);
         _metadataIds[0] = issuanceDateMetadataId;
         _metadataIds[1] = maturityDateMetadataId;
@@ -179,19 +220,6 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         IDebondBond(debondBondAddress).createNonceMetadataBatch(classId, metadataIds, metadatas);
     }
 
-    function issueBonds(address to, uint256 classId, uint256 amount) external onlyBank {
-        uint instant = block.timestamp;
-        uint _nowNonce = getNonceFromDate(block.timestamp);
-        (,, uint period) = classValues(classId);
-        uint _nonceToCreate = _nowNonce + getNonceFromPeriod(period);
-        (uint _lastNonceCreated,) = IDebondBond(debondBondAddress).getLastNonceCreated(classId);
-        if (_nonceToCreate != _lastNonceCreated) {
-            createNewNonce(classId, _nonceToCreate, instant);
-            _lastNonceCreated = _nonceToCreate;
-        }
-        _issue(to, classId, _lastNonceCreated, amount);
-    }
-
     function createNewNonce(uint classId, uint newNonceId, uint creationTimestamp) private {
         (,, uint period) = classValues(classId);
         (uint[] memory _metadataIds, IERC3475.Values[] memory _values) = mapNonceValuesFrom(creationTimestamp, creationTimestamp + period);
@@ -200,15 +228,19 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         _updateLastNonce(classId, newNonceId, creationTimestamp);
     }
 
-    function _issue(address to, uint256 classId, uint256 nonceId, uint256 amount) internal {
-        (address tokenAddress, InterestRateType interestRateType,) = classValues(classId);
-        _issueERC3475(to, classId, nonceId, amount);
-        setTokenInterestRateSupply(tokenAddress, interestRateType, amount);
-        setTokenTotalSupplyAtNonce(tokenAddress, nonceId, _tokenTotalSupply(tokenAddress));
+    function _issue(address to, uint256[] memory classIds, uint256[] memory nonceIds, uint256[] memory amounts) private {
+//        require(classIds.length == nonceIds.length, "BankBondManager: Incorrect Inputs");
+        for (uint i; i < classIds.length; i++) {
+            (address tokenAddress, InterestRateType interestRateType,) = classValues(classIds[i]);
+            setTokenInterestRateSupply(tokenAddress, interestRateType, amount);
+            setTokenTotalSupplyAtNonce(tokenAddress, nonceIds[i], _tokenTotalSupply(tokenAddress));
+        }
+        _issueERC3475(to, classIds, nonceIds, amounts);
+
 
     }
 
-    function getNonceFromDate(uint256 date) public view returns (uint256) {
+    function getNonceFromDate(uint256 date) private view returns (uint256) {
         return getNonceFromPeriod(date - getBaseTimestamp());
     }
 
@@ -216,29 +248,10 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         return period / EPOCH;
     }
 
-    function getProgress(uint256 classId, uint256 nonceId) external view returns (uint256 progressAchieved, uint256 progressRemaining) {
-        (address _tokenAddress, InterestRateType _interestRateType, uint _periodTimestamp) = classValues(classId);
-        (, uint256 _maturityDate) = nonceValues(classId, nonceId);
-        if (_interestRateType == InterestRateType.FixedRate) {
-            progressRemaining = _maturityDate <= block.timestamp ? 0 : (_maturityDate - block.timestamp) * 100 / _periodTimestamp;
-            progressAchieved = 100 - progressRemaining;
-            return (progressAchieved, progressRemaining);
-        }
-
-        uint BsumNL = _tokenTotalSupply(_tokenAddress);
-        uint BsumN = getTokenTotalSupplyAtNonce(_tokenAddress, nonceId);
-        uint BsumNInterest = BsumN + BsumN.mul(getBenchmarkInterest());
-
-        progressRemaining = BsumNInterest < BsumNL ? 0 : 100;
-        progressAchieved = 100 - progressRemaining;
-    }
-
     function _updateLastNonce(uint classId, uint nonceId, uint createdAt) internal {
         IDebondBond(debondBondAddress).updateLastNonce(classId, nonceId, createdAt);
     }
-    // READS
 
-    //TODO TEST
     function getETA(uint256 classId, uint256 nonceId) external view returns (uint256) {
         (address _tokenAddress, InterestRateType _interestRateType,) = classValues(classId);
         (, uint256 _maturityDate) = nonceValues(classId, nonceId);
@@ -269,7 +282,6 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         }
     }
 
-
     function classValues(uint256 classId) public view returns (address _tokenAddress, InterestRateType _interestRateType, uint256 _periodTimestamp) {
         _tokenAddress = (IERC3475(debondBondAddress).classValues(classId, tokenAddressMetadataId)).addressValue;
         uint interestType = (IERC3475(debondBondAddress).classValues(classId, interestRateTypeMetadataId)).uintValue;
@@ -297,13 +309,6 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         }
     }
 
-    function _issueERC3475(address to, uint classId, uint nonceId, uint amount) internal {
-        IERC3475.Transaction[] memory transactions = new IERC3475.Transaction[](1);
-        IERC3475.Transaction memory transaction = IERC3475.Transaction(classId, nonceId, amount);
-        transactions[0] = transaction;
-        IDebondBond(debondBondAddress).issue(to, transactions);
-    }
-
     function _redeemERC3475(address from, uint classId, uint nonceId, uint amount) internal {
         IERC3475.Transaction[] memory transactions = new IERC3475.Transaction[](1);
         IERC3475.Transaction memory transaction = IERC3475.Transaction(classId, nonceId, amount);
@@ -311,7 +316,7 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         IDebondBond(debondBondAddress).redeem(from, transactions);
     }
 
-    function setTokenInterestRateSupply(address tokenAddress, BankBondManager.InterestRateType interestRateType, uint amount) internal {
+    function setTokenInterestRateSupply(address tokenAddress, InterestRateType interestRateType, uint amount) internal {
         IBankData(bankData).setTokenInterestRateSupply(tokenAddress, interestRateType, amount);
     }
 
@@ -319,27 +324,23 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
         IBankData(bankData).setTokenTotalSupplyAtNonce(tokenAddress, nonceId, amount);
     }
 
-    function pushClassIdPerToken(address tokenAddress, uint classId) internal {
+    function pushClassIdPerToken(address tokenAddress, uint classId) private {
         IBankData(bankData).pushClassIdPerToken(tokenAddress, classId);
     }
 
-    function addNewClassId(uint classId) internal {
+    function addNewClassId(uint classId) private {
         IBankData(bankData).addNewClassId(classId);
-    }
-
-    function setBenchmarkInterest(uint _benchmarkInterest) internal {
-        IBankData(bankData).setBenchmarkInterest(_benchmarkInterest);
     }
 
     function getBaseTimestamp() public view returns (uint) {
         return IBankData(bankData).getBaseTimestamp();
     }
 
-    function getClasses() public view returns (uint[] memory) {
+    function getClasses() external view returns (uint[] memory) {
         return IBankData(bankData).getClasses();
     }
 
-    function getTokenInterestRateSupply(address tokenAddress, BankBondManager.InterestRateType interestRateType) public view returns (uint) {
+    function getTokenInterestRateSupply(address tokenAddress, InterestRateType interestRateType) public view returns (uint) {
         return IBankData(bankData).getTokenInterestRateSupply(tokenAddress, interestRateType);
     }
 
@@ -353,6 +354,33 @@ abstract contract BankBondManager is IProgressCalculator, GovernanceOwnable {
 
     function getBenchmarkInterest() public view returns (uint) {
         return IBankData(bankData).getBenchmarkInterest();
+    }
+
+    function getInterestRate(uint classId, uint amount) external view returns (uint rate) {
+        (address tokenAddress, InterestRateType interestRateType,) = classValues(classId);
+        (uint fixRateSupply, uint floatRateSupply) = _getSupplies(tokenAddress, interestRateType, amount);
+
+        uint fixRate;
+        uint floatRate;
+        uint oneTokenToUSDValue = _convertTokenToUsd(1 ether, tokenAddress);
+        if ((fixRateSupply.mul(oneTokenToUSDValue)) < 100_000 ether || (floatRateSupply.mul(oneTokenToUSDValue)) < 100_000 ether) {
+            (fixRate, floatRate) = _getDefaultRate();
+        } else {
+            (fixRate, floatRate) = _getCalculatedRate(fixRateSupply, floatRateSupply);
+        }
+        rate = interestRateType == InterestRateType.FixedRate ? fixRate : floatRate;
+    }
+
+    function _getCalculatedRate(uint fixRateSupply, uint floatRateSupply) private view returns (uint fixedRate, uint floatingRate) {
+        uint benchmarkInterest = getBenchmarkInterest();
+        floatingRate = DebondMath.floatingInterestRate(fixRateSupply, floatRateSupply, benchmarkInterest);
+        fixedRate = 2 * benchmarkInterest - floatingRate;
+    }
+
+    function _getDefaultRate() private view returns (uint fixRate, uint floatRate) {
+        uint benchmarkInterest = getBenchmarkInterest();
+        fixRate = 2 * benchmarkInterest / 3;
+        floatRate = 2 * fixRate;
     }
 
 

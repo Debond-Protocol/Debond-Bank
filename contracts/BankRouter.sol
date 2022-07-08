@@ -2,25 +2,34 @@ pragma solidity ^0.8.0;
 
 // SPDX-License-Identifier: apache 2.0
 import "debond-apm-contracts/interfaces/IAPM.sol";
+import "debond-governance-contracts/utils/GovernanceOwnable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./interfaces/IBankRouter.sol";
 
 
-
-abstract contract APMRouter {
+contract BankRouter is IBankRouter, GovernanceOwnable {
 
     IAPM apm;
+    address bankAddress;
 
     constructor(
-        address apmAddress
+        address _apmAddress,
+        address _bankAddress
     ) {
-        apm = IAPM(apmAddress);
+        apm = IAPM(_apmAddress);
+        bankAddress = _bankAddress;
+    }
+
+    modifier onlyBank {
+        require(msg.sender == bankAddress, "BankAPMRouter Error, only Bank Authorised");
+        _;
     }
 
     function updateWhenAddLiquidity(
         uint _amountA,
         uint _amountB,
         address _tokenA,
-        address _tokenB) internal {
+        address _tokenB) external onlyBank {
         apm.updateWhenAddLiquidity(_amountA, _amountB, _tokenA, _tokenB);
     }
     function swapExactTokensForTokens(
@@ -36,15 +45,19 @@ abstract contract APMRouter {
         _swap(amounts, path, to);
     }
 
-    function removeLiquidity(address _to, address tokenAddress, uint amount) internal {
+    function removeLiquidity(address _to, address tokenAddress, uint amount) external onlyBank {
         apm.removeLiquidity(_to, tokenAddress, amount);
     }
 
-    function getReserves(address tokenA, address tokenB) internal view returns (uint _reserveA, uint _reserveB) {
+    function addLiquidity(address _to, address tokenAddress, uint amount) external onlyBank {
+        apm.removeLiquidity(_to, tokenAddress, amount);
+    }
+
+    function getReserves(address tokenA, address tokenB) external view returns (uint _reserveA, uint _reserveB) {
         (_reserveA, _reserveB) = apm.getReserves(tokenA, tokenB);
     }
 
-    function _swap(uint[] memory amounts, address[] memory path, address to) internal virtual {
+    function _swap(uint[] memory amounts, address[] memory path, address to) private {
         for (uint i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
             uint amountOut = amounts[i + 1];
