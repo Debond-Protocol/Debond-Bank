@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 // SPDX-License-Identifier: apache 2.0
 import "apm-contracts/interfaces/IAPM.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import './interfaces/IWeth.sol';
 
 
 
@@ -10,10 +11,14 @@ abstract contract APMRouter {
 
     IAPM apm;
 
+    address immutable WETHAddress;
+
     constructor(
-        address apmAddress
+        address apmAddress,
+        address _wethAddress
     ) {
         apm = IAPM(apmAddress);
+        WETHAddress = _wethAddress;
     }
 
     function updateWhenAddLiquidity(
@@ -41,13 +46,13 @@ abstract contract APMRouter {
         address[] calldata path,
         address to
     ) external {
-        require(path[path.length - 1] == Weth, 'APMRouter: INVALID_PATH');
+        require(path[path.length - 1] == WETHAddress, 'APMRouter: INVALID_PATH');
         uint[] memory amounts = apm.getAmountsOut(amountIn, path);
         require(amounts[amounts.length - 1] >= amountEthMin, 'APMRouter: INSUFFICIENT_OUTPUT_AMOUNT');
 
         IERC20(path[0]).transferFrom(msg.sender, address(apm), amounts[0]);
         _swap(amounts, path, address(this));
-        Iweth(Weth).withdraw(amounts[amounts.length - 1]);
+        IWeth(WETHAddress).withdraw(amounts[amounts.length - 1]);
         payable(to).transfer(amounts[amounts.length - 1]);
     }
     function swapExactEthForTokens(
@@ -56,7 +61,7 @@ abstract contract APMRouter {
         address[] calldata path,
         address to
     ) external {
-        require(path[0] == WETH, 'APMRouter: INVALID_PATH');
+        require(path[0] == WETHAddress, 'APMRouter: INVALID_PATH');
         uint[] memory amounts = apm.getAmountsOut(amountIn, path);
         require(amounts[amounts.length - 1] >= amountOutMin, 'APMRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         IWeth(WETHAddress).deposit{value : amountIn}();

@@ -95,7 +95,7 @@ contract('Bank', async (accounts: string[]) => {
         
     })
 
-    it.only('stakeForDbitBondWithEthcthen redeem', async () => {
+    it.only('stakeForDbitBondWithEth then redeem', async () => {
         
         await wethContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
         

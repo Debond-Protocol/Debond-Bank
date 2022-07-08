@@ -45,7 +45,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     address immutable DBITAddress;
     address immutable DGOVAddress;
     address immutable USDCAddress;
-    address immutable WETHAddress;
+    //address immutable WETHAddress;
 
     bool init;
 
@@ -59,12 +59,12 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         address usdcAddress,
         address _weth,
         address _bankData
-    ) APMRouter(apmAddress) BankBondManager(governanceAddress, bondAddress, _bankData){
+    ) APMRouter(apmAddress, _weth) BankBondManager(governanceAddress, bondAddress, _bankData){
         DBITAddress = _DBITAddress;
         DGOVAddress = _DGOVAddress;
         oracle = IOracle(oracleAddress);
         USDCAddress = usdcAddress;
-        WETHAddress = _weth;
+        //WETHAddress = _weth;
         //TODO : call _update to update fee param!!!
 
     }
