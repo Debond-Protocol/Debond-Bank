@@ -49,8 +49,20 @@ contract BankRouter is IBankRouter, GovernanceOwnable {
         apm.removeLiquidity(_to, tokenAddress, amount);
     }
 
-    function addLiquidity(address _to, address tokenAddress, uint amount) external onlyBank {
-        apm.removeLiquidity(_to, tokenAddress, amount);
+    function addLiquidityForDbit(address _from, address tokenAddress, uint amount) external onlyBank {
+        uint amountDBITToMint = convertToDbit(uint128(amount), tokenAddress);
+
+        IERC20(purchaseTokenAddress).transferFrom(_from, address(apm), amount);
+        IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
+        updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
+    }
+
+    function addLiquidityForDgov(address _from, address tokenAddress, uint amount) external onlyBank {
+        uint amountDBITToMint = convertToDbit(uint128(amount), tokenAddress);
+
+        IERC20(purchaseTokenAddress).transferFrom(_from, address(apm), amount);
+        IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
+        updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
     }
 
     function getReserves(address tokenA, address tokenB) external view returns (uint _reserveA, uint _reserveB) {
