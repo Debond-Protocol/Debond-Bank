@@ -28,6 +28,27 @@ abstract contract APMRouter {
         address _tokenB) internal {
         apm.updateWhenAddLiquidity(_amountA, _amountB, _tokenA, _tokenB);
     }
+    function removeLiquidity(address _to, address tokenAddress, uint amount) internal {
+        apm.removeLiquidity(_to, tokenAddress, amount);
+    }
+
+    function getReserves(address tokenA, address tokenB) internal view returns (uint _reserveA, uint _reserveB) {
+        (_reserveA, _reserveB) = apm.getReserves(tokenA, tokenB);
+    }
+
+
+    ///swap functions
+    function _swap(uint[] memory amounts, address[] memory path, address to) internal virtual {
+        for (uint i; i < path.length - 1; i++) {
+            (address input, address output) = (path[i], path[i + 1]);
+            uint amountOut = amounts[i + 1];
+            (uint amount0Out, uint amount1Out) = (uint(0), amountOut);
+            apm.swap(
+                amount0Out, amount1Out, input, output, to
+            );
+        }
+    }
+
     function swapExactTokensForTokens(
         uint amountIn,
         uint amountOutMin,
@@ -48,12 +69,13 @@ abstract contract APMRouter {
     ) external {
         require(path[path.length - 1] == WETHAddress, 'APMRouter: INVALID_PATH');
         uint[] memory amounts = apm.getAmountsOut(amountIn, path);
-        require(amounts[amounts.length - 1] >= amountEthMin, 'APMRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        uint lastAmount = amounts[amounts.length - 1];
+        require(lastAmount >= amountEthMin, 'APMRouter: INSUFFICIENT_OUTPUT_AMOUNT');
 
         IERC20(path[0]).transferFrom(msg.sender, address(apm), amounts[0]);
         _swap(amounts, path, address(this));
-        IWeth(WETHAddress).withdraw(amounts[amounts.length - 1]);
-        payable(to).transfer(amounts[amounts.length - 1]);
+        IWeth(WETHAddress).withdraw(lastAmount);
+        payable(to).transfer(lastAmount);
     }
     function swapExactEthForTokens(
         uint amountIn,
@@ -64,29 +86,14 @@ abstract contract APMRouter {
         require(path[0] == WETHAddress, 'APMRouter: INVALID_PATH');
         uint[] memory amounts = apm.getAmountsOut(amountIn, path);
         require(amounts[amounts.length - 1] >= amountOutMin, 'APMRouter: INSUFFICIENT_OUTPUT_AMOUNT');
-        IWeth(WETHAddress).deposit{value : amountIn}();
+        IWeth(WETHAddress).deposit();
         assert(IWeth(WETHAddress).transfer(address(apm), amountIn));
 
         IERC20(path[0]).transferFrom(msg.sender, address(apm), amounts[0]);
         _swap(amounts, path, to);
     }
 
-    function removeLiquidity(address _to, address tokenAddress, uint amount) internal {
-        apm.removeLiquidity(_to, tokenAddress, amount);
-    }
+    
 
-    function getReserves(address tokenA, address tokenB) internal view returns (uint _reserveA, uint _reserveB) {
-        (_reserveA, _reserveB) = apm.getReserves(tokenA, tokenB);
-    }
-
-    function _swap(uint[] memory amounts, address[] memory path, address to) internal virtual {
-        for (uint i; i < path.length - 1; i++) {
-            (address input, address output) = (path[i], path[i + 1]);
-            uint amountOut = amounts[i + 1];
-            (uint amount0Out, uint amount1Out) = (uint(0), amountOut);
-            apm.swap(
-                amount0Out, amount1Out, input, output, to
-            );
-        }
-    }
+    
 }

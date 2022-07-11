@@ -45,7 +45,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     address immutable DBITAddress;
     address immutable DGOVAddress;
     address immutable USDCAddress;
-    //address immutable WETHAddress;
 
     bool init;
 
@@ -64,7 +63,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         DGOVAddress = _DGOVAddress;
         oracle = IOracle(oracleAddress);
         USDCAddress = usdcAddress;
-        //WETHAddress = _weth;
         //TODO : call _update to update fee param!!!
 
     }
@@ -72,7 +70,7 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     function initializeApp(address daiAddress, address usdtAddress) external onlyOwner {
         require(!init, "BankContract Error: already initiated");
         init = true;
-        uint SIX_M_PERIOD = 0 * EPOCH;
+        uint SIX_M_PERIOD = 180 * EPOCH;
         // 1 hour period for tests
 
         _createClass(0, "DBIT", InterestRateType.FixedRate, DBITAddress, SIX_M_PERIOD);
@@ -133,7 +131,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     }
 
 
-    //todo : make sure that we can't call a function dbit to dgov with someting else that dbit (for exemple with usdc)
 //############buybonds old version##############
 
         /*
@@ -481,7 +478,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
 
 //############buybonds Buying method  ETH To DBIT############## 
-    //todo : pour buying, pas besoin du class id du purchase token : faire deux fonction interest rate buying et stacking.
     function buyforDbitBondWithEth(//else is not eth not dbit
         uint wethClassId,
         uint dbitClassId,
@@ -602,7 +598,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
         else {
             (address purchaseTokenAddress,,) = classValues(_purchaseTokenClassId);
             uint debondTokenAmount = convertToDbit(uint128(_purchaseTokenAmount), purchaseTokenAddress);
-            //todo : ferivy if conversion is possible.
 
             return _getInterestRate(_debondTokenClassId, debondTokenAmount);
         }
@@ -661,7 +656,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     function _cdpUsdToDBIT() private view returns (uint256 amountDBIT) {
         amountDBIT = 1 ether;
         uint256 _sCollateralised = IDebondToken(DBITAddress).getTotalCollateralisedSupply();
-        //todo: is this working?
         if (_sCollateralised >= 1000 ether) {
             amountDBIT = 1.05 ether;
             uint256 logCollateral = (_sCollateralised / 1000).ln();

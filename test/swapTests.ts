@@ -32,9 +32,20 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
         await usdcContract.mint(swapper, web3.utils.toWei('100', 'ether'));
         await usdcContract.mint(apmContract.address, web3.utils.toWei('100', 'ether'));
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100', 'ether'), {from: swapper})
-        //pareil avec dbit
+        
+        await dbitInstance.approve(bankContract.address, web3.utils.toWei('100', 'ether'), {from: swapper})
+        
+        let wethBalanceBeforeMint = await wethContract.balanceOf(apmContract.address);
+        console.log("wethBalanceBeforeMint", wethBalanceBeforeMint.toString());
+        //await wethContract.mint(swapper, web3.utils.toWei('0.1', 'ether'));
+        await wethContract.mint(apmContract.address, web3.utils.toWei('0.1', 'ether'));
+        await wethContract.approve(bankContract.address, web3.utils.toWei('0.1', 'ether'), {from: swapper})
+        
+        let wethBalanceAfterMint = await wethContract.balanceOf(apmContract.address);
+        console.log("wethBalanceAfterMint", wethBalanceAfterMint.toString());
 
         await dbitInstance.setBankAddress(accounts[1]);
+        await dbitInstance.mintCollateralisedSupply(swapper, web3.utils.toWei('0.1', 'ether'), {from: accounts[1]});
 
         await dbitInstance.mintCollateralisedSupply(apmContract.address, web3.utils.toWei('200.2', 'ether'), {from: accounts[1]});
         await dbitInstance.setBankAddress(bankContract.address)
@@ -62,26 +73,38 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
             {from: accounts[1]}
         );
 
-
-
         await apmContract.setBankAddress(bankContract.address);
         await dbitInstance.setBankAddress(bankContract.address);
 
 
         //Pour plus tard
-        const s = await apmContract.getReserves(usdcContract.address, dbitInstance.address);
+        const s = await apmContract.getReserves(dbitInstance.address, usdcContract.address);
         console.log("here we print r0 After addLiqq : " + s[0].toString(), "here we print r1 After addliq :" + s[1].toString());
 
-        const t = await apmContract.getReserves(wethContract.address, dbitInstance.address);
+        const t = await apmContract.getReserves(dbitInstance.address, wethContract.address);
         console.log("here we print r0 AfterEth addLiqq : " + t[0].toString(), "here we print r1 AfterEth addliq :" + t[1].toString());
 
 
+
+
+        let balanceEThaccount0BeforeDeposit= await wethContract.balanceOf(accounts[0]);
+        console.log("acc0 weth before deposit", balanceEThaccount0BeforeDeposit.toString())
+
         //web3.eth.sendTransaction({from : accounts[0], to : wethContract.address, value : web3.utils.toWei('0.1', 'ether') });
         wethContract.deposit({from : accounts[0], value : web3.utils.toWei('0.1', 'ether') })
-        wethContract.transfer(apmContract.address, web3.utils.toWei('0.1', 'ether'), {from : accounts[0]})
 
-        let balanceWeth = await wethContract.balanceOf(apmContract.address);
-        console.log("weth amount in apm", balanceWeth.toString())
+        let balanceEThaccount0AfterDeposit= await wethContract.balanceOf(accounts[0]);
+        console.log("acc0 weth After deposit", balanceEThaccount0AfterDeposit.toString())
+        
+        
+        //wethContract.approve(accounts[0], web3.utils.toWei('0.1', 'ether'), {from : accounts[0]});
+        wethContract.transfer(accounts[1], web3.utils.toWei('0.1', 'ether'), {from : accounts[0]})
+
+        let balanceWeth = await wethContract.balanceOf(accounts[1]);
+        console.log("acc1 weth amount after transfer", balanceWeth.toString())
+
+        let balanceEThaccount0Afterswap = await wethContract.balanceOf(accounts[0]);
+        console.log("acc0 weth after transfer", balanceEThaccount0Afterswap.toString())
     });
 
     it("should swap", async () => {
@@ -121,41 +144,56 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
 
     })
 
-    it.only("should swapExactEthForTokens", async () => {
+    it("should swapExactEthForTokens", async () => {
         // setting the bank
         await apmContract.setBankAddress(bankContract.address);
-        await bankContract.swapExactEthForTokens(
+        /*await bankContract.swapExactEthForTokens(
             web3.utils.toWei('0.01', 'ether'),
             web3.utils.toWei('0.0001', 'ether'),
             [wethContract.address, dbitInstance.address],
             swapper,
             {from: swapper});
 
-
+        
         const dbitBalance = await dbitInstance.balanceOf(swapper);
         expect(dbitBalance.toString()).to.equal(web3.utils.toWei('0.0181818181818181818', 'ether').toString()); //value found with xy=k formula
 
         const s = await apmContract.getReserves(usdcContract.address, dbitInstance.address);
         console.log("here we print r0 after swap : " + s[0].toString(), "here we print r1 after swap :" + s[1].toString());
-        
+        */
     })
 
-    it("should swapExactTokensForEth", async () => {
+    it.only("should swapExactTokensForEth", async () => {
         // setting the bank
         await apmContract.setBankAddress(bankContract.address);
-        await bankContract.swapExactTokensForTokens(
-            web3.utils.toWei('10', 'ether'),
-            web3.utils.toWei('15', 'ether'),
-            [usdcContract.address, dbitInstance.address],
+
+        let dbitBalanceBeforeSwap = await dbitInstance.balanceOf(swapper);
+        console.log("dbitBalanceBeforeSwap", dbitBalanceBeforeSwap.toString())
+        let wethBalanceBeforeSwap = await wethContract.balanceOf(swapper);
+        console.log("wethBalanceBeforeSwap", wethBalanceBeforeSwap.toString())
+
+        await bankContract.swapExactTokensForEth(
+            web3.utils.toWei('0.01', 'ether'),
+            web3.utils.toWei('0.0015', 'ether'),
+            [dbitInstance.address, wethContract.address],
             swapper,
             {from: swapper});
 
+        
 
-        const dbitBalance = await dbitInstance.balanceOf(swapper);
-        expect(dbitBalance.toString()).to.equal(web3.utils.toWei('18.181818181818181818', 'ether').toString()); //value found with xy=k formula
+        let dbitBalanceAfterSwap = await dbitInstance.balanceOf(swapper);
+        console.log("dbitBalanceAfterSwap", dbitBalanceAfterSwap.toString())
+        let wethBalanceAfterSwap = await wethContract.balanceOf(swapper);
+        console.log("wethBalanceAfterSwap", wethBalanceAfterSwap.toString())
 
-        const s = await apmContract.getReserves(usdcContract.address, dbitInstance.address);
-        console.log("here we print r0 after swap : " + s[0].toString(), "here we print r1 after swap :" + s[1].toString());
+        let diffWeth = parseFloat(web3.utils.fromWei(wethBalanceAfterSwap, "ether")) - parseFloat(web3.utils.fromWei(wethBalanceBeforeSwap, "ether"));
+        expect(diffWeth.toString()).to.equal(web3.utils.toWei('0.033333333333333333', 'ether').toString()); //value found with xy=k formula
+
+        let diffDbit = parseFloat(web3.utils.fromWei(dbitBalanceAfterSwap, "ether")) - parseFloat(web3.utils.fromWei(dbitBalanceBeforeSwap, "ether"));
+        expect(diffDbit.toString()).to.equal(web3.utils.toWei('0.09', 'ether').toString()); //value found with xy=k formula
+
+        const reserveAfter = await apmContract.getReserves(usdcContract.address, dbitInstance.address);
+        console.log("reserveAfter after swap : " + reserveAfter[0].toString(), "reserveAfter after swap :" + reserveAfter[1].toString());
 
     })
 

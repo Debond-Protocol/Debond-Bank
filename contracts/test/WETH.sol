@@ -1,5 +1,9 @@
 pragma solidity ^0.8.0;
 
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
 // SPDX-License-Identifier: MIT
 
 /*contract WETH is ERC20, Ownable {
@@ -16,7 +20,7 @@ pragma solidity ^0.8.0;
     function withdraw() external {
 
     }
-}*/
+}
 
 contract WETH {
     string public name     = "Wrapped Ether";
@@ -31,6 +35,7 @@ contract WETH {
     mapping (address => uint)                       public  balanceOf;
     mapping (address => mapping (address => uint))  public  allowance;
 
+
     fallback() external payable {
         deposit();
     }
@@ -40,6 +45,7 @@ contract WETH {
     }
 
     function deposit() public payable {
+        //require(msg.value ==amount , "wron balance");
         balanceOf[msg.sender] += msg.value;
         emit Deposit(msg.sender, msg.value);
     }
@@ -82,5 +88,22 @@ contract WETH {
 
         return true;
     }
-}
+}*/
+contract WETH is ERC20, Ownable {
+    constructor() ERC20("Weth Test", "WETH") {}
 
+    function mint(address _to, uint256 _amount) external {
+        _mint(_to, _amount);
+    }
+
+    function deposit() external payable {
+        _mint(msg.sender, msg.value);
+    }
+
+    function withdraw(uint wad) public {
+        require(balanceOf(msg.sender) >= wad);
+        _burn(msg.sender, wad);
+        payable(msg.sender).transfer(wad);
+    }
+
+}
