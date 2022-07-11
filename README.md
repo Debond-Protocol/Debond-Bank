@@ -1,15 +1,15 @@
 ## Debond-Bank:
 
-This repository consist of the contracts  that manage the issuance and  redemption of bonds and interfacing with the APM to permit addition/subtraction of the liquidity respectively, thus being the core part of protocol that  interfaces with Bonds contract.
+This repository consist of the contracts that manage the issuance and redemption of bonds and interfacing with the APM to permit addition/subtraction of the liquidity respectively, thus being the core part of protocol that interfaces with Bonds contract.
 
 
 ## Contracts
-1.  Bank Contract :   This contract acts as custodian of bonds by allowing buy/stake bonds with their collaterals being  ERC20 (DBIT/DGOV or other whitelisted tokens)/WETH . Only the class of bonds that are agreed upon by the governance can be issued by the functions of the contract.  Bonds are instantiated into different class  based upon the underlying collateral, nature of issuance/ redemption condition (fixed/floating rate bonds). 
+1. Bank Contract : This contract acts as custodian of bonds by allowing buy/stake bonds with their collaterals being ERC20 (DBIT/DGOV or other whitelisted tokens)/WETH . Only the class of bonds that are agreed upon by the governance can be issued by the functions of the contract. Bonds are instantiated into different class based upon the underlying collateral, nature of issuance/ redemption condition (fixed/floating rate bonds). 
 
 
-2. BankBondManager: abstract contract inherited by Bank contract  for interacting directly with the  DebondBond contract to issue bonds, creating nonce , finding the bondProgress towards maturity, etc. 
+2. BankBondManager: abstract contract inherited by Bank contract for interacting directly with the DebondBond contract to issue bonds, creating nonce , finding the bondProgress towards maturity, etc. 
 
-3. BankData: Storage contract with  bank structures defined below: 
+3. BankData: Storage contract with Bank structures defined below: 
 ```solidity
 
     mapping(uint256 => mapping(uint256 => bool)) _canPurchase; // mapping(class(BondERC20) => class(DebondTokenBond) => bool isPurchasable).
@@ -21,12 +21,14 @@ This repository consist of the contracts  that manage the issuance and  redempti
 ```
 
 ## Workflow:
-    1. first User / external contract selects the type of bond that is to be purchased by two types:
-        - Staking bonds allows users to earn principal interest in the form of DBIT at the time of issuance of the bonds.   user puts some amount of  WETH/ERC20 collateral to get similar amount of ERC20-Bonds and  some part of  DBIT
-            - DBIT  that need to be minted is determined by the ([CDP formula value in USD]() * rateOfInterest).
-            - and the given collateral is added into APM via APMRouter.
 
-        based on whether the staking collateral is Debond Token  and corresponding input collateral is WETH or other whitelisted tokens in pairs, you have the inferface of functions as follows: 
+1. first User / external contract selects the type of bond that is to be purchased by two types:
+        
+        - Staking bonds allows users to earn principal interest in the form of DBIT at the time of issuance of the bonds.User puts some amount of WETH/ERC20 collateral to get similar amount of ERC20-Bonds and some part of DBIT.
+        - DBIT that need to be minted is determined by the ([CDP formula value in USD]() * rateOfInterest).
+        - and the given collateral is added into APM via APMRouter.
+
+        based on whether the staking collateral is Debond Token and corresponding input collateral is WETH or other whitelisted tokens in pairs, you have the inferface of functions as follows: 
     
         ```solidity
     function stakeForDbitBondWithEth(
@@ -49,19 +51,19 @@ This repository consist of the contracts  that manage the issuance and  redempti
         - Buying bonds allows issuance of bonds in pair of ERC20 with either DBIT/DGOV. when user deposits the collateral of some amount , he gets equal amount of both type of bonds .  
 
 
-    2. Now user can track the progress of the bonds. based on the nature of the bond redemption condition, the frontend can use the function:
+2. Now user can track the progress of the bonds. based on the nature of the bond redemption condition, the frontend can use the function:
 
         ```solidity
         function getETA(uint256 classId, uint256 nonceId) external view returns (uint256);
         ```
-    which will give time in  seconds when the bond (both fixed rate / floating rate) can be redeemed. 
+    which will give time in seconds when the bond (both fixed rate / floating rate) can be redeemed. 
         ```
 
 **NOTE:** for fixed rate its consistent whereas for floating rate it will be an approximation and will really depend on the current availablity of liquidity for bonds using the formula ```
 
 ## Security Considerations: 
 
-- Insure that bank contract has addresses for governance and APM correctly set else it might cause loss of the  underlying liquidity as bonds. 
+- Insure that bank contract has addresses for governance and APM correctly set else it might cause loss of the underlying liquidity as bonds. 
 
 
 
@@ -73,14 +75,14 @@ This repository consist of the contracts  that manage the issuance and  redempti
 ### running the test.
 
 ```bash
-> npm install  
+> npm install 
 
 > npx truffle compile / truffle compile. 
 
 
 > npm run generate-types # for tests in typescript.
 
-## and  finally running tyhe command in parallel.
+## and finally running the command in parallel.
 
 > npx run ganache -p 7545 
 &&

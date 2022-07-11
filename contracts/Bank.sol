@@ -136,31 +136,6 @@ contract Bank is APMRouter, BankBondManager, Ownable {
 
 
     //todo : make sure that we can't call a function dbit to dgov with someting else that dbit (for exemple with usdc)
-//############buybonds old version##############
-
-        /*
-        * @dev let the user buy a bond
-        * @param _purchaseClassId classId of the token added by the user (given by frontend)
-        * @param _debondClassId  classId of the debond token to mint (dgov or dbit)
-        * @param _purchaseTokenAmount amount of token to add
-        * @param _purchaseMethod buying method or Staking method
-        * @param _minRate minimum Rate that a user is willing to accept. similar to slippage    
-        */
-
-    /*
-    * @dev mint the bond to the user
-        * @param purchaseMethod buying method or Staking method
-        * @param purchaseClassId classId of the token added by the user (given by frontend)
-        * @param purchaseTokenAmount amount of token to add
-        * @param purchaseTokenAddress address of token to add
-        * @param debondTokenAddress  address of the debond token to mint (dgov or dbit)
-        * @param debondClassId class id of the debond token to mint (dgov or dbit)
-        * @param _interestRate fixed rate or floating rate
-        * @param minRate minimum Rate that a user is willing to accept. similar to slippage    
-        */
-   
-
-
 
 
 //############buybonds staking method  dbit with else (else is Not eth, not dgov, not dbit)  ##############
@@ -219,15 +194,14 @@ contract Bank is APMRouter, BankBondManager, Ownable {
     }
 
 //############buybonds Staking method  DbitToDgov##############
-
 /// @notice staking method for an address allowing DGOV tokens to be staked for getting DGOV bonds and some DBIT bonds.
 /// @dev similar to uniswap swap-for-to..
-///  @param _purchaseClassId is the classId of the DBIT bond(approved by bank) that will be deposited by user.
-/// @param _debondClassId is the classId of the DGOV bond (that will be bought by the user)
-/// @param _purchaseDbitAmount is the amount of DBIT tokens  that are to be purchased to get the necessary DBIT bond.  
-/// @param _minRate is the min amount  that user has to receive in the swap in the APM in order the function succeed.
+///  @param dbitClassId is the classId of the DBIT bond(approved by bank) that will be deposited by user.
+/// @param dgovClassId is the classId of the DGOV bond (that will be bought by the user)
+/// @param dbitTokenAmount is the amount of DBIT tokens  that are to be purchased to get the necessary DBIT bond.  
+/// @param minRate is the min amount  that user has to receive in the swap in the APM in order the function succeed.
 /// @param  deadline is the time  elapsed (in seconds) to wait during  order to be swapped successfully, else the order is void and amount is returned.
-/// @param _to is the destination address of  delegator receiving the bonds.
+/// @param to is the destination address of  delegator receiving the bonds.
         function stakeForDgovBondWithDbit(
         uint dbitClassId,
         uint dgovClassId,
