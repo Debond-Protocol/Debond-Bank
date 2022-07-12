@@ -31,42 +31,32 @@ import './interfaces/IWeth.sol';
 import "./BankBondManager.sol";
 import "./libraries/DebondMath.sol";
 import "./interfaces/IBankData.sol";
+import "./BankRouter.sol";
 
 
 //todo : grammaire( _ internal, majuscules etc), commentaires
 
-contract Bank {
+contract Bank is BankRouter {
 
     using DebondMath for uint256;
     using SafeERC20 for IERC20;
 
-    IOracle oracle;
     address bankData;
+    address bondManagerAddress;
     enum PurchaseMethod {Buying, Staking}
-
-    address immutable DBITAddress;
-    address immutable DGOVAddress;
-    address immutable USDCAddress;
-    address immutable WETHAddress;
     constructor(
         address governanceAddress,
-        address apmRouterAddress,
-        address bondManagerAddress,
+        address apmAddress,
+        address _bondManagerAddress,
         address _DBITAddress,
         address _DGOVAddress,
         address oracleAddress,
         address usdcAddress,
         address _weth,
         address _bankData
-    ) {
-        DBITAddress = _DBITAddress;
-        DGOVAddress = _DGOVAddress;
-        oracle = IOracle(oracleAddress);
-        USDCAddress = usdcAddress;
-        WETHAddress = _weth;
+    ) BankRouter(apmAddress, _DBITAddress, _DGOVAddress, usdcAddress, _weth, oracleAddress) {
+        bondManagerAddress = _bondManagerAddress;
         bankData = _bankData;
-        //TODO : call _update to update fee param!!!
-
     }
 
     modifier ensure(uint deadline) {
@@ -94,11 +84,11 @@ contract Bank {
         if (!canPurchase(purchaseClassId, dbitClassId)) {
             revert PairNotAllowed();
         }
-        (address debondTokenAddress,,) = classValues(dbitClassId);
+        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dbitClassId);
         if (debondTokenAddress != DBITAddress) {
             revert WrongTokenAddress(debondTokenAddress);
         }
-        (address purchaseTokenAddress,,) = classValues(purchaseClassId);
+        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(purchaseClassId);
         if (purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress || purchaseTokenAddress == WETHAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
@@ -106,7 +96,7 @@ contract Bank {
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
         }
-        _mintingProcessForDbitWithElse(purchaseTokenAmount, purchaseTokenAddress, to);
+        addLiquidityDbitPair(to, purchaseTokenAddress, purchaseTokenAmount);
         _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, dbitClassId, _interestRate, to);
 
     }
@@ -119,21 +109,18 @@ contract Bank {
         uint rate,
         address to
     ) public {
-        issueBonds(to, purchaseClassId, purchaseTokenAmount);
         uint amount = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress);
-        issueBonds(to, debondClassId, amount.mul(rate));
-    }
 
-    function _mintingProcessForDbitWithElse(
-        uint purchaseTokenAmount,
-        address purchaseTokenAddress,
-        address to
-    ) internal {
-        uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress);
-        //todo : verify if conversion is possible.
-        IERC20(purchaseTokenAddress).transferFrom(to, address(apm), purchaseTokenAmount);
-        IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
-        updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
+        uint256[] memory classIds = new uint256[](2);
+        classIds[0] = purchaseClassId;
+        classIds[1] = debondClassId;
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = purchaseTokenAmount;
+        amounts[1] = amount.mul(rate);
+
+        IBankBondManager(bondManagerAddress).issueBonds(to, classIds, amounts);
+
     }
 
     //############buybonds Staking method  DbitToDgov##############
@@ -149,11 +136,11 @@ contract Bank {
         if (!canPurchase(dbitClassId, dgovClassId)) {
             revert PairNotAllowed();
         }
-        (address purchaseTokenAddress,,) = classValues(dbitClassId);
+        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dbitClassId);
         if (purchaseTokenAddress != DBITAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
-        (address debondTokenAddress,,) = classValues(dgovClassId);
+        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dgovClassId);
         if (debondTokenAddress != DGOVAddress) {
             revert WrongTokenAddress(debondTokenAddress);
         }
@@ -161,18 +148,8 @@ contract Bank {
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
         }
-        _mintingProcessDgovWithDbit(dbitTokenAmount, to);
+        addLiquidityDbitDgov(to, dbitTokenAmount);
         _issuingProcessStaking(dbitClassId, dbitTokenAmount, DBITAddress, dgovClassId, _interestRate, to);
-    }
-
-    function _mintingProcessDgovWithDbit(
-        uint purchaseDbitAmount,
-        address to
-    ) internal {
-        uint amountDGOVToMint = convertDbitToDgov(purchaseDbitAmount);
-        IERC20(DBITAddress).transferFrom(to, address(apm), purchaseDbitAmount);
-        IDebondToken(DGOVAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
-        updateWhenAddLiquidity(purchaseDbitAmount, amountDGOVToMint, DBITAddress, DGOVAddress);
     }
 
     //############buybonds Staking method  else ToDgov############## else is not dbit not eth not dgov
@@ -188,11 +165,11 @@ contract Bank {
         if (!canPurchase(purchaseClassId, dgovClassId)) {
             revert PairNotAllowed();
         }
-        (address debondTokenAddress,,) = classValues(dgovClassId);
+        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dgovClassId);
         if (debondTokenAddress != DGOVAddress) {
             revert WrongTokenAddress(debondTokenAddress);
         }
-        (address purchaseTokenAddress,,) = classValues(purchaseClassId);
+        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(purchaseClassId);
         if (purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress || purchaseTokenAddress == WETHAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
@@ -200,22 +177,8 @@ contract Bank {
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
         }
-        _mintingProcessForDgovWithElse(purchaseTokenAmount, purchaseTokenAddress, to);
+        addLiquidityDgovPair(to, purchaseTokenAddress, purchaseTokenAmount);
         _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, dgovClassId, _interestRate, to);
-    }
-
-    function _mintingProcessForDgovWithElse(
-        uint purchaseTokenAmount,
-        address purchaseTokenAddress,
-        address to
-    ) internal {
-        uint amountDBITToMint = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress);
-        uint amountDGOVToMint = convertDbitToDgov(amountDBITToMint);
-        IERC20(purchaseTokenAddress).transferFrom(to, address(apm), purchaseTokenAmount);
-        IDebondToken(DGOVAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
-        IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);
-        updateWhenAddLiquidity(purchaseTokenAmount, amountDBITToMint, purchaseTokenAddress, DBITAddress);
-        updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, DGOVAddress);
     }
 
     //############buybonds Buying method not eth to dbit##############
@@ -231,11 +194,11 @@ contract Bank {
         if (!canPurchase(_purchaseClassId, _dbitClassId)) {
             revert PairNotAllowed();
         }
-        (address _debondTokenAddress,,) = classValues(_dbitClassId);
+        (address _debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_dbitClassId);
         if (_debondTokenAddress != DBITAddress) {
             revert WrongTokenAddress(_debondTokenAddress);
         }
-        (address _purchaseTokenAddress,,) = classValues(_purchaseClassId);
+        (address _purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_purchaseClassId);
         if (_purchaseTokenAddress == DBITAddress || _purchaseTokenAddress == DGOVAddress || _purchaseTokenAddress == WETHAddress) {
             revert WrongTokenAddress(_purchaseTokenAddress);
         }
@@ -243,7 +206,7 @@ contract Bank {
         if (_interestRate < _minRate) {
             revert RateNotHighEnough(_interestRate, _minRate);
         }
-        _mintingProcessForDbitWithElse(_purchaseTokenAmount, _purchaseTokenAddress, _to);
+        addLiquidityDbitPair(_to, _purchaseTokenAddress, _purchaseTokenAmount);
         _issuingProcessBuying(_purchaseTokenAmount, _purchaseTokenAddress, _dbitClassId, _interestRate, _to);
     }
 
@@ -255,7 +218,14 @@ contract Bank {
         address to
     ) internal {
         uint amount = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress);
-        issueBonds(to, debondClassId, amount + amount.mul(rate));
+
+        uint256[] memory classIds = new uint256[](1);
+        classIds[0] = debondClassId;
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = amount + amount.mul(rate);
+
+        IBankBondManager(bondManagerAddress).issueBonds(to, classIds, amounts);
     }
 
 
@@ -274,11 +244,11 @@ contract Bank {
             revert PairNotAllowed();
         }
 
-        (address _purchaseTokenAddress,,) = classValues(_dbitClassId);
+        (address _purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_dbitClassId);
         if (_purchaseTokenAddress != DBITAddress) {
             revert WrongTokenAddress(_purchaseTokenAddress);
         }
-        (address _debondTokenAddress,,) = classValues(_dgovClassId);
+        (address _debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_dgovClassId);
         if (_debondTokenAddress != DGOVAddress) {
             revert WrongTokenAddress(_debondTokenAddress);
         }
@@ -286,7 +256,7 @@ contract Bank {
         if (_interestRate < _minRate) {
             revert RateNotHighEnough(_interestRate, _minRate);
         }
-        _mintingProcessDgovWithDbit(_purchaseTokenAmount, _to);
+        addLiquidityDbitDgov(_to, _purchaseTokenAmount);
         _issuingProcessBuying(_purchaseTokenAmount, DBITAddress, _dgovClassId, _interestRate, _to);
     }
 
@@ -304,11 +274,11 @@ contract Bank {
         if (!canPurchase(purchaseClassId, dgovClassId)) {
             revert PairNotAllowed();
         }
-        (address purchaseTokenAddress,,) = classValues(purchaseClassId);
+        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(purchaseClassId);
         if (purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress || purchaseTokenAddress == WETHAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
-        (address debondTokenAddress,,) = classValues(dgovClassId);
+        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dgovClassId);
         if (debondTokenAddress != DGOVAddress) {
             revert WrongTokenAddress(debondTokenAddress);
         }
@@ -316,7 +286,7 @@ contract Bank {
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
         }
-        _mintingProcessForDgovWithElse(purchaseTokenAmount, purchaseTokenAddress, to);
+        addLiquidityDgovPair(to, purchaseTokenAddress, purchaseTokenAmount);
         _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, dgovClassId, _interestRate, to);
     }
 
@@ -333,11 +303,11 @@ contract Bank {
         if (!canPurchase(wethClassId, dbitClassId)) {
             revert PairNotAllowed();
         }
-        (address purchaseTokenAddress,,) = classValues(wethClassId);
+        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(wethClassId);
         if (purchaseTokenAddress != WETHAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
-        (address debondTokenAddress,,) = classValues(dbitClassId);
+        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dbitClassId);
         if (debondTokenAddress != DBITAddress) {
             revert WrongTokenAddress(debondTokenAddress);
         }
@@ -346,18 +316,10 @@ contract Bank {
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
         }
-        _mintingProcessForDbitWithEth(purchaseTokenAmount);
-        _issuingProcessStaking(wethClassId, purchaseTokenAmount, purchaseTokenAddress, dbitClassId, _interestRate, to);
-    }
+        IWeth(WETHAddress).deposit{value : purchaseTokenAmount}();
+        addLiquidityDbitPair(address(this), WETHAddress, purchaseTokenAmount);
 
-    function _mintingProcessForDbitWithEth(
-        uint purchaseETHAmount
-    ) internal {
-        uint amountDBITToMint = convertToDbit(uint128(purchaseETHAmount), WETHAddress);
-        IWeth(WETHAddress).deposit{value : purchaseETHAmount}();
-        assert(IWeth(WETHAddress).transfer(address(apm), purchaseETHAmount));
-        IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
-        updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint, WETHAddress, DBITAddress);
+        _issuingProcessStaking(wethClassId, purchaseTokenAmount, purchaseTokenAddress, dbitClassId, _interestRate, to);
     }
 
 
@@ -373,11 +335,11 @@ contract Bank {
         if (!canPurchase(wethClassId, dgovClassId)) {
             revert PairNotAllowed();
         }
-        (address purchaseTokenAddress,,) = classValues(wethClassId);
+        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(wethClassId);
         if (purchaseTokenAddress != WETHAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
-        (address debondTokenAddress,,) = classValues(dgovClassId);
+        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dgovClassId);
         if (debondTokenAddress != DGOVAddress) {
             revert WrongTokenAddress(debondTokenAddress);
         }
@@ -386,21 +348,10 @@ contract Bank {
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
         }
-        _mintingProcessForETHWithDgov(purchaseTokenAmount);
-        _issuingProcessStaking(wethClassId, purchaseTokenAmount, purchaseTokenAddress, dgovClassId, _interestRate, to);
-    }
 
-    function _mintingProcessForETHWithDgov(
-        uint purchaseETHAmount
-    ) internal {
-        uint amountDBITToMint = convertToDbit(uint128(purchaseETHAmount), WETHAddress);
-        uint amountDGOVToMint = convertDbitToDgov(amountDBITToMint);
-        IWeth(WETHAddress).deposit{value : purchaseETHAmount}();
-        assert(IWeth(WETHAddress).transfer(address(apm), purchaseETHAmount));
-        IDebondToken(DGOVAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
-        IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);
-        updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint, WETHAddress, DBITAddress);
-        updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, DGOVAddress);
+        IWeth(WETHAddress).deposit{value : purchaseTokenAmount}();
+        addLiquidityDgovPair(address(this), WETHAddress, purchaseTokenAmount);
+        _issuingProcessStaking(wethClassId, purchaseTokenAmount, purchaseTokenAddress, dgovClassId, _interestRate, to);
     }
 
 
@@ -416,11 +367,11 @@ contract Bank {
         if (!canPurchase(wethClassId, dbitClassId)) {
             revert PairNotAllowed();
         }
-        (address purchaseTokenAddress,,) = classValues(wethClassId);
+        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(wethClassId);
         if (purchaseTokenAddress != WETHAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
-        (address debondTokenAddress,,) = classValues(dbitClassId);
+        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dbitClassId);
         if (debondTokenAddress != DBITAddress) {
             revert WrongTokenAddress(debondTokenAddress);
         }
@@ -429,7 +380,8 @@ contract Bank {
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
         }
-        _mintingProcessForDbitWithEth(purchaseTokenAmount);
+        IWeth(WETHAddress).deposit{value : purchaseTokenAmount}();
+        addLiquidityDbitPair(address(this), WETHAddress, purchaseTokenAmount);
         _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, dbitClassId, _interestRate, to);
     }
 
@@ -446,11 +398,11 @@ contract Bank {
         if (!canPurchase(wethClassId, dgovClassId)) {
             revert PairNotAllowed();
         }
-        (address purchaseTokenAddress,,) = classValues(wethClassId);
+        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(wethClassId);
         if (purchaseTokenAddress != WETHAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
-        (address debondTokenAddress,,) = classValues(dgovClassId);
+        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dgovClassId);
         if (debondTokenAddress != DGOVAddress) {
             revert WrongTokenAddress(debondTokenAddress);
         }
@@ -459,22 +411,11 @@ contract Bank {
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
         }
-        _mintingProcessForDgovWithEth(purchaseTokenAmount);
+        IWeth(WETHAddress).deposit{value : purchaseTokenAmount}();
+        addLiquidityDgovPair(address(this), WETHAddress, purchaseTokenAmount);
         _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, dgovClassId, _interestRate, to);
     }
 
-    function _mintingProcessForDgovWithEth(
-        uint purchaseETHAmount
-    ) internal {
-        uint amountDBITToMint = convertToDbit(uint128(purchaseETHAmount), WETHAddress);
-        uint amountDGOVToMint = convertDbitToDgov(amountDBITToMint);
-        IWeth(WETHAddress).deposit{value : purchaseETHAmount}();
-        assert(IWeth(WETHAddress).transfer(address(apm), purchaseETHAmount));
-        IDebondToken(DGOVAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
-        IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);
-        updateWhenAddLiquidity(purchaseETHAmount, amountDBITToMint, WETHAddress, DBITAddress);
-        updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, DGOVAddress);
-    }
     //##############REDEEM BONDS ##############:
 
     function redeemBonds(
@@ -483,9 +424,9 @@ contract Bank {
         uint amount
     ) external {
         //1. redeem the bonds (will fail if not maturity date exceeded)
-        _redeemERC3475(msg.sender, classId, nonceId, amount);
+        IBankBondManager(bondManagerAddress).redeemERC3475(msg.sender, classId, nonceId, amount);
 
-        (address tokenAddress,,) = classValues(classId);
+        (address tokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(classId);
         removeLiquidity(msg.sender, tokenAddress, amount);
     }
 
@@ -506,7 +447,7 @@ contract Bank {
         }
         // buying Bonds
         else {
-            (address purchaseTokenAddress,,) = classValues(_purchaseTokenClassId);
+            (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_purchaseTokenClassId);
             uint debondTokenAmount = convertToDbit(uint128(_purchaseTokenAmount), purchaseTokenAddress);
             //todo : ferivy if conversion is possible.
 
@@ -540,72 +481,5 @@ contract Bank {
         }
         //amountB = amountA.mul(reserveB) / reserveA;
         amountB = amountA * reserveB / reserveA;
-    }
-
-    /**
-    * @dev gives the amount of DBIT which should be minted for 1$ worth of input
-    * @return amountDBIT the amount of DBIT which should be minted
-    */
-    function _cdpUsdToDBIT() private view returns (uint256 amountDBIT) {
-        amountDBIT = 1 ether;
-        uint256 _sCollateralised = IDebondToken(DBITAddress).getTotalCollateralisedSupply();
-        //todo: is this working?
-        if (_sCollateralised >= 1000 ether) {
-            amountDBIT = 1.05 ether;
-            uint256 logCollateral = (_sCollateralised / 1000).ln();
-            amountDBIT = amountDBIT.pow(logCollateral);
-        }
-    }
-    /**
-    * @dev convert a given amount of token to USD  (the pair needs to exist on uniswap)
-    * @param _amountToken the amount of token we want to convert
-    * @param _tokenAddress the address of token we want to convert
-    * @return amountUsd the corresponding amount of usd
-    */
-    function _convertTokenToUsd(uint128 _amountToken, address _tokenAddress) private view returns (uint256 amountUsd) {
-
-        if (_tokenAddress == USDCAddress) {
-            amountUsd = _amountToken;
-        }
-        else {
-            amountUsd = oracle.estimateAmountOut(_tokenAddress, _amountToken, USDCAddress, 60) * 1e12;
-            //1e6 x 1e12 = 1e18
-        }
-    }
-
-    /**
-    * @dev given the amount of tokens and the token address, returns the amout of DBIT to mint.
-    * @param _amountToken the amount of token
-    * @param _tokenAddress the address of token
-    * @return amountDBIT the amount of DBIT to mint
-    */
-    function convertToDbit(uint128 _amountToken, address _tokenAddress) private view returns (uint256 amountDBIT) {
-
-        uint256 tokenToUsd = _convertTokenToUsd(_amountToken, _tokenAddress);
-        uint256 rate = _cdpUsdToDBIT();
-
-        amountDBIT = tokenToUsd.mul(rate);
-        //1e6 x 1e12 x 1e18 = 1e18
-    }
-
-
-    // **** DGOV ****
-
-    /**
-            * @dev gives the amount of dgov which should be minted for 1 dbit of input
-        * @return amountDGOV the amount of DGOV which should be minted
-        */
-    function _cdpDbitToDgov() private view returns (uint256 amountDGOV) {
-        uint256 _sCollateralised = IDebondToken(DGOVAddress).getTotalCollateralisedSupply();
-        amountDGOV = (100 ether + (_sCollateralised).div(33333).pow(2)).inv();
-    }
-    /**
-    * @dev given the amount of dbit, returns the amout of DGOV to mint
-    * @param _amountDBIT the amount of token
-    * @return amountDGOV the amount of DGOV to mint
-    */
-    function convertDbitToDgov(uint256 _amountDBIT) private view returns (uint256 amountDGOV) {
-        uint256 rate = _cdpDbitToDgov();
-        amountDGOV = _amountDBIT.mul(rate);
     }
 }
