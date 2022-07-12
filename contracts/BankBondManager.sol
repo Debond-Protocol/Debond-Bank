@@ -14,20 +14,20 @@ import "debond-oracle-contracts/interfaces/IOracle.sol";
 
 
 
-abstract contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwnable {
+contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwnable {
 
     using DebondMath for uint256;
 
     address immutable debondBondAddress;
-    address immutable bankAddress;
-    address immutable bankDataAddress;
+    address  bankAddress;
+    address  bankDataAddress;
     address immutable DBITAddress;
     address immutable DGOVAddress;
     address immutable WETHAddress;
     address immutable USDCAddress;
     address immutable USDTAddress;
     address immutable DAIAddress;
-    address immutable oracleAddress;
+    address  oracleAddress;
 
     // class MetadataIds
     uint public constant symbolMetadataId = 0;

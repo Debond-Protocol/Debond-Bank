@@ -32,11 +32,13 @@ import "./BankBondManager.sol";
 import "./libraries/DebondMath.sol";
 import "./interfaces/IBankData.sol";
 import "./BankRouter.sol";
+import "debond-governance-contracts/utils/GovernanceOwnable.sol";
+
 
 
 //todo : grammaire( _ internal, majuscules etc), commentaires
 
-contract Bank is BankRouter {
+contract Bank is BankRouter, GovernanceOwnable {
 
     using DebondMath for uint256;
     using SafeERC20 for IERC20;
@@ -54,7 +56,7 @@ contract Bank is BankRouter {
         address usdcAddress,
         address _weth,
         address _bankData
-    ) BankRouter(apmAddress, _DBITAddress, _DGOVAddress, usdcAddress, _weth, oracleAddress) {
+    ) GovernanceOwnable(governanceAddress) BankRouter(apmAddress, _DBITAddress, _DGOVAddress, usdcAddress, _weth, oracleAddress) {
         bondManagerAddress = _bondManagerAddress;
         bankData = _bankData;
     }

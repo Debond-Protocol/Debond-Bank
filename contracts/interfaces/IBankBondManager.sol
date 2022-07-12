@@ -29,9 +29,8 @@ interface IBankBondManager {
     function redeemERC3475(address from, uint classId, uint nonceId, uint amount) external;
 
 
-    function getProgress(uint256 classId, uint256 nonceId) external view returns (uint256 progressAchieved, uint256 progressRemaining);
     function getETA(uint256 classId, uint256 nonceId) external view returns (uint256);
-    function classValues(uint256 classId) public view returns (address _tokenAddress, InterestRateType _interestRateType, uint256 _periodTimestamp);
+    function classValues(uint256 classId) external view returns (address _tokenAddress, InterestRateType _interestRateType, uint256 _periodTimestamp);
     function getClasses() external view returns (uint[] memory);
 }
 

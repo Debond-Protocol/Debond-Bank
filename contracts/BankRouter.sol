@@ -7,11 +7,16 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IBankRouter.sol";
 import "debond-oracle-contracts/interfaces/IOracle.sol";
 import "debond-token-contracts/interfaces/IDebondToken.sol";
+import "./libraries/DebondMath.sol";
+
 
 
 
 
 abstract contract BankRouter {
+
+    using DebondMath for uint256;
+
 
     IAPM apm;
     address immutable DBITAddress;
@@ -113,7 +118,7 @@ abstract contract BankRouter {
     * @param _tokenAddress the address of token
     * @return amountDBIT the amount of DBIT to mint
     */
-    function convertToDbit(uint128 _amountToken, address _tokenAddress) internal view returns (uint256 amountDBIT) {
+    function convertToDbit(uint256 _amountToken, address _tokenAddress) internal view returns (uint256 amountDBIT) {
 
         uint256 tokenToUsd = _convertTokenToUSDC(_amountToken, _tokenAddress);
         uint256 rate = _cdpUsdToDBIT();
@@ -143,13 +148,13 @@ abstract contract BankRouter {
     * @param _tokenAddress the address of token we want to convert
     * @return amountUsd the corresponding amount of usd
     */
-    function _convertTokenToUSDC(uint128 _amountToken, address _tokenAddress) private view returns (uint256 amountUsd) {
+    function _convertTokenToUSDC(uint256 _amountToken, address _tokenAddress) private view returns (uint256 amountUsd) {
 
         if (_tokenAddress == USDCAddress) {
             amountUsd = _amountToken;
         }
         else {
-            amountUsd = IOracle(oracleAddress).estimateAmountOut(_tokenAddress, _amountToken, USDCAddress, 60) * 1e12;
+            amountUsd = IOracle(oracleAddress).estimateAmountOut(_tokenAddress, uint128(_amountToken), USDCAddress, 60) * 1e12;
         }
     }
 
