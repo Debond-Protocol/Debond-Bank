@@ -37,8 +37,8 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
         
         let wethBalanceBeforeMint = await wethContract.balanceOf(apmContract.address);
         console.log("wethBalanceBeforeMint", wethBalanceBeforeMint.toString());
-        //await wethContract.mint(swapper, web3.utils.toWei('0.1', 'ether'));
-        await wethContract.mint(apmContract.address, web3.utils.toWei('0.1', 'ether'));
+        
+        //await wethContract.mint(apmContract.address, web3.utils.toWei('0.1', 'ether'));
         await wethContract.approve(bankContract.address, web3.utils.toWei('0.1', 'ether'), {from: swapper})
         
         let wethBalanceAfterMint = await wethContract.balanceOf(apmContract.address);
@@ -87,24 +87,27 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
 
 
 
-        let balanceEThaccount0BeforeDeposit= await wethContract.balanceOf(accounts[0]);
-        console.log("acc0 weth before deposit", balanceEThaccount0BeforeDeposit.toString())
+        let balanceEThSwapperBeforeDeposit= await wethContract.balanceOf(swapper);
+        console.log("swapper weth before deposit", balanceEThSwapperBeforeDeposit.toString())
 
         //web3.eth.sendTransaction({from : accounts[0], to : wethContract.address, value : web3.utils.toWei('0.1', 'ether') });
-        wethContract.deposit({from : accounts[0], value : web3.utils.toWei('0.1', 'ether') })
+        await wethContract.deposit({from : swapper, value : web3.utils.toWei('0.2', 'ether') })
 
-        let balanceEThaccount0AfterDeposit= await wethContract.balanceOf(accounts[0]);
-        console.log("acc0 weth After deposit", balanceEThaccount0AfterDeposit.toString())
+        let balanceEThSwapperAfterDeposit= await wethContract.balanceOf(swapper);
+        console.log("swapper weth After deposit", balanceEThSwapperAfterDeposit.toString())
         
         
         //wethContract.approve(accounts[0], web3.utils.toWei('0.1', 'ether'), {from : accounts[0]});
-        wethContract.transfer(accounts[1], web3.utils.toWei('0.1', 'ether'), {from : accounts[0]})
+        await wethContract.transfer(apmContract.address, web3.utils.toWei('0.1', 'ether'), {from : swapper})
 
-        let balanceWeth = await wethContract.balanceOf(accounts[1]);
-        console.log("acc1 weth amount after transfer", balanceWeth.toString())
+        let balanceWethApm = await wethContract.balanceOf(apmContract.address);
+        console.log("APM weth amount after transfer", balanceWethApm.toString())
 
-        let balanceEThaccount0Afterswap = await wethContract.balanceOf(accounts[0]);
-        console.log("acc0 weth after transfer", balanceEThaccount0Afterswap.toString())
+        let balanceEThSwapperAfterswap = await wethContract.balanceOf(swapper);
+        console.log("swapper weth after transfer", balanceEThSwapperAfterswap.toString())
+
+        let balanceDbitApm = await dbitInstance.balanceOf(apmContract.address);
+        console.log("DBIT IN APM", balanceDbitApm.toString())
     });
 
     it("should swap", async () => {
@@ -144,10 +147,10 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
 
     })
 
-    it("should swapExactEthForTokens", async () => {
+    it.only("should swapExactEthForTokens", async () => {
         // setting the bank
         await apmContract.setBankAddress(bankContract.address);
-        /*await bankContract.swapExactEthForTokens(
+        await bankContract.swapExactEthForTokens(
             web3.utils.toWei('0.01', 'ether'),
             web3.utils.toWei('0.0001', 'ether'),
             [wethContract.address, dbitInstance.address],
@@ -160,10 +163,10 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
 
         const s = await apmContract.getReserves(usdcContract.address, dbitInstance.address);
         console.log("here we print r0 after swap : " + s[0].toString(), "here we print r1 after swap :" + s[1].toString());
-        */
+        
     })
 
-    it.only("should swapExactTokensForEth", async () => {
+    it("should swapExactTokensForEth", async () => {
         // setting the bank
         await apmContract.setBankAddress(bankContract.address);
 
