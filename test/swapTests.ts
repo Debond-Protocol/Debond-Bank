@@ -147,7 +147,7 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
 
     })
 
-    it.only("should swapExactEthForTokens", async () => {
+    it("should swapExactEthForTokens", async () => {
         // setting the bank
         await apmContract.setBankAddress(bankContract.address);
         await bankContract.swapExactEthForTokens(
@@ -166,7 +166,7 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
         
     })
 
-    it("should swapExactTokensForEth", async () => {
+    it.only("should swapExactTokensForEth", async () => {
         // setting the bank
         await apmContract.setBankAddress(bankContract.address);
 
@@ -174,6 +174,9 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
         console.log("dbitBalanceBeforeSwap", dbitBalanceBeforeSwap.toString())
         let wethBalanceBeforeSwap = await wethContract.balanceOf(swapper);
         console.log("wethBalanceBeforeSwap", wethBalanceBeforeSwap.toString())
+        let wethBalanceApmBefore = await wethContract.balanceOf(apmContract.address);
+        console.log("wethBalanceApmBefore", wethBalanceApmBefore.toString())
+
 
         await bankContract.swapExactTokensForEth(
             web3.utils.toWei('0.01', 'ether'),
@@ -188,6 +191,9 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
         console.log("dbitBalanceAfterSwap", dbitBalanceAfterSwap.toString())
         let wethBalanceAfterSwap = await wethContract.balanceOf(swapper);
         console.log("wethBalanceAfterSwap", wethBalanceAfterSwap.toString())
+        let wethBalanceApmAfter = await wethContract.balanceOf(apmContract.address);
+        console.log("wethBalanceApmAfter", wethBalanceApmAfter.toString())
+
 
         let diffWeth = parseFloat(web3.utils.fromWei(wethBalanceAfterSwap, "ether")) - parseFloat(web3.utils.fromWei(wethBalanceBeforeSwap, "ether"));
         expect(diffWeth.toString()).to.equal(web3.utils.toWei('0.033333333333333333', 'ether').toString()); //value found with xy=k formula

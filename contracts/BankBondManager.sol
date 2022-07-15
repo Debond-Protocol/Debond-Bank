@@ -3,9 +3,9 @@
 
 pragma solidity ^0.8.0;
 
-import "debond-governance-contracts/utils/GovernanceOwnable.sol";
-import "debond-erc3475-contracts/interfaces/IDebondBond.sol";
-import "debond-erc3475-contracts/interfaces/IRedeemableBondCalculator.sol";
+import "@debond-protocol/debond-governance-contracts/utils/GovernanceOwnable.sol";
+import "@debond-protocol/debond-erc3475-contracts/interfaces/IDebondBond.sol";
+import "erc3475-contracts/interfaces/IRedeemableBondCalculator.sol";
 import "erc3475/IERC3475.sol";
 import "./libraries/DebondMath.sol";
 import "./interfaces/IBankData.sol";
