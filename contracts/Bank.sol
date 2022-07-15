@@ -22,7 +22,6 @@ pragma solidity ^0.8.0;
     error WrongTokenAddress(address tokenAddress);
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "debond-token-contracts/interfaces/IDebondToken.sol";
 import "debond-oracle-contracts/interfaces/IOracle.sol";
 import './interfaces/IWeth.sol';
@@ -43,22 +42,22 @@ contract Bank is BankRouter, GovernanceOwnable {
     using DebondMath for uint256;
     using SafeERC20 for IERC20;
 
-    address bankData;
+    address bankDataAddress;
     address bondManagerAddress;
     enum PurchaseMethod {Buying, Staking}
     constructor(
-        address governanceAddress,
-        address apmAddress,
-        address _bondManagerAddress,
+        address _governanceAddress,
+        address _APMAddress,
+        address _bankBondManagerAddress,
+        address _bankDataAddress,
         address _DBITAddress,
         address _DGOVAddress,
-        address oracleAddress,
-        address usdcAddress,
-        address _weth,
-        address _bankData
-    ) GovernanceOwnable(governanceAddress) BankRouter(apmAddress, _DBITAddress, _DGOVAddress, usdcAddress, _weth, oracleAddress) {
-        bondManagerAddress = _bondManagerAddress;
-        bankData = _bankData;
+        address _USDCAddress,
+        address _WETHAddress,
+        address _oracleAddress
+    ) GovernanceOwnable(_governanceAddress) BankRouter(_APMAddress, _DBITAddress, _DGOVAddress, _USDCAddress, _WETHAddress, _oracleAddress) {
+        bondManagerAddress = _bankBondManagerAddress;
+        bankDataAddress = _bankDataAddress;
     }
 
     modifier ensure(uint deadline) {
@@ -68,8 +67,28 @@ contract Bank is BankRouter, GovernanceOwnable {
         _;
     }
 
+    function setApmAddress(address _apmAddress) external onlyGovernance {
+        _setApmAddress(_apmAddress);
+    }
+
+    function setBondManagerAddress(address _bondManagerAddress) external onlyGovernance {
+        bondManagerAddress = _bondManagerAddress;
+    }
+
+    function setBankDataAddress(address _bankDataAddress) external onlyGovernance {
+        bankDataAddress = _bankDataAddress;
+    }
+
+    function setDBITAddress(address _DBITAddress) external onlyGovernance {
+        DBITAddress = _DBITAddress;
+    }
+
+    function setDGOVAddress(address _DGOVAddress) external onlyGovernance {
+        DGOVAddress = _DGOVAddress;
+    }
+
     function canPurchase(uint classIdIn, uint classIdOut) public view returns (bool) {
-        return IBankData(bankData).canPurchase(classIdIn, classIdOut);
+        return IBankData(bankDataAddress).canPurchase(classIdIn, classIdOut);
     }
 
 
@@ -445,7 +464,7 @@ contract Bank is BankRouter, GovernanceOwnable {
 
         // Staking collateral for bonds
         if (purchaseMethod == PurchaseMethod.Staking) {
-            return _getInterestRate(_purchaseTokenClassId, _purchaseTokenAmount);
+            return IBankBondManager(bondManagerAddress).getInterestRate(_purchaseTokenClassId, _purchaseTokenAmount);
         }
         // buying Bonds
         else {
@@ -453,17 +472,8 @@ contract Bank is BankRouter, GovernanceOwnable {
             uint debondTokenAmount = convertToDbit(uint128(_purchaseTokenAmount), purchaseTokenAddress);
             //todo : ferivy if conversion is possible.
 
-            return _getInterestRate(_debondTokenClassId, debondTokenAmount);
+            return IBankBondManager(bondManagerAddress).getInterestRate(_debondTokenClassId, debondTokenAmount);
         }
-    }
-
-
-    function getBenchmarkInterest() public view returns (uint) {
-        return IBankData(bankData).getBenchmarkInterest();
-    }
-
-    function _getInterestRate(uint classId, uint amount) private view returns (uint rate) {
-
     }
 
 

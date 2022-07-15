@@ -18,16 +18,11 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
 
     using DebondMath for uint256;
 
-    address immutable debondBondAddress;
-    address  bankAddress;
-    address  bankDataAddress;
-    address immutable DBITAddress;
-    address immutable DGOVAddress;
-    address immutable WETHAddress;
+    address debondBondAddress;
+    address bankAddress;
+    address bankDataAddress;
+    address oracleAddress;
     address immutable USDCAddress;
-    address immutable USDTAddress;
-    address immutable DAIAddress;
-    address  oracleAddress;
 
     // class MetadataIds
     uint public constant symbolMetadataId = 0;
@@ -40,32 +35,33 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     uint public constant maturityDateMetadataId = 1;
 
     uint public constant EPOCH = 1 days; // should Be 24 hours
+    bool dataInitialized;
 
 
     constructor(
         address _governanceAddress,
         address _debondBondAddress,
         address _bankAddress,
-        address _bankData,
-        address _DBITAddress,
-        address _DGOVAddress,
-        address _WETHAddress,
-        address _USDCAddress,
-        address _USDTAddress,
-        address _DAIAddress,
-        address _oracleAddress
+        address _bankDataAddress,
+        address _oracleAddress,
+        address _USDCAddress
     ) GovernanceOwnable(_governanceAddress) {
         debondBondAddress = _debondBondAddress;
         bankAddress = _bankAddress;
-        bankDataAddress = _bankData;
-        DBITAddress = _DBITAddress;
-        DGOVAddress = _DGOVAddress;
-        WETHAddress = _WETHAddress;
-        USDCAddress = _USDCAddress;
-        USDTAddress = _USDTAddress;
-        DAIAddress = _DAIAddress;
+        bankDataAddress = _bankDataAddress;
         oracleAddress = _oracleAddress;
+        USDCAddress = _USDCAddress;
+    }
 
+    function initDatas(
+        address DBITAddress,
+        address USDTAddress,
+        address DAIAddress,
+        address DGOVAddress,
+        address WETHAddress
+    ) external onlyGovernance {
+        require(!dataInitialized);
+        dataInitialized = true;
         uint SIX_M_PERIOD = 180 * EPOCH;
         // 1 hour period for tests
 
@@ -112,8 +108,16 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         _;
     }
 
-    function setBankData(address _bankData) external onlyGovernance {
-        bankDataAddress = _bankData;
+    function setDebondBondAddress(address _debondBondAddress) external onlyGovernance {
+        debondBondAddress = _debondBondAddress;
+    }
+
+    function setBankDataAddress(address _bankDataAddress) external onlyGovernance {
+        bankDataAddress = _bankDataAddress;
+    }
+
+    function setBankAddress(address _bankAddress) external onlyGovernance {
+        bankAddress = _bankAddress;
     }
 
     function setBenchmarkInterest(uint _benchmarkInterest) external onlyGovernance {

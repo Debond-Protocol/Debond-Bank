@@ -18,12 +18,12 @@ abstract contract BankRouter {
     using DebondMath for uint256;
 
 
-    IAPM apm;
-    address immutable DBITAddress;
-    address immutable DGOVAddress;
+    address apmAddress;
+    address DBITAddress;
+    address DGOVAddress;
     address immutable USDCAddress;
     address immutable WETHAddress;
-    address immutable oracleAddress;
+    address oracleAddress;
 
     constructor(
         address _apmAddress,
@@ -33,7 +33,7 @@ abstract contract BankRouter {
         address _WETHAddress,
         address _oracleAddress
     ) {
-        apm = IAPM(_apmAddress);
+        apmAddress = _apmAddress;
         DBITAddress = _DBITAddress;
         DGOVAddress = _DGOVAddress;
         USDCAddress = _USDCAddress;
@@ -41,12 +41,16 @@ abstract contract BankRouter {
         oracleAddress = _oracleAddress;
     }
 
+    function _setApmAddress(address _apmAddress) internal {
+        apmAddress = _apmAddress;
+    }
+
     function updateWhenAddLiquidity(
         uint _amountA,
         uint _amountB,
         address _tokenA,
         address _tokenB) internal {
-        apm.updateWhenAddLiquidity(_amountA, _amountB, _tokenA, _tokenB);
+        IAPM(apmAddress).updateWhenAddLiquidity(_amountA, _amountB, _tokenA, _tokenB);
     }
     function swapExactTokensForTokens(
         uint amountIn,
@@ -54,34 +58,34 @@ abstract contract BankRouter {
         address[] calldata path,
         address to
     ) external {
-        uint[] memory amounts = apm.getAmountsOut(amountIn, path);
+        uint[] memory amounts = IAPM(apmAddress).getAmountsOut(amountIn, path);
         require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
 
-        IERC20(path[0]).transferFrom(msg.sender, address(apm), amounts[0]);
+        IERC20(path[0]).transferFrom(msg.sender, apmAddress, amounts[0]);
         _swap(amounts, path, to);
     }
 
     function removeLiquidity(address _to, address tokenAddress, uint amount) internal {
-        apm.removeLiquidity(_to, tokenAddress, amount);
+        IAPM(apmAddress).removeLiquidity(_to, tokenAddress, amount);
     }
 
     function addLiquidityDbitPair(address _from, address tokenAddress, uint amount) internal {
-        IERC20(tokenAddress).transferFrom(_from, address(apm), amount);
+        IERC20(tokenAddress).transferFrom(_from, apmAddress, amount);
 
         uint amountDBITToMint = convertToDbit(amount, tokenAddress);
-        IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), amountDBITToMint);
+        IDebondToken(DBITAddress).mintCollateralisedSupply(apmAddress, amountDBITToMint);
 
         updateWhenAddLiquidity(amount, amountDBITToMint, tokenAddress, DBITAddress);
     }
 
     function addLiquidityDgovPair(address _from, address tokenAddress, uint amount) internal {
-        IERC20(tokenAddress).transferFrom(_from, address(apm), amount);
+        IERC20(tokenAddress).transferFrom(_from, apmAddress, amount);
 
         uint amountDBITToMint = tokenAddress == DBITAddress ? amount : convertToDbit(uint128(amount), tokenAddress);
         uint amountDGOVToMint = convertDbitToDgov(amountDBITToMint);
 
-        IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
-        IDebondToken(DBITAddress).mintCollateralisedSupply(address(apm), 2 * amountDBITToMint);
+        IDebondToken(DBITAddress).mintCollateralisedSupply(apmAddress, amountDGOVToMint);
+        IDebondToken(DBITAddress).mintCollateralisedSupply(apmAddress, 2 * amountDBITToMint);
 
         updateWhenAddLiquidity(amount, amountDBITToMint, tokenAddress, DBITAddress);
         updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, DGOVAddress);
@@ -89,16 +93,16 @@ abstract contract BankRouter {
     }
 
     function addLiquidityDbitDgov(address _from, uint DBITamount) internal {
-        IERC20(DBITAddress).transferFrom(_from, address(apm), DBITamount);
+        IERC20(DBITAddress).transferFrom(_from, apmAddress, DBITamount);
 
         uint amountDGOVToMint = convertDbitToDgov(DBITamount);
-        IDebondToken(DGOVAddress).mintCollateralisedSupply(address(apm), amountDGOVToMint);
+        IDebondToken(DGOVAddress).mintCollateralisedSupply(apmAddress, amountDGOVToMint);
         updateWhenAddLiquidity(DBITamount, amountDGOVToMint, DBITAddress, DGOVAddress);
 
     }
 
     function getReserves(address tokenA, address tokenB) external view returns (uint _reserveA, uint _reserveB) {
-        (_reserveA, _reserveB) = apm.getReserves(tokenA, tokenB);
+        (_reserveA, _reserveB) = IAPM(apmAddress).getReserves(tokenA, tokenB);
     }
 
     function _swap(uint[] memory amounts, address[] memory path, address to) private {
@@ -106,7 +110,7 @@ abstract contract BankRouter {
             (address input, address output) = (path[i], path[i + 1]);
             uint amountOut = amounts[i + 1];
             (uint amount0Out, uint amount1Out) = (uint(0), amountOut);
-            apm.swap(
+            IAPM(apmAddress).swap(
                 amount0Out, amount1Out, input, output, to
             );
         }
