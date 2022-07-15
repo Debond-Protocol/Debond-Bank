@@ -14,7 +14,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.5.0",
     "@debond-protocol/debond-apm-contracts": "0.0.1",
-    "@debond-protocol/debond-erc3475-contracts": "^0.0.1",
+    "test-debond-erc3475-contracts": "^0.0.1",
     "@debond-protocol/debond-governance-contracts": "^0.0.1",
     "@debond-protocol/debond-oracle-contracts": "0.0.1",
     "@debond-protocol/debond-token-contracts": "^0.0.2",
@@ -26,7 +26,7 @@
     "@truffle/hdwallet-provider": "^2.0.8",
     "@typechain/truffle-v5": "^5.1.0",
     "@types/chai": "^4.2.22",
-    "@types/mocha": "^9.0.0",
+    "@types/mocha": "^9.1.1",
     "@types/node": "^16.11.2",
     "eth-gas-reporter": "^0.2.23",
     "truffle": "^5.5.6",

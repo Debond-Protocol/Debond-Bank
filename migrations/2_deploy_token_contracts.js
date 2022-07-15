@@ -6,12 +6,12 @@ const USDT = artifacts.require("USDT");
 const WETH = artifacts.require("WETH");
 
 module.exports = function (deployer, network, accounts) {
-  const [governanceAddress, bankAddress, airdropAddress] = accounts;
+  const [governanceAddress, bankAddress, airdropAddress, exchangeAddress] = accounts;
   deployer.deploy(DAI);
   deployer.deploy(USDC);
   deployer.deploy(USDT);
   deployer.deploy(WETH);
 
-  deployer.deploy(DBIT, governanceAddress, governanceAddress, governanceAddress);
-  deployer.deploy(DGOV, governanceAddress, governanceAddress, governanceAddress);
+  deployer.deploy(DBIT, governanceAddress, bankAddress, airdropAddress, exchangeAddress);
+  deployer.deploy(DGOV, governanceAddress, bankAddress, airdropAddress, exchangeAddress);
 };
