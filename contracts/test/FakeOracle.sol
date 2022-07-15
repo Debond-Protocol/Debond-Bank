@@ -1,6 +1,6 @@
 pragma solidity ^0.8.0;
 
-import "debond-oracle-contracts/interfaces/IOracle.sol";
+import "@debond-protocol/debond-oracle-contracts/interfaces/IOracle.sol";
 
 // SPDX-License-Identifier: apache 2.0
 /*

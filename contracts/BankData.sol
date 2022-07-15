@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 
 import "./BankBondManager.sol";
 import "./interfaces/IBankData.sol";
-import "debond-governance-contracts/utils/GovernanceOwnable.sol";
+import "@debond-protocol/debond-governance-contracts/utils/GovernanceOwnable.sol";
 
 
 contract BankData is IBankData, GovernanceOwnable {

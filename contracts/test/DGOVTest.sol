@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "debond-token-contracts/DGOV.sol";
+import "@debond-protocol/debond-token-contracts/DGOV.sol";
 
 
 
@@ -14,8 +14,9 @@ contract DGOVTest is DGOV {
     constructor(
         address governanceAddress,
         address bankAddress,
-        address airdropAddress
-    ) DGOV(governanceAddress, bankAddress, airdropAddress) {}
+        address airdropAddress,
+        address exchangeAddress
+    ) DGOV(governanceAddress, bankAddress, airdropAddress, exchangeAddress) {}
 
 
 }

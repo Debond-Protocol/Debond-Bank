@@ -1,12 +1,13 @@
 pragma solidity ^0.8.0;
 
 // SPDX-License-Identifier: apache 2.0
-import "debond-apm-contracts/interfaces/IAPM.sol";
-import "debond-governance-contracts/utils/GovernanceOwnable.sol";
+import "@debond-protocol/debond-apm-contracts/interfaces/IAPM.sol";
+import "@debond-protocol/debond-governance-contracts/utils/GovernanceOwnable.sol";
+import "@debond-protocol/debond-oracle-contracts/interfaces/IOracle.sol";
+import "@debond-protocol/debond-token-contracts/interfaces/IDebondToken.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IBankRouter.sol";
-import "debond-oracle-contracts/interfaces/IOracle.sol";
-import "debond-token-contracts/interfaces/IDebondToken.sol";
+
 import "./libraries/DebondMath.sol";
 
 

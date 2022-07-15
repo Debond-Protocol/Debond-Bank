@@ -6,7 +6,7 @@ import {
     DebondBondTestInstance,
     USDCInstance,
     USDTInstance,
-    WETHInstance
+    WETHInstance, BankBondManagerInstance
 } from "../types/truffle-contracts";
 
 interface Transaction {
@@ -16,6 +16,7 @@ interface Transaction {
 }
 
 const Bank = artifacts.require("Bank");
+const BankBondManager = artifacts.require("BankBondManager");
 const USDC = artifacts.require("USDC");
 const USDT = artifacts.require("USDT");
 const DBIT = artifacts.require("DBITTest");
@@ -50,6 +51,7 @@ contract('Bank', async (accounts: string[]) => {
     let usdcContract: USDCInstance
     let usdtContract: USDTInstance
     let bankContract: BankInstance
+    let bankBondManagerContract: BankBondManagerInstance
     let wethContract: WETHInstance
     let dbitContract: DBITTestInstance
     let dgovContract: DGOVTestInstance
@@ -72,7 +74,7 @@ contract('Bank', async (accounts: string[]) => {
     })
 
     it('should return all the classes', async () => {
-        const classes = (await bankContract.getClasses()).map(c => c.toNumber())
+        const classes = (await bankBondManagerContract.getClasses()).map(c => c.toNumber())
         console.log("classes: " + classes)
     })
     

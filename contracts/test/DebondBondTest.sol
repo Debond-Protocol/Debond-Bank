@@ -2,7 +2,7 @@ pragma solidity ^0.8.0;
 // SPDX-License-Identifier: MIT
 
 
-import "debond-erc3475-contracts/DebondERC3475.sol";
+import "@debond-protocol/debond-erc3475-contracts/DebondERC3475.sol";
 
 
 contract DebondBondTest is DebondERC3475 {

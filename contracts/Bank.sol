@@ -22,16 +22,14 @@ pragma solidity ^0.8.0;
     error WrongTokenAddress(address tokenAddress);
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "debond-token-contracts/interfaces/IDebondToken.sol";
-import "debond-oracle-contracts/interfaces/IOracle.sol";
-import './interfaces/IWeth.sol';
-
-
+import "@debond-protocol/debond-token-contracts/interfaces/IDebondToken.sol";
+import "@debond-protocol/debond-oracle-contracts/interfaces/IOracle.sol";
+import "@debond-protocol/debond-governance-contracts/utils/GovernanceOwnable.sol";
+import "./interfaces/IWeth.sol";
 import "./BankBondManager.sol";
 import "./libraries/DebondMath.sol";
 import "./interfaces/IBankData.sol";
 import "./BankRouter.sol";
-import "debond-governance-contracts/utils/GovernanceOwnable.sol";
 
 
 
