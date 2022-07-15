@@ -78,18 +78,16 @@ abstract contract APMRouter {
         payable(to).transfer(lastAmount);
     }
     function swapExactEthForTokens(
-        uint amountIn,
         uint amountOutMin,
         address[] calldata path,
         address to
-    ) external {
+    ) external payable {
         require(path[0] == WETHAddress, 'APMRouter: INVALID_PATH');
+        uint amountIn = msg.value;
         uint[] memory amounts = apm.getAmountsOut(amountIn, path);
         require(amounts[amounts.length - 1] >= amountOutMin, 'APMRouter: INSUFFICIENT_OUTPUT_AMOUNT');
-        IWeth(WETHAddress).deposit();
+        IWeth(WETHAddress).deposit{value : amountIn}();
         assert(IWeth(WETHAddress).transfer(address(apm), amountIn));
-
-        IERC20(path[0]).transferFrom(msg.sender, address(apm), amounts[0]);
         _swap(amounts, path, to);
     }
 
