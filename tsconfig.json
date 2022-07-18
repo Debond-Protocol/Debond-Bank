@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es2017",
+    "target": "es2019",
     "module": "commonjs",
     "strict": true,
     "moduleResolution": "node",
@@ -9,7 +9,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["es2015", "esnext.asynciterable"],
+    "lib": ["es2019", "esnext.asynciterable"],
     "sourceMap": true,
     "typeRoots": ["./node_modules/@types", "./types"],
     "types": ["@types/node", "@types/chai", "@types/mocha"],

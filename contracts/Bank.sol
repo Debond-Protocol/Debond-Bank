@@ -449,6 +449,24 @@ contract Bank is BankRouter, GovernanceOwnable {
         removeLiquidity(msg.sender, tokenAddress, amount);
     }
 
+    function redeemBondsETH(
+        uint wethClassId,
+        uint nonceId,
+        uint amountETH
+    ) external {
+        //1. redeem the bonds (will fail if not maturity date exceeded)
+        IBankBondManager(bondManagerAddress).redeemERC3475(msg.sender, wethClassId, nonceId, amountETH);
+
+        (address tokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(wethClassId);
+        removeLiquidity(address(this), tokenAddress, amountETH);
+        IWeth(WETHAddress).withdraw(amountETH);
+        payable(msg.sender).transfer(amountETH);
+
+    }
+
+    fallback() external payable {}
+    receive() external payable {}
+
     function interestRate(
         uint _purchaseTokenClassId,
         uint _debondTokenClassId,
