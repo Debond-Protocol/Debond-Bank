@@ -93,7 +93,7 @@ contract('Bank', async (accounts: string[]) => {
         console.log("classes: " + classes)
     })
 
-    it('stakeForDbitBondWithElse', async () => {
+    it.only('stakeForDbitBondWithElse', async () => {
 
         //mint usdc to the buyer
         await usdcContract.mint(buyer, web3.utils.toWei('100000', 'ether'));
@@ -472,7 +472,7 @@ contract('Bank', async (accounts: string[]) => {
         expect( WETHbalanceOfAPM.toString()).to.equal(web3.utils.toWei('2', 'ether').toString());
     })
 
-    it.only('buyforDgovBondWithEth', async () => {
+    it('buyforDgovBondWithEth', async () => {
         
         await wethContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
         await bankContract.buyforDgovBondWithEth(10, 4, 0, 2000, buyer, {from: buyer, value: web3.utils.toWei('2', 'ether')});
