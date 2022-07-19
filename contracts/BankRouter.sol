@@ -200,10 +200,10 @@ abstract contract BankRouter {
     function _cdpUsdToDBIT() private view returns (uint256 amountDBIT) {
         amountDBIT = 1 ether;
         uint256 _sCollateralised = IDebondToken(DBITAddress).getTotalCollateralisedSupply();
-        //todo: is this working?
+
         if (_sCollateralised >= 1000 ether) {
             amountDBIT = 1.05 ether;
-            uint256 logCollateral = (_sCollateralised / 1000).ln();
+            uint256 logCollateral = (_sCollateralised / 1000).log2();
             amountDBIT = amountDBIT.pow(logCollateral);
         }
     }
@@ -230,7 +230,7 @@ abstract contract BankRouter {
         */
     function _cdpDbitToDgov() private view returns (uint256 amountDGOV) {
         uint256 _sCollateralised = IDebondToken(DGOVAddress).getTotalCollateralisedSupply();
-        amountDGOV = (100 ether + (_sCollateralised).div(33333).pow(2)).inv();
+         amountDGOV = (100 ether + ((_sCollateralised * 1e9) / 33333 / 1e18)**2).inv();
     }
     /**
     * @dev given the amount of dbit, returns the amout of DGOV to mint
