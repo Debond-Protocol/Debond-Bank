@@ -25,7 +25,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@debond-protocol/debond-token-contracts/interfaces/IDebondToken.sol";
 import "@debond-protocol/debond-oracle-contracts/interfaces/IOracle.sol";
 import "@debond-protocol/debond-governance-contracts/utils/GovernanceOwnable.sol";
-import "./interfaces/IWeth.sol";
+import "./interfaces/IWETH.sol";
 import "./BankBondManager.sol";
 import "./libraries/DebondMath.sol";
 import "./interfaces/IBankData.sol";
@@ -57,6 +57,8 @@ contract Bank is BankRouter, GovernanceOwnable {
         bondManagerAddress = _bankBondManagerAddress;
         bankDataAddress = _bankDataAddress;
     }
+
+    receive() external payable {}
 
     modifier ensure(uint deadline) {
         if (deadline >= block.timestamp) {
@@ -108,7 +110,7 @@ contract Bank is BankRouter, GovernanceOwnable {
             revert WrongTokenAddress(debondTokenAddress);
         }
         (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(purchaseClassId);
-        if (purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress || purchaseTokenAddress == WETHAddress) {
+        if (purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
         uint _interestRate = interestRate(purchaseClassId, dbitClassId, purchaseTokenAmount, PurchaseMethod.Staking);
@@ -189,7 +191,7 @@ contract Bank is BankRouter, GovernanceOwnable {
             revert WrongTokenAddress(debondTokenAddress);
         }
         (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(purchaseClassId);
-        if (purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress || purchaseTokenAddress == WETHAddress) {
+        if (purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
         uint _interestRate = interestRate(purchaseClassId, dgovClassId, purchaseTokenAmount, PurchaseMethod.Staking);
@@ -294,7 +296,7 @@ contract Bank is BankRouter, GovernanceOwnable {
             revert PairNotAllowed();
         }
         (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(purchaseClassId);
-        if (purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress || purchaseTokenAddress == WETHAddress) {
+        if (purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
         (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dgovClassId);
@@ -335,8 +337,8 @@ contract Bank is BankRouter, GovernanceOwnable {
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
         }
-        IWeth(WETHAddress).deposit{value : purchaseTokenAmount}();
-        addLiquidityDbitPair(address(this), WETHAddress, purchaseTokenAmount);
+        IWETH(WETHAddress).deposit{value : purchaseTokenAmount}();
+        addLiquidityDbitETHPair(purchaseTokenAmount);
 
         _issuingProcessStaking(wethClassId, purchaseTokenAmount, purchaseTokenAddress, dbitClassId, _interestRate, to);
     }
@@ -368,8 +370,8 @@ contract Bank is BankRouter, GovernanceOwnable {
             revert RateNotHighEnough(_interestRate, minRate);
         }
 
-        IWeth(WETHAddress).deposit{value : purchaseTokenAmount}();
-        addLiquidityDgovPair(address(this), WETHAddress, purchaseTokenAmount);
+        IWETH(WETHAddress).deposit{value : purchaseTokenAmount}();
+        addLiquidityDgovETHPair(purchaseTokenAmount);
         _issuingProcessStaking(wethClassId, purchaseTokenAmount, purchaseTokenAddress, dgovClassId, _interestRate, to);
     }
 
@@ -399,8 +401,8 @@ contract Bank is BankRouter, GovernanceOwnable {
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
         }
-        IWeth(WETHAddress).deposit{value : purchaseTokenAmount}();
-        addLiquidityDbitPair(address(this), WETHAddress, purchaseTokenAmount);
+        IWETH(WETHAddress).deposit{value : purchaseTokenAmount}();
+        addLiquidityDbitETHPair(purchaseTokenAmount);
         _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, dbitClassId, _interestRate, to);
     }
 
@@ -430,8 +432,8 @@ contract Bank is BankRouter, GovernanceOwnable {
         if (_interestRate < minRate) {
             revert RateNotHighEnough(_interestRate, minRate);
         }
-        IWeth(WETHAddress).deposit{value : purchaseTokenAmount}();
-        addLiquidityDgovPair(address(this), WETHAddress, purchaseTokenAmount);
+        IWETH(WETHAddress).deposit{value : purchaseTokenAmount}();
+        addLiquidityDgovETHPair(purchaseTokenAmount);
         _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, dgovClassId, _interestRate, to);
     }
 
@@ -454,18 +456,10 @@ contract Bank is BankRouter, GovernanceOwnable {
         uint nonceId,
         uint amountETH
     ) external {
-        //1. redeem the bonds (will fail if not maturity date exceeded)
         IBankBondManager(bondManagerAddress).redeemERC3475(msg.sender, wethClassId, nonceId, amountETH);
-
-        (address tokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(wethClassId);
-        removeLiquidity(address(this), tokenAddress, amountETH);
-        IWeth(WETHAddress).withdraw(amountETH);
-        payable(msg.sender).transfer(amountETH);
-
+        //TODO Check if wethClassId gives the WethAddress tokenAddress!!!!
+        removeWETHLiquidity(amountETH);
     }
-
-    fallback() external payable {}
-    receive() external payable {}
 
     function interestRate(
         uint _purchaseTokenClassId,

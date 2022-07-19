@@ -205,6 +205,4 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
         console.log("reserveAfter after swap : " + reserveAfter[0].toString(), "reserveAfter after swap :" + reserveAfter[1].toString());
 
     })
-
-
 });

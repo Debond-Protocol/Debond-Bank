@@ -19,14 +19,55 @@ const APM = artifacts.require("APMTest");
 const WETH = artifacts.require("WETH");
 const DebondBondTest = artifacts.require("DebondBondTest");
 
+interface Transaction {
+    classId: string;
+    nonceId: string;
+    amount: string;
+}
+
+function sleep(ms: any) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
+
+}
+
 
 
 contract('Bank', async (accounts: string[]) => {
-    const buyer = accounts[1];
-    enum PurchaseMethod {
-        BUYING = 0,
-        STAKING = 1,
+
+    async function getTransactions(to: string): Promise<Transaction[]> {
+        const issues = (await bondContract.getPastEvents("Issue",
+            {
+                filter: {
+                    _to: to
+                },
+                fromBlock: 0
+            }
+        )).map(e => {
+            let transactions: Transaction[] = [];
+            (e.returnValues._transaction).forEach((t: any) => {
+                transactions.push({
+                    classId: t['classId'],
+                    nonceId: t['nonceId'],
+                    amount: t['amount']
+                })
+            })
+            return transactions;
+        });
+
+        let transactions: Transaction[] = [];
+        issues.flat().forEach((t) => {
+            const index = transactions.findIndex(v => t.classId == v.classId && t.nonceId == v.nonceId)
+            index != -1 ?
+                transactions[index].amount = web3.utils.toBN(transactions[index].amount).add(web3.utils.toBN(t.amount)).toString() :
+                transactions.push(t)
+        })
+
+        return transactions;
     }
+
+    const buyer = accounts[1];
 
     let usdcContract: USDCInstance
     let usdtContract: USDTInstance
@@ -52,15 +93,8 @@ contract('Bank', async (accounts: string[]) => {
         bondContract = await DebondBondTest.deployed();
     })
 
-    it('should return all the classes', async () => {
-        const classes = (await bankContract.getClasses()).map(c => c.toNumber())
-        console.log("classes: " + classes)
-    })
 
-    //todo : put comments for test
-
-
-    it('stakeForDbitBondWithElse then redeem', async () => {
+    it.only('stakeForDbitBondWithElse then redeem', async () => {
 
         //mint usdc to the buyer
         await usdcContract.mint(buyer, web3.utils.toWei('100000', 'ether'));
@@ -69,15 +103,11 @@ contract('Bank', async (accounts: string[]) => {
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
         await bankContract.stakeForDbitBondWithElse(1, 0, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
 
-        //log his nonce so we can use it to query bond blance
-        const DBITNonces = (await bondContract.getNoncesPerAddress(buyer, DBIT_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
-        console.log("nonce: " + DBITNonces[0]);
-        let dbitbondBalance = await bondContract.balanceOf(buyer, DBIT_FIX_6MTH_CLASS_ID, DBITNonces[0] );
+        const transactions = await getTransactions(buyer)
 
-        //same for usdc
-        const USDCNonces = (await bondContract.getNoncesPerAddress(buyer, USDC_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
-        console.log("nonce: " + USDCNonces[0]);
-        let UsdcbondBalance = await bondContract.balanceOf(buyer, USDC_FIX_6MTH_CLASS_ID, DBITNonces[0] );
+        //log his nonce so we can use it to query bond blance
+        let dbitbondBalance = (transactions.find(t => parseInt(t.classId) == DBIT_FIX_6MTH_CLASS_ID)?.amount) as string;
+        let UsdcbondBalance = (transactions.find(t => parseInt(t.classId) == USDC_FIX_6MTH_CLASS_ID)?.amount) as string;
 
         expect( UsdcbondBalance.toString()).to.equal(web3.utils.toWei('3000', 'ether').toString());
         expect( parseFloat(web3.utils.fromWei(dbitbondBalance, "ether"))).to.greaterThan(90);
@@ -87,7 +117,9 @@ contract('Bank', async (accounts: string[]) => {
         console.log("apmbalanceusdc :" + APMbalanceUSDC.toString());
         expect( APMbalanceUSDC.toString()).to.equal(web3.utils.toWei('3000', 'ether').toString());
 
-        await bankContract.redeemBonds(1, USDCNonces[0], web3.utils.toWei('3000', 'ether'), {from : buyer});
+        const UsdcnonceId = (transactions.find(t => parseInt(t.classId) == USDC_FIX_6MTH_CLASS_ID)?.nonceId) as string
+        await sleep(1500);
+        await bankContract.redeemBonds(1, parseInt(UsdcnonceId), web3.utils.toWei('3000', 'ether'), {from : buyer});
 
         let balanceAfterRedeem = await usdcContract.balanceOf(buyer);
         console.log ("balance après " , balanceAfterRedeem.toString());
@@ -95,7 +127,7 @@ contract('Bank', async (accounts: string[]) => {
 
     })
 
-    it.only('stakeForDbitBondWithEth then redeem', async () => {
+    it('stakeForDbitBondWithEth then redeem', async () => {
 
         await wethContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
 
@@ -108,10 +140,9 @@ contract('Bank', async (accounts: string[]) => {
         await bankContract.stakeForDbitBondWithEth(10, DBIT_FIX_6MTH_CLASS_ID, 0, 2000, buyer, {from: buyer, value: web3.utils.toWei('2', 'ether')});
 
 
-        const ETHNonce = (await bondContract.getNoncesPerAddress(buyer, 10));
-        const DBITNonces = (await bondContract.getNoncesPerAddress(buyer, DBIT_FIX_6MTH_CLASS_ID)).map(n => n.toNumber());
-        let DBITbondBalance = await bondContract.balanceOf(buyer, DBIT_FIX_6MTH_CLASS_ID, DBITNonces[0] );
-        let ETHbondBalance = await bondContract.balanceOf(buyer, 10, ETHNonce[0] );
+        const transactions = await getTransactions(buyer)
+        let DBITbondBalance = (transactions.find(t => parseInt(t.classId) == DBIT_FIX_6MTH_CLASS_ID)?.amount) as string;
+        let ETHbondBalance = (transactions.find(t => parseInt(t.classId) == 10)?.amount) as string;
 
         expect( ETHbondBalance.toString()).to.equal(web3.utils.toWei('2', 'ether').toString());
         expect( parseFloat(web3.utils.fromWei(DBITbondBalance, "ether"))).to.greaterThan(0.06);
@@ -120,7 +151,10 @@ contract('Bank', async (accounts: string[]) => {
 
         expect( WETHbalanceOfAPM.toString()).to.equal(web3.utils.toWei('2', 'ether').toString());
 
-        await bankContract.redeemBondsETH(10, ETHNonce[0], web3.utils.toWei('2', 'ether'), {from : buyer});
+        const ETHNonceId = (transactions.find(t => parseInt(t.classId) == 10)?.nonceId) as string
+        console.log(ETHNonceId);
+        await sleep(1000);
+        await bankContract.redeemBondsETH(10, parseInt(ETHNonceId), web3.utils.toWei('2', 'ether'), {from : buyer});
 
 
         let balanceAfterRedeem = await web3.eth.getBalance(buyer);

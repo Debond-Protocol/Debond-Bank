@@ -6,7 +6,8 @@ import "@debond-protocol/debond-governance-contracts/utils/GovernanceOwnable.sol
 import "@debond-protocol/debond-oracle-contracts/interfaces/IOracle.sol";
 import "@debond-protocol/debond-token-contracts/interfaces/IDebondToken.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./interfaces/IBankRouter.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./interfaces/IWETH.sol";
 
 import "./libraries/DebondMath.sol";
 
@@ -17,6 +18,8 @@ import "./libraries/DebondMath.sol";
 abstract contract BankRouter {
 
     using DebondMath for uint256;
+    using SafeERC20 for IERC20;
+
 
 
     address apmAddress;
@@ -53,6 +56,7 @@ abstract contract BankRouter {
         address _tokenB) internal {
         IAPM(apmAddress).updateWhenAddLiquidity(_amountA, _amountB, _tokenA, _tokenB);
     }
+
     function swapExactTokensForTokens(
         uint amountIn,
         uint amountOutMin,
@@ -66,12 +70,50 @@ abstract contract BankRouter {
         _swap(amounts, path, to);
     }
 
+    function swapExactTokensForEth(
+        uint amountIn,
+        uint amountEthMin,
+        address[] calldata path,
+        address to
+    ) external {
+        require(path[path.length - 1] == WETHAddress, 'APMRouter: INVALID_PATH');
+        uint[] memory amounts = IAPM(apmAddress).getAmountsOut(amountIn, path);
+        uint lastAmount = amounts[amounts.length - 1];
+        require(lastAmount >= amountEthMin, 'APMRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+
+        IERC20(path[0]).transferFrom(msg.sender, apmAddress, amounts[0]);
+        _swap(amounts, path, address(this));
+        IWETH(WETHAddress).withdraw(lastAmount);
+        payable(to).transfer(lastAmount);
+    }
+    function swapExactEthForTokens(
+        uint amountIn,
+        uint amountOutMin,
+        address[] calldata path,
+        address to
+    ) external {
+        require(path[0] == WETHAddress, 'APMRouter: INVALID_PATH');
+        uint[] memory amounts = IAPM(apmAddress).getAmountsOut(amountIn, path);
+        require(amounts[amounts.length - 1] >= amountOutMin, 'APMRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        IWETH(WETHAddress).deposit();
+        assert(IWETH(WETHAddress).transfer(apmAddress, amountIn));
+
+        IERC20(path[0]).transferFrom(msg.sender, apmAddress, amounts[0]);
+        _swap(amounts, path, to);
+    }
+
     function removeLiquidity(address _to, address tokenAddress, uint amount) internal {
         IAPM(apmAddress).removeLiquidity(_to, tokenAddress, amount);
     }
 
+    function removeWETHLiquidity(uint amount) internal {
+        IAPM(apmAddress).removeLiquidity(address(this), WETHAddress, amount);
+        IWETH(WETHAddress).withdraw(amount);
+        payable(msg.sender).transfer(amount);
+    }
+
     function addLiquidityDbitPair(address _from, address tokenAddress, uint amount) internal {
-        IERC20(tokenAddress).transferFrom(_from, apmAddress, amount);
+        IERC20(tokenAddress).safeTransferFrom(_from, apmAddress, amount);
 
         uint amountDBITToMint = convertToDbit(amount, tokenAddress);
         IDebondToken(DBITAddress).mintCollateralisedSupply(apmAddress, amountDBITToMint);
@@ -90,7 +132,28 @@ abstract contract BankRouter {
 
         updateWhenAddLiquidity(amount, amountDBITToMint, tokenAddress, DBITAddress);
         updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, DGOVAddress);
+    }
 
+    function addLiquidityDbitETHPair(uint amount) internal {
+        IWETH(WETHAddress).transfer(apmAddress, amount);
+
+        uint amountDBITToMint = convertToDbit(amount, WETHAddress);
+        IDebondToken(DBITAddress).mintCollateralisedSupply(apmAddress, amountDBITToMint);
+
+        updateWhenAddLiquidity(amount, amountDBITToMint, WETHAddress, DBITAddress);
+    }
+
+    function addLiquidityDgovETHPair(uint amount) internal {
+        IWETH(WETHAddress).transfer(apmAddress, amount);
+
+        uint amountDBITToMint = convertToDbit(uint128(amount), WETHAddress);
+        uint amountDGOVToMint = convertDbitToDgov(amountDBITToMint);
+
+        IDebondToken(DBITAddress).mintCollateralisedSupply(apmAddress, amountDGOVToMint);
+        IDebondToken(DBITAddress).mintCollateralisedSupply(apmAddress, 2 * amountDBITToMint);
+
+        updateWhenAddLiquidity(amount, amountDBITToMint, WETHAddress, DBITAddress);
+        updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, DGOVAddress);
     }
 
     function addLiquidityDbitDgov(address _from, uint DBITamount) internal {

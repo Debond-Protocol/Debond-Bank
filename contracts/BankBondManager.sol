@@ -330,7 +330,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         IERC3475.Transaction[] memory transactions = new IERC3475.Transaction[](1);
         IERC3475.Transaction memory transaction = IERC3475.Transaction(classId, nonceId, amount);
         transactions[0] = transaction;
-        IDebondBond(debondBondAddress).redeem(from, transactions);
+        IERC3475(debondBondAddress).redeem(from, transactions);
     }
 
     function setTokenInterestRateSupply(address tokenAddress, InterestRateType interestRateType, uint amount) internal {
