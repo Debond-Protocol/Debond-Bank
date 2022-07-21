@@ -21,7 +21,7 @@ import "@debond-protocol/debond-governance-contracts/utils/GovernanceOwnable.sol
 
 contract BankData is IBankData, GovernanceOwnable {
 
-    address bankAddress;
+    address public bankAddress;
 
 
     mapping(uint256 => mapping(uint256 => bool)) _canPurchase; // can u get second input classId token from providing first input classId token
