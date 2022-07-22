@@ -58,7 +58,9 @@ abstract contract BankRouter {
         oracleAddress = _oracleAddress;
     }
 
-    function _setApmAddress(address _apmAddress) internal {
+    function _setApmAddress(
+        address _apmAddress
+    ) internal {
         apmAddress = _apmAddress;
     }
 
@@ -66,21 +68,22 @@ abstract contract BankRouter {
         uint _amountA,
         uint _amountB,
         address _tokenA,
-        address _tokenB) internal {
+        address _tokenB
+    ) internal {
         IAPM(apmAddress).updateWhenAddLiquidity(_amountA, _amountB, _tokenA, _tokenB);
     }
 
     function swapExactTokensForTokens(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path,
-        address to
+        uint _amountIn,
+        uint _amountOutMin,
+        address[] calldata _path,
+        address _to
     ) external {
-        uint[] memory amounts = IAPM(apmAddress).getAmountsOut(amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
+        uint[] memory amounts = IAPM(apmAddress).getAmountsOut(_amountIn, _path);
+        require(amounts[amounts.length - 1] >= _amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
 
-        IERC20(path[0]).transferFrom(msg.sender, apmAddress, amounts[0]);
-        _swap(amounts, path, to);
+        IERC20(_path[0]).transferFrom(msg.sender, apmAddress, amounts[0]);
+        _swap(amounts, _path, _to);
     }
 
     function swapExactTokensForEth(

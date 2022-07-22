@@ -21,7 +21,6 @@ pragma solidity ^0.8.0;
     error INSUFFICIENT_LIQUIDITY(uint liquidity);
     error WrongTokenAddress(address tokenAddress);
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@debond-protocol/debond-token-contracts/interfaces/IDebondToken.sol";
 import "@debond-protocol/debond-oracle-contracts/interfaces/IOracle.sol";
 import "@debond-protocol/debond-governance-contracts/utils/GovernanceOwnable.sol";
@@ -38,11 +37,13 @@ import "./BankRouter.sol";
 contract Bank is BankRouter, GovernanceOwnable {
 
     using DebondMath for uint256;
-    using SafeERC20 for IERC20;
 
-    address bankDataAddress;
-    address bondManagerAddress;
+    address public bankDataAddress;
+    address public bondManagerAddress;
     enum PurchaseMethod {Buying, Staking}
+
+
+
     constructor(
         address _governanceAddress,
         address _APMAddress,
@@ -67,144 +68,170 @@ contract Bank is BankRouter, GovernanceOwnable {
         _;
     }
 
-    function setApmAddress(address _apmAddress) external onlyGovernance {
-        _setApmAddress(_apmAddress);
+    function setApmAddress(
+        address _apmAddress
+    ) external onlyGovernance {
+        apmAddress = _apmAddress;
     }
 
-    function setBondManagerAddress(address _bondManagerAddress) external onlyGovernance {
+    function setBondManagerAddress(
+        address _bondManagerAddress
+    ) external onlyGovernance {
         bondManagerAddress = _bondManagerAddress;
     }
 
-    function setBankDataAddress(address _bankDataAddress) external onlyGovernance {
+    function setBankDataAddress(
+        address _bankDataAddress
+    ) external onlyGovernance {
         bankDataAddress = _bankDataAddress;
     }
 
-    function setDBITAddress(address _DBITAddress) external onlyGovernance {
+    function setDBITAddress(
+        address _DBITAddress
+    ) external onlyGovernance {
         DBITAddress = _DBITAddress;
     }
 
-    function setDGOVAddress(address _DGOVAddress) external onlyGovernance {
+    function setDGOVAddress(
+        address _DGOVAddress
+    ) external onlyGovernance {
         DGOVAddress = _DGOVAddress;
     }
 
-    function canPurchase(uint classIdIn, uint classIdOut) public view returns (bool) {
-        return IBankData(bankDataAddress).canPurchase(classIdIn, classIdOut);
+    /**
+    * @notice return if classIdIn can purchase classIdOut
+    * @param _classIdIn the classId to purchase with
+    * @param _classIdOut the classId to purchase
+    * @return true if it can purchased, false if not
+    */
+    function canPurchase(
+        uint _classIdIn,
+        uint _classIdOut
+    ) public view returns (bool) {
+        return IBankData(bankDataAddress).canPurchase(_classIdIn, _classIdOut);
     }
 
 
-    //############buybonds staking method  dbit with else (else is Not eth, not dgov, not dbit)  ##############
-
-    function stakeForDbitBondWithElse(
-        uint purchaseClassId,
-        uint dbitClassId,
-        uint purchaseTokenAmount,
-        uint minRate,
-        uint deadline,
-        address to
-    ) external ensure(deadline) {
-        if (!canPurchase(purchaseClassId, dbitClassId)) {
+    /**
+    * @notice user purchasing DBIT bonds by staking his chosen tokens
+    * @param _purchaseClassId the classId of the token to purchase with
+    * @param _dbitClassId DBIT classId
+    * @param _purchaseTokenAmount amount of the user's token
+    * @param _minRate min interest rate desired
+    * @param _deadline deadline fixed for the transaction to execute
+    * @param _to address to interact with (transferring ERC20 from, ERC3475 tokens to)
+    */
+    function purchaseDBITBondsByStakingTokens(
+        uint _purchaseClassId,
+        uint _dbitClassId,
+        uint _purchaseTokenAmount,
+        uint _minRate,
+        uint _deadline,
+        address _to
+    ) external ensure(_deadline) {
+        if (!canPurchase(_purchaseClassId, _dbitClassId)) {
             revert PairNotAllowed();
         }
-        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dbitClassId);
+        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_dbitClassId);
         if (debondTokenAddress != DBITAddress) {
             revert WrongTokenAddress(debondTokenAddress);
         }
-        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(purchaseClassId);
+        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_purchaseClassId);
         if (purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
-        uint _interestRate = interestRate(purchaseClassId, dbitClassId, purchaseTokenAmount, PurchaseMethod.Staking);
-        if (_interestRate < minRate) {
-            revert RateNotHighEnough(_interestRate, minRate);
+        uint _interestRate = interestRate(_purchaseClassId, _dbitClassId, _purchaseTokenAmount, PurchaseMethod.Staking);
+        if (_interestRate < _minRate) {
+            revert RateNotHighEnough(_interestRate, _minRate);
         }
-        addLiquidityDbitPair(to, purchaseTokenAddress, purchaseTokenAmount);
-        _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, dbitClassId, _interestRate, to);
+        addLiquidityDbitPair(_to, purchaseTokenAddress, _purchaseTokenAmount);
+        _issuingProcessStaking(_purchaseClassId, _purchaseTokenAmount, purchaseTokenAddress, _dbitClassId, _interestRate, _to);
 
     }
 
-    function _issuingProcessStaking(
-        uint purchaseClassId,
-        uint purchaseTokenAmount,
-        address purchaseTokenAddress,
-        uint debondClassId,
-        uint rate,
-        address to
-    ) public {
-        uint amount = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress);
 
-        uint256[] memory classIds = new uint256[](2);
-        classIds[0] = purchaseClassId;
-        classIds[1] = debondClassId;
-
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = purchaseTokenAmount;
-        amounts[1] = amount.mul(rate);
-
-        IBankBondManager(bondManagerAddress).issueBonds(to, classIds, amounts);
-
-    }
-
-    //############buybonds Staking method  DbitToDgov##############
-
-    function stakeForDgovBondWithDbit(
-        uint dbitClassId,
-        uint dgovClassId,
-        uint dbitTokenAmount,
-        uint minRate,
-        uint deadline,
-        address to
-    ) external ensure(deadline) {
-        if (!canPurchase(dbitClassId, dgovClassId)) {
+    /**
+    * @notice user purchasing DGOV bonds by staking his DBIT tokens
+    * @param _dbitClassId DBIT classId
+    * @param _dgovClassId DGOV classId
+    * @param _dbitTokenAmount user's DBIT amount
+    * @param _minRate min interest rate desired
+    * @param _deadline deadline fixed for the transaction to execute
+    * @param _to address to interact with (transferring tokens from, ERC3475 tokens to)
+    */
+    function purchaseDGOVBondsByStakingDBIT(
+        uint _dbitClassId,
+        uint _dgovClassId,
+        uint _dbitTokenAmount,
+        uint _minRate,
+        uint _deadline,
+        address _to
+    ) external ensure(_deadline) {
+        if (!canPurchase(_dbitClassId, _dgovClassId)) {
             revert PairNotAllowed();
         }
-        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dbitClassId);
+        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_dbitClassId);
         if (purchaseTokenAddress != DBITAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
-        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dgovClassId);
+        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_dgovClassId);
         if (debondTokenAddress != DGOVAddress) {
             revert WrongTokenAddress(debondTokenAddress);
         }
-        uint _interestRate = interestRate(dbitClassId, dgovClassId, dbitTokenAmount, PurchaseMethod.Staking);
-        if (_interestRate < minRate) {
-            revert RateNotHighEnough(_interestRate, minRate);
+        uint _interestRate = interestRate(_dbitClassId, _dgovClassId, _dbitTokenAmount, PurchaseMethod.Staking);
+        if (_interestRate < _minRate) {
+            revert RateNotHighEnough(_interestRate, _minRate);
         }
-        addLiquidityDbitDgov(to, dbitTokenAmount);
-        _issuingProcessStaking(dbitClassId, dbitTokenAmount, DBITAddress, dgovClassId, _interestRate, to);
+        addLiquidityDbitDgov(_to, _dbitTokenAmount);
+        _issuingProcessStaking(_dbitClassId, _dbitTokenAmount, DBITAddress, _dgovClassId, _interestRate, _to);
     }
 
-    //############buybonds Staking method  else ToDgov############## else is not dbit not eth not dgov
-
-    function stakeForDgovBondWithElse(
-        uint purchaseClassId,
-        uint dgovClassId,
-        uint purchaseTokenAmount,
-        uint minRate,
-        uint deadline,
-        address to
-    ) external ensure(deadline) {
-        if (!canPurchase(purchaseClassId, dgovClassId)) {
+    /**
+    * @notice user purchasing DGOV bonds by staking his chosen tokens
+    * @param _purchaseClassId the classId of the token to stake
+    * @param _dgovClassId DGOV classId
+    * @param _purchaseTokenAmount amount of the user's token
+    * @param _minRate min interest rate desired
+    * @param _deadline deadline fixed for the transaction to execute
+    * @param _to address to interact with (transferring tokens from, ERC3475 tokens to)
+    */
+    function purchaseDGOVBondsByStakingTokens(
+        uint _purchaseClassId,
+        uint _dgovClassId,
+        uint _purchaseTokenAmount,
+        uint _minRate,
+        uint _deadline,
+        address _to
+    ) external ensure(_deadline) {
+        if (!canPurchase(_purchaseClassId, _dgovClassId)) {
             revert PairNotAllowed();
         }
-        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dgovClassId);
+        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_dgovClassId);
         if (debondTokenAddress != DGOVAddress) {
             revert WrongTokenAddress(debondTokenAddress);
         }
-        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(purchaseClassId);
+        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_purchaseClassId);
         if (purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
-        uint _interestRate = interestRate(purchaseClassId, dgovClassId, purchaseTokenAmount, PurchaseMethod.Staking);
-        if (_interestRate < minRate) {
-            revert RateNotHighEnough(_interestRate, minRate);
+        uint _interestRate = interestRate(_purchaseClassId, _dgovClassId, _purchaseTokenAmount, PurchaseMethod.Staking);
+        if (_interestRate < _minRate) {
+            revert RateNotHighEnough(_interestRate, _minRate);
         }
-        addLiquidityDgovPair(to, purchaseTokenAddress, purchaseTokenAmount);
-        _issuingProcessStaking(purchaseClassId, purchaseTokenAmount, purchaseTokenAddress, dgovClassId, _interestRate, to);
+        addLiquidityDgovPair(_to, purchaseTokenAddress, _purchaseTokenAmount);
+        _issuingProcessStaking(_purchaseClassId, _purchaseTokenAmount, purchaseTokenAddress, _dgovClassId, _interestRate, _to);
     }
 
-    //############buybonds Buying method not eth to dbit##############
-
-    function buyforDbitBondWithElse(//else is not eth not dbit not dgov
+    /**
+    * @notice user purchasing DBIT bonds by exchanging his chosen tokens
+    * @param _purchaseClassId the classId of the token to purchase with
+    * @param _dbitClassId DBIT classId
+    * @param _purchaseTokenAmount amount of the user's token
+    * @param _minRate min interest rate desired
+    * @param _deadline deadline fixed for the transaction to execute
+    * @param _to address to interact with (transferring tokens from, ERC3475 tokens to)
+    */
+    function buyDBITBondsWithTokens(//else is not eth not dbit not dgov
         uint _purchaseClassId,
         uint _dbitClassId,
         uint _purchaseTokenAmount,
@@ -231,32 +258,20 @@ contract Bank is BankRouter, GovernanceOwnable {
         _issuingProcessBuying(_purchaseTokenAmount, _purchaseTokenAddress, _dbitClassId, _interestRate, _to);
     }
 
-    function _issuingProcessBuying(
-        uint purchaseTokenAmount,
-        address purchaseTokenAddress,
-        uint debondClassId,
-        uint rate,
-        address to
-    ) internal {
-        uint amount = convertToDbit(uint128(purchaseTokenAmount), purchaseTokenAddress);
 
-        uint256[] memory classIds = new uint256[](1);
-        classIds[0] = debondClassId;
-
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = amount + amount.mul(rate);
-
-        IBankBondManager(bondManagerAddress).issueBonds(to, classIds, amounts);
-    }
-
-
-    //############buybonds Buying method DbitToDgov##############
-
-
-    function buyForDgovBondWithDbit(
+    /**
+    * @notice user purchasing DGOV bonds by exchanging his DBIT tokens
+    * @param _dbitClassId DBIT classId
+    * @param _dgovClassId DGOV classId
+    * @param _dbitAmount amount of the user's DBIT
+    * @param _minRate min interest rate desired
+    * @param _deadline deadline fixed for the transaction to execute
+    * @param _to address to interact with (transferring tokens from, ERC3475 tokens to)
+    */
+    function buyDGOVBondsWithDBIT(
         uint _dbitClassId,
         uint _dgovClassId,
-        uint _purchaseTokenAmount,
+        uint _dbitAmount,
         uint _minRate,
         uint _deadline,
         address _to
@@ -273,199 +288,245 @@ contract Bank is BankRouter, GovernanceOwnable {
         if (_debondTokenAddress != DGOVAddress) {
             revert WrongTokenAddress(_debondTokenAddress);
         }
-        uint _interestRate = interestRate(_dbitClassId, _dgovClassId, _purchaseTokenAmount, PurchaseMethod.Buying);
+        uint _interestRate = interestRate(_dbitClassId, _dgovClassId, _dbitAmount, PurchaseMethod.Buying);
         if (_interestRate < _minRate) {
             revert RateNotHighEnough(_interestRate, _minRate);
         }
-        addLiquidityDbitDgov(_to, _purchaseTokenAmount);
-        _issuingProcessBuying(_purchaseTokenAmount, DBITAddress, _dgovClassId, _interestRate, _to);
+        addLiquidityDbitDgov(_to, _dbitAmount);
+        _issuingProcessBuying(_dbitAmount, DBITAddress, _dgovClassId, _interestRate, _to);
     }
 
-
-    //############buybonds Buying method else ToDgov############## else is not dbit not eth
-
-    function buyForDgovBondWithElse(
-        uint purchaseClassId,
-        uint dgovClassId,
-        uint purchaseTokenAmount,
-        uint minRate,
-        uint deadline,
-        address to
-    ) external ensure(deadline) {
-        if (!canPurchase(purchaseClassId, dgovClassId)) {
+    /**
+    * @notice user purchasing DGOV bonds by exchanging his tokens
+    * @param _purchaseClassId the classId of the token to purchase with
+    * @param _dgovClassId DGOV classId
+    * @param _purchaseTokenAmount amount of the user's DBIT
+    * @param _minRate min interest rate desired
+    * @param _deadline deadline fixed for the transaction to execute
+    * @param _to address to interact with (transferring tokens from, ERC3475 tokens to)
+    */
+    function buyDGOVBondsWithTokens(
+        uint _purchaseClassId,
+        uint _dgovClassId,
+        uint _purchaseTokenAmount,
+        uint _minRate,
+        uint _deadline,
+        address _to
+    ) external ensure(_deadline) {
+        if (!canPurchase(_purchaseClassId, _dgovClassId)) {
             revert PairNotAllowed();
         }
-        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(purchaseClassId);
+        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_purchaseClassId);
         if (purchaseTokenAddress == DBITAddress || purchaseTokenAddress == DGOVAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
-        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dgovClassId);
+        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_dgovClassId);
         if (debondTokenAddress != DGOVAddress) {
             revert WrongTokenAddress(debondTokenAddress);
         }
-        uint _interestRate = interestRate(purchaseClassId, dgovClassId, purchaseTokenAmount, PurchaseMethod.Buying);
-        if (_interestRate < minRate) {
-            revert RateNotHighEnough(_interestRate, minRate);
+        uint _interestRate = interestRate(_purchaseClassId, _dgovClassId, _purchaseTokenAmount, PurchaseMethod.Buying);
+        if (_interestRate < _minRate) {
+            revert RateNotHighEnough(_interestRate, _minRate);
         }
-        addLiquidityDgovPair(to, purchaseTokenAddress, purchaseTokenAmount);
-        _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, dgovClassId, _interestRate, to);
+        addLiquidityDgovPair(_to, purchaseTokenAddress, _purchaseTokenAmount);
+        _issuingProcessBuying(_purchaseTokenAmount, purchaseTokenAddress, _dgovClassId, _interestRate, _to);
     }
 
 
-    //############buybonds Staking method  ETH To DBIT##############
-
-    function stakeForDbitBondWithEth(
-        uint wethClassId,
-        uint dbitClassId,
-        uint minRate,
-        uint deadline,
-        address to
-    ) external payable ensure(deadline) {
-        if (!canPurchase(wethClassId, dbitClassId)) {
+    /**
+    * @notice user purchasing DBIT bonds by staking ETH
+    * @param _wethClassId WETH classId
+    * @param _dbitClassId DBIT classId
+    * @param _minRate min interest rate desired
+    * @param _deadline deadline fixed for the transaction to execute
+    * @param _to address to interact with (transferring tokens from, ERC3475 tokens to)
+    */
+    function purchaseDBITBondsByStakingETH(
+        uint _wethClassId,
+        uint _dbitClassId,
+        uint _minRate,
+        uint _deadline,
+        address _to
+    ) external payable ensure(_deadline) {
+        if (!canPurchase(_wethClassId, _dbitClassId)) {
             revert PairNotAllowed();
         }
-        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(wethClassId);
+        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_wethClassId);
         if (purchaseTokenAddress != WETHAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
-        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dbitClassId);
+        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_dbitClassId);
         if (debondTokenAddress != DBITAddress) {
             revert WrongTokenAddress(debondTokenAddress);
         }
         uint purchaseTokenAmount = msg.value;
-        uint _interestRate = interestRate(wethClassId, dbitClassId, purchaseTokenAmount, PurchaseMethod.Staking);
-        if (_interestRate < minRate) {
-            revert RateNotHighEnough(_interestRate, minRate);
+        uint _interestRate = interestRate(_wethClassId, _dbitClassId, purchaseTokenAmount, PurchaseMethod.Staking);
+        if (_interestRate < _minRate) {
+            revert RateNotHighEnough(_interestRate, _minRate);
         }
         IWETH(WETHAddress).deposit{value : purchaseTokenAmount}();
         addLiquidityDbitETHPair(purchaseTokenAmount);
 
-        _issuingProcessStaking(wethClassId, purchaseTokenAmount, purchaseTokenAddress, dbitClassId, _interestRate, to);
+        _issuingProcessStaking(_wethClassId, purchaseTokenAmount, purchaseTokenAddress, _dbitClassId, _interestRate, _to);
     }
 
-
-    //############buybonds Staking method  ETH To Dgov##############
-
-    function stakeForDgovBondWithEth(
-        uint wethClassId,
-        uint dgovClassId,
-        uint minRate,
-        uint deadline,
-        address to
-    ) external payable ensure(deadline) {
-        if (!canPurchase(wethClassId, dgovClassId)) {
+    /**
+    * @notice user purchasing DGOV bonds by staking ETH
+    * @param _wethClassId WETH classId
+    * @param _dgovClassId DGOV classId
+    * @param _minRate min interest rate desired
+    * @param _deadline deadline fixed for the transaction to execute
+    * @param _to address to interact with (transferring tokens from, ERC3475 tokens to)
+    */
+    function purchaseDGOVBondsByStakingETH(
+        uint _wethClassId,
+        uint _dgovClassId,
+        uint _minRate,
+        uint _deadline,
+        address _to
+    ) external payable ensure(_deadline) {
+        if (!canPurchase(_wethClassId, _dgovClassId)) {
             revert PairNotAllowed();
         }
-        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(wethClassId);
+        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_wethClassId);
         if (purchaseTokenAddress != WETHAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
-        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dgovClassId);
+        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_dgovClassId);
         if (debondTokenAddress != DGOVAddress) {
             revert WrongTokenAddress(debondTokenAddress);
         }
         uint purchaseTokenAmount = msg.value;
-        uint _interestRate = interestRate(wethClassId, dgovClassId, purchaseTokenAmount, PurchaseMethod.Staking);
-        if (_interestRate < minRate) {
-            revert RateNotHighEnough(_interestRate, minRate);
+        uint _interestRate = interestRate(_wethClassId, _dgovClassId, purchaseTokenAmount, PurchaseMethod.Staking);
+        if (_interestRate < _minRate) {
+            revert RateNotHighEnough(_interestRate, _minRate);
         }
 
         IWETH(WETHAddress).deposit{value : purchaseTokenAmount}();
         addLiquidityDgovETHPair(purchaseTokenAmount);
-        _issuingProcessStaking(wethClassId, purchaseTokenAmount, purchaseTokenAddress, dgovClassId, _interestRate, to);
+        _issuingProcessStaking(_wethClassId, purchaseTokenAmount, purchaseTokenAddress, _dgovClassId, _interestRate, _to);
     }
 
 
-    //############buybonds Buying method  ETH To DBIT##############
-    //todo : pour buying, pas besoin du class id du purchase token : faire deux fonction interest rate buying et stacking.
-    function buyforDbitBondWithEth(//else is not eth not dbit
-        uint wethClassId,
-        uint dbitClassId,
-        uint minRate,
-        uint deadline,
-        address to
-    ) external payable ensure(deadline) {
-        if (!canPurchase(wethClassId, dbitClassId)) {
+    /**
+    * @notice user purchasing DBIT bonds by exchanging ETH
+    * @param _wethClassId WETH classId
+    * @param _dbitClassId DBIT classId
+    * @param _minRate min interest rate desired
+    * @param _deadline deadline fixed for the transaction to execute
+    * @param _to address to interact with (transferring tokens from, ERC3475 tokens to)
+    */
+    function buyDBITBondsWithETH(//else is not eth not dbit
+        uint _wethClassId,
+        uint _dbitClassId,
+        uint _minRate,
+        uint _deadline,
+        address _to
+    ) external payable ensure(_deadline) {
+        if (!canPurchase(_wethClassId, _dbitClassId)) {
             revert PairNotAllowed();
         }
-        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(wethClassId);
+        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_wethClassId);
         if (purchaseTokenAddress != WETHAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
-        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dbitClassId);
+        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_dbitClassId);
         if (debondTokenAddress != DBITAddress) {
             revert WrongTokenAddress(debondTokenAddress);
         }
         uint purchaseTokenAmount = msg.value;
-        uint _interestRate = interestRate(wethClassId, dbitClassId, purchaseTokenAmount, PurchaseMethod.Buying);
-        if (_interestRate < minRate) {
-            revert RateNotHighEnough(_interestRate, minRate);
+        uint _interestRate = interestRate(_wethClassId, _dbitClassId, purchaseTokenAmount, PurchaseMethod.Buying);
+        if (_interestRate < _minRate) {
+            revert RateNotHighEnough(_interestRate, _minRate);
         }
         IWETH(WETHAddress).deposit{value : purchaseTokenAmount}();
         addLiquidityDbitETHPair(purchaseTokenAmount);
-        _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, dbitClassId, _interestRate, to);
+        _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, _dbitClassId, _interestRate, _to);
     }
 
-
-    //############buybonds Buying method  ETH To Dgov##############
-
-    function buyforDgovBondWithEth(//else is not eth not dbit
-        uint wethClassId,
-        uint dgovClassId,
-        uint minRate,
-        uint deadline,
-        address to
-    ) external payable ensure(deadline) {
-        if (!canPurchase(wethClassId, dgovClassId)) {
+    /**
+    * @notice user purchasing DGOV bonds by exchanging ETH
+    * @param _wethClassId WETH classId
+    * @param _dgovClassId DGOV classId
+    * @param _minRate min interest rate desired
+    * @param _deadline deadline fixed for the transaction to execute
+    * @param _to address to interact with (transferring tokens from, ERC3475 tokens to)
+    */
+    function buyDGOVBondsWithETH(//else is not eth not dbit
+        uint _wethClassId,
+        uint _dgovClassId,
+        uint _minRate,
+        uint _deadline,
+        address _to
+    ) external payable ensure(_deadline) {
+        if (!canPurchase(_wethClassId, _dgovClassId)) {
             revert PairNotAllowed();
         }
-        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(wethClassId);
+        (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_wethClassId);
         if (purchaseTokenAddress != WETHAddress) {
             revert WrongTokenAddress(purchaseTokenAddress);
         }
-        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(dgovClassId);
+        (address debondTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_dgovClassId);
         if (debondTokenAddress != DGOVAddress) {
             revert WrongTokenAddress(debondTokenAddress);
         }
         uint purchaseTokenAmount = msg.value;
-        uint _interestRate = interestRate(wethClassId, dgovClassId, purchaseTokenAmount, PurchaseMethod.Buying);
-        if (_interestRate < minRate) {
-            revert RateNotHighEnough(_interestRate, minRate);
+        uint _interestRate = interestRate(_wethClassId, _dgovClassId, purchaseTokenAmount, PurchaseMethod.Buying);
+        if (_interestRate < _minRate) {
+            revert RateNotHighEnough(_interestRate, _minRate);
         }
         IWETH(WETHAddress).deposit{value : purchaseTokenAmount}();
         addLiquidityDgovETHPair(purchaseTokenAmount);
-        _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, dgovClassId, _interestRate, to);
+        _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, _dgovClassId, _interestRate, _to);
     }
 
-    //##############REDEEM BONDS ##############:
 
+    /**
+    * @notice user redeeming his ERC3475 bonds
+    * @param _classId ERC3475 class Id
+    * @param _nonceId ERC3475 nonce Id
+    * @param _amount ERC3475 amount
+    */
     function redeemBonds(
-        uint classId,
-        uint nonceId,
-        uint amount
+        uint _classId,
+        uint _nonceId,
+        uint _amount
     ) external {
         //1. redeem the bonds (will fail if not maturity date exceeded)
-        IBankBondManager(bondManagerAddress).redeemERC3475(msg.sender, classId, nonceId, amount);
+        IBankBondManager(bondManagerAddress).redeemERC3475(msg.sender, _classId, _nonceId, _amount);
 
-        (address tokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(classId);
-        removeLiquidity(msg.sender, tokenAddress, amount);
+        (address tokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_classId);
+        removeLiquidity(msg.sender, tokenAddress, _amount);
     }
 
-    function redeemBondsETH(
-        uint wethClassId,
-        uint nonceId,
-        uint amountETH
+    /**
+    * @notice user redeeming his ERC3475 bonds
+    * @param _wethClassId ERC3475 WETH class Id
+    * @param _nonceId ERC3475 nonce Id
+    * @param _amount ERC3475 amount
+    */
+    function redeemWETHBonds(
+        uint _wethClassId,
+        uint _nonceId,
+        uint _amount
     ) external {
-        IBankBondManager(bondManagerAddress).redeemERC3475(msg.sender, wethClassId, nonceId, amountETH);
+        IBankBondManager(bondManagerAddress).redeemERC3475(msg.sender, _wethClassId, _nonceId, _amount);
         //TODO Check if wethClassId gives the WethAddress tokenAddress!!!!
-        removeWETHLiquidity(amountETH);
+        removeWETHLiquidity(_amount);
     }
 
+    /**
+    * @notice get the actual interest rate for bond purchase
+    * @param _purchaseTokenClassId token classId to purchase the bonds with
+    * @param _debondTokenClassId class Id of the bond desired
+    * @param _purchaseTokenAmount amount of the token to add liquidity with
+    * @param _purchaseMethod either exchanging (buying) or staking
+    */
     function interestRate(
         uint _purchaseTokenClassId,
         uint _debondTokenClassId,
         uint _purchaseTokenAmount,
-        PurchaseMethod purchaseMethod
+        PurchaseMethod _purchaseMethod
     ) public view returns (uint) {
 
         if (!canPurchase(_purchaseTokenClassId, _debondTokenClassId)) {
@@ -473,7 +534,7 @@ contract Bank is BankRouter, GovernanceOwnable {
         }
 
         // Staking collateral for bonds
-        if (purchaseMethod == PurchaseMethod.Staking) {
+        if (_purchaseMethod == PurchaseMethod.Staking) {
             return IBankBondManager(bondManagerAddress).getInterestRate(_purchaseTokenClassId, _purchaseTokenAmount);
         }
         // buying Bonds
@@ -487,21 +548,60 @@ contract Bank is BankRouter, GovernanceOwnable {
     }
 
 
+    /**
+    * @notice process to issue bonds to the liquidity provider
+    * @param _purchaseClassId token classId to purchase the bonds with
+    * @param _purchaseTokenAmount amount of the purchase token
+    * @param _purchaseTokenAddress address of the purchase token
+    * @param _debondClassId class Id of the bond desired
+    * @param _rate rate to calculate amount of debond bonds to issue
+    * @param _to address to issue bonds to
+    */
+    function _issuingProcessStaking(
+        uint _purchaseClassId,
+        uint _purchaseTokenAmount,
+        address _purchaseTokenAddress,
+        uint _debondClassId,
+        uint _rate,
+        address _to
+    ) private {
+        uint amount = convertToDbit(uint128(_purchaseTokenAmount), _purchaseTokenAddress);
 
-    //##############CDP##############:
+        uint256[] memory classIds = new uint256[](2);
+        classIds[0] = _purchaseClassId;
+        classIds[1] = _debondClassId;
 
-    // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
-    function quote(uint256 amountA, uint256 reserveA, uint256 reserveB) internal pure returns (uint256 amountB) {/// use uint?? int256???
-        if (amountA == 0) {
-            revert INSUFFICIENT_AMOUNT(amountA);
-        }
-        if (reserveA == 0) {
-            revert INSUFFICIENT_LIQUIDITY(reserveB);
-        }
-        if (reserveB == 0) {
-            revert INSUFFICIENT_LIQUIDITY(reserveA);
-        }
-        //amountB = amountA.mul(reserveB) / reserveA;
-        amountB = amountA * reserveB / reserveA;
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = _purchaseTokenAmount;
+        amounts[1] = amount.mul(_rate);
+
+        IBankBondManager(bondManagerAddress).issueBonds(_to, classIds, amounts);
+
+    }
+
+    /**
+    * @notice process to issue bonds to the liquidity provider
+    * @param _purchaseTokenAmount amount of the purchase token
+    * @param _purchaseTokenAddress address of the purchase token
+    * @param _debondClassId class Id of the bond desired
+    * @param _rate rate to calculate amount of debond bonds to issue
+    * @param _to address to issue bonds to
+    */
+    function _issuingProcessBuying(
+        uint _purchaseTokenAmount,
+        address _purchaseTokenAddress,
+        uint _debondClassId,
+        uint _rate,
+        address _to
+    ) private {
+        uint amount = convertToDbit(uint128(_purchaseTokenAmount), _purchaseTokenAddress);
+
+        uint256[] memory classIds = new uint256[](1);
+        classIds[0] = _debondClassId;
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = amount + amount.mul(_rate);
+
+        IBankBondManager(bondManagerAddress).issueBonds(_to, classIds, amounts);
     }
 }

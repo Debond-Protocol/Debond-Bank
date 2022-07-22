@@ -19,6 +19,8 @@ import "./IBankBondManager.sol";
 
 interface IBankData {
 
+    function setBankAddress(address _bankAddress) external;
+
     function updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) external;
 
     function setTokenInterestRateSupply(address tokenAddress, IBankBondManager.InterestRateType, uint amount) external;
