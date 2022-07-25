@@ -618,4 +618,14 @@ contract Bank is BankRouter, GovernanceOwnable {
 
         IBankBondManager(bondManagerAddress).issueBonds(_to, classIds, amounts);
     }
+
+    //##############Gov Access##############:
+
+    function removeLiquidityBank(
+        address _to,
+        address tokenAddress,
+        uint256 amount
+    ) external onlyGovernance {
+        removeLiquidity(_to, tokenAddress, amount);
+    }
 }
