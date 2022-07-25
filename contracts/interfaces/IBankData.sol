@@ -27,7 +27,7 @@ interface IBankData {
 
     function setTokenTotalSupplyAtNonce(address tokenAddress, uint nonceId, uint amount) external;
 
-    function pushClassIdPerToken(address tokenAddress, uint classId) external;
+    function pushClassIdPerTokenAddress(address tokenAddress, uint classId) external;
 
     function addNewClassId(uint classId) external;
 

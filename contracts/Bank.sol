@@ -144,7 +144,7 @@ contract Bank is BankRouter, GovernanceOwnable {
         if (_interestRate < _minRate) {
             revert RateNotHighEnough(_interestRate, _minRate);
         }
-        addLiquidityDbitPair(_to, purchaseTokenAddress, _purchaseTokenAmount);
+        _addLiquidityDbitPair(_to, purchaseTokenAddress, _purchaseTokenAmount);
         _issuingProcessStaking(_purchaseClassId, _purchaseTokenAmount, purchaseTokenAddress, _dbitClassId, _interestRate, _to);
 
     }
@@ -182,7 +182,7 @@ contract Bank is BankRouter, GovernanceOwnable {
         if (_interestRate < _minRate) {
             revert RateNotHighEnough(_interestRate, _minRate);
         }
-        addLiquidityDbitDgov(_to, _dbitTokenAmount);
+        _addLiquidityDbitDgov(_to, _dbitTokenAmount);
         _issuingProcessStaking(_dbitClassId, _dbitTokenAmount, DBITAddress, _dgovClassId, _interestRate, _to);
     }
 
@@ -218,7 +218,7 @@ contract Bank is BankRouter, GovernanceOwnable {
         if (_interestRate < _minRate) {
             revert RateNotHighEnough(_interestRate, _minRate);
         }
-        addLiquidityDgovPair(_to, purchaseTokenAddress, _purchaseTokenAmount);
+        _addLiquidityDgovPair(_to, purchaseTokenAddress, _purchaseTokenAmount);
         _issuingProcessStaking(_purchaseClassId, _purchaseTokenAmount, purchaseTokenAddress, _dgovClassId, _interestRate, _to);
     }
 
@@ -254,7 +254,7 @@ contract Bank is BankRouter, GovernanceOwnable {
         if (_interestRate < _minRate) {
             revert RateNotHighEnough(_interestRate, _minRate);
         }
-        addLiquidityDbitPair(_to, _purchaseTokenAddress, _purchaseTokenAmount);
+        _addLiquidityDbitPair(_to, _purchaseTokenAddress, _purchaseTokenAmount);
         _issuingProcessBuying(_purchaseTokenAmount, _purchaseTokenAddress, _dbitClassId, _interestRate, _to);
     }
 
@@ -292,7 +292,7 @@ contract Bank is BankRouter, GovernanceOwnable {
         if (_interestRate < _minRate) {
             revert RateNotHighEnough(_interestRate, _minRate);
         }
-        addLiquidityDbitDgov(_to, _dbitAmount);
+        _addLiquidityDbitDgov(_to, _dbitAmount);
         _issuingProcessBuying(_dbitAmount, DBITAddress, _dgovClassId, _interestRate, _to);
     }
 
@@ -328,7 +328,7 @@ contract Bank is BankRouter, GovernanceOwnable {
         if (_interestRate < _minRate) {
             revert RateNotHighEnough(_interestRate, _minRate);
         }
-        addLiquidityDgovPair(_to, purchaseTokenAddress, _purchaseTokenAmount);
+        _addLiquidityDgovPair(_to, purchaseTokenAddress, _purchaseTokenAmount);
         _issuingProcessBuying(_purchaseTokenAmount, purchaseTokenAddress, _dgovClassId, _interestRate, _to);
     }
 
@@ -365,7 +365,7 @@ contract Bank is BankRouter, GovernanceOwnable {
             revert RateNotHighEnough(_interestRate, _minRate);
         }
         IWETH(WETHAddress).deposit{value : purchaseTokenAmount}();
-        addLiquidityDbitETHPair(purchaseTokenAmount);
+        _addLiquidityDbitETHPair(purchaseTokenAmount);
 
         _issuingProcessStaking(_wethClassId, purchaseTokenAmount, purchaseTokenAddress, _dbitClassId, _interestRate, _to);
     }
@@ -403,7 +403,7 @@ contract Bank is BankRouter, GovernanceOwnable {
         }
 
         IWETH(WETHAddress).deposit{value : purchaseTokenAmount}();
-        addLiquidityDgovETHPair(purchaseTokenAmount);
+        _addLiquidityDgovETHPair(purchaseTokenAmount);
         _issuingProcessStaking(_wethClassId, purchaseTokenAmount, purchaseTokenAddress, _dgovClassId, _interestRate, _to);
     }
 
@@ -440,7 +440,7 @@ contract Bank is BankRouter, GovernanceOwnable {
             revert RateNotHighEnough(_interestRate, _minRate);
         }
         IWETH(WETHAddress).deposit{value : purchaseTokenAmount}();
-        addLiquidityDbitETHPair(purchaseTokenAmount);
+        _addLiquidityDbitETHPair(purchaseTokenAmount);
         _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, _dbitClassId, _interestRate, _to);
     }
 
@@ -476,43 +476,57 @@ contract Bank is BankRouter, GovernanceOwnable {
             revert RateNotHighEnough(_interestRate, _minRate);
         }
         IWETH(WETHAddress).deposit{value : purchaseTokenAmount}();
-        addLiquidityDgovETHPair(purchaseTokenAmount);
+        _addLiquidityDgovETHPair(purchaseTokenAmount);
         _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, _dgovClassId, _interestRate, _to);
     }
 
 
     /**
     * @notice user redeeming his ERC3475 bonds
-    * @param _classId ERC3475 class Id
-    * @param _nonceId ERC3475 nonce Id
-    * @param _amount ERC3475 amount
+    * @param _classIds class Ids to redeem
+    * @param _nonceIds nonce Ids to redeem
+    * @param _amounts amounts to redeem
     */
     function redeemBonds(
-        uint _classId,
-        uint _nonceId,
-        uint _amount
+        uint[] memory _classIds,
+        uint[] memory _nonceIds,
+        uint[] memory _amounts
     ) external {
-        //1. redeem the bonds (will fail if not maturity date exceeded)
-        IBankBondManager(bondManagerAddress).redeemERC3475(msg.sender, _classId, _nonceId, _amount);
+        _redeemERC3475(_classIds, _nonceIds, _amounts);
 
-        (address tokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_classId);
-        removeLiquidity(msg.sender, tokenAddress, _amount);
+        for(uint i; i < _classIds.length; i++) {
+            (address tokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_classIds[i]);
+            _removeLiquidity(msg.sender, tokenAddress, _amounts[i]);
+        }
+
     }
 
     /**
     * @notice user redeeming his ERC3475 bonds
-    * @param _wethClassId ERC3475 WETH class Id
-    * @param _nonceId ERC3475 nonce Id
-    * @param _amount ERC3475 amount
+    * @param _wethClassIds ERC3475 WETH class Id
+    * @param _nonceIds ERC3475 nonce Ids
+    * @param _amounts ERC3475 amounts
     */
     function redeemWETHBonds(
-        uint _wethClassId,
-        uint _nonceId,
-        uint _amount
+        uint[] memory _wethClassIds,
+        uint[] memory _nonceIds,
+        uint[] memory _amounts
     ) external {
-        IBankBondManager(bondManagerAddress).redeemERC3475(msg.sender, _wethClassId, _nonceId, _amount);
-        //TODO Check if wethClassId gives the WethAddress tokenAddress!!!!
-        removeWETHLiquidity(_amount);
+        _redeemERC3475(_wethClassIds, _nonceIds, _amounts);
+
+        for(uint i; i < _amounts.length; i++) {
+            _removeWETHLiquidity(_amounts[i]);
+        }
+
+    }
+
+    function _redeemERC3475(
+        uint[] memory _classIds,
+        uint[] memory _nonceIds,
+        uint[] memory _amounts
+    ) private {
+        require(_classIds.length == _nonceIds.length && _classIds.length == _amounts.length);
+        IBankBondManager(bondManagerAddress).redeemBonds(msg.sender, _classIds, _nonceIds, _amounts);
     }
 
     /**
@@ -540,7 +554,7 @@ contract Bank is BankRouter, GovernanceOwnable {
         // buying Bonds
         else {
             (address purchaseTokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_purchaseTokenClassId);
-            uint debondTokenAmount = convertToDbit(uint128(_purchaseTokenAmount), purchaseTokenAddress);
+            uint debondTokenAmount = _convertToDbit(uint128(_purchaseTokenAmount), purchaseTokenAddress);
             //todo : ferivy if conversion is possible.
 
             return IBankBondManager(bondManagerAddress).getInterestRate(_debondTokenClassId, debondTokenAmount);
@@ -565,7 +579,7 @@ contract Bank is BankRouter, GovernanceOwnable {
         uint _rate,
         address _to
     ) private {
-        uint amount = convertToDbit(uint128(_purchaseTokenAmount), _purchaseTokenAddress);
+        uint amount = _convertToDbit(uint128(_purchaseTokenAmount), _purchaseTokenAddress);
 
         uint256[] memory classIds = new uint256[](2);
         classIds[0] = _purchaseClassId;
@@ -594,7 +608,7 @@ contract Bank is BankRouter, GovernanceOwnable {
         uint _rate,
         address _to
     ) private {
-        uint amount = convertToDbit(uint128(_purchaseTokenAmount), _purchaseTokenAddress);
+        uint amount = _convertToDbit(uint128(_purchaseTokenAmount), _purchaseTokenAddress);
 
         uint256[] memory classIds = new uint256[](1);
         classIds[0] = _debondClassId;

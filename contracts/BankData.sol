@@ -60,7 +60,7 @@ contract BankData is IBankData, GovernanceOwnable {
         tokenTotalSupplyAtNonce[tokenAddress][nonceId] = amount;
     }
 
-    function pushClassIdPerToken(address tokenAddress, uint classId) external onlyBank {
+    function pushClassIdPerTokenAddress(address tokenAddress, uint classId) external onlyBank {
         classIdsPerTokenAddress[tokenAddress].push(classId);
     }
 

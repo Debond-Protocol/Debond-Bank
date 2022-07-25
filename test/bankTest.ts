@@ -74,7 +74,6 @@ contract('Bank', async (accounts: string[]) => {
 
     const DBIT_FIX_6MTH_CLASS_ID = 0;
     const USDC_FIX_6MTH_CLASS_ID = 1;
-    const USDT_FIX_6MTH_CLASS_ID = 2;
 
     before('Initialisation', async () => {
         usdcContract = await USDC.deployed();
@@ -104,7 +103,7 @@ contract('Bank', async (accounts: string[]) => {
 
         //approve usdc and buy bonds
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        await bankContract.purchaseDGOVBondsByStakingTokens(1, 0, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
+        await bankContract.purchaseDBITBondsByStakingTokens(1, 0, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
 
         const transactions = await getTransactions(buyer)
 
@@ -143,7 +142,7 @@ contract('Bank', async (accounts: string[]) => {
 
     it('stakeForDgovBondWithDbit', async () => {
 
-        await dbitContract.setBankAddress(accounts[1]);
+        await dbitContract.setBankAddress(accounts[9]);
         //mint dbit to the buyer
         await dbitContract.mintCollateralisedSupply(buyer, web3.utils.toWei('100000', 'ether'), {from: accounts[1]});
         await dbitContract.setBankAddress(bankContract.address)
@@ -200,7 +199,7 @@ contract('Bank', async (accounts: string[]) => {
 
         //approve usdc and buy bonds
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        let amount = await bankContract.purchaseDGOVBondsByStakingTokens(USDC_FIX_6MTH_CLASS_ID, 4, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
+        await bankContract.purchaseDGOVBondsByStakingTokens(USDC_FIX_6MTH_CLASS_ID, 4, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
 
         const transactions = await getTransactions(buyer)
         let dgovbondBalance = (transactions.find(t => parseInt(t.classId) == 4)?.amount) as string;
@@ -343,7 +342,7 @@ contract('Bank', async (accounts: string[]) => {
 
         //approve usdc and buy bonds
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        let amount = await bankContract.buyDGOVBondsWithTokens(USDC_FIX_6MTH_CLASS_ID, 4, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
+        await bankContract.buyDGOVBondsWithTokens(USDC_FIX_6MTH_CLASS_ID, 4, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
 
         const transactions = await getTransactions(buyer)
         let dgovbondBalance = (transactions.find(t => parseInt(t.classId) == 4)?.amount) as string;

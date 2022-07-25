@@ -28,7 +28,7 @@ interface IBankBondManager {
     function createClass(uint256 classId, string memory symbol, address tokenAddress, InterestRateType interestRateType, uint256 period) external;
 
     function issueBonds(address to, uint256[] memory classIds, uint256[] memory amounts) external;
-    function redeemERC3475(address from, uint classId, uint nonceId, uint amount) external;
+    function redeemBonds(address from, uint[] memory classIds, uint[] memory nonceIds, uint[] memory amounts) external;
 
 
     function getETA(uint256 classId, uint256 nonceId) external view returns (uint256);
