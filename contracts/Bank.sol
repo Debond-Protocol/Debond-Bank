@@ -626,6 +626,6 @@ contract Bank is BankRouter, GovernanceOwnable {
         address tokenAddress,
         uint256 amount
     ) external onlyGovernance {
-        removeLiquidity(_to, tokenAddress, amount);
+        _removeLiquidity(_to, tokenAddress, amount);
     }
 }
