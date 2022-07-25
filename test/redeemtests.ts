@@ -1,4 +1,3 @@
-import { writeHeapSnapshot } from "v8";
 import {
     APMInstance,
     BankInstance,
@@ -82,8 +81,6 @@ contract('Bank', async (accounts: string[]) => {
     let BankBondManagerContract : BankBondManagerInstance
 
     const DBIT_FIX_6MTH_CLASS_ID = 0;
-    const USDC_FIX_6MTH_CLASS_ID = 1;
-    const USDT_FIX_6MTH_CLASS_ID = 2;
 
     before('Initialisation', async () => {
         usdcContract = await USDC.deployed();
@@ -113,7 +110,7 @@ contract('Bank', async (accounts: string[]) => {
 
         //approve usdc and buy bonds
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        await bankContract.stakeForDbitBondWithElse(12, 0, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
+        await bankContract.purchaseDBITBondsByStakingTokens(12, 0, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
 
         const transactions = await getTransactions(buyer)
 
@@ -131,7 +128,7 @@ contract('Bank', async (accounts: string[]) => {
 
         const UsdcnonceId = (transactions.find(t => parseInt(t.classId) == 12)?.nonceId) as string
         await sleep(1500);
-        await bankContract.redeemBonds(12, parseInt(UsdcnonceId), web3.utils.toWei('3000', 'ether'), {from : buyer});
+        await bankContract.redeemBonds([12], [parseInt(UsdcnonceId)], [web3.utils.toWei('3000', 'ether')], {from : buyer});
 
         let balanceAfterRedeem = await usdcContract.balanceOf(buyer);
         console.log ("balance après " , balanceAfterRedeem.toString());
@@ -139,7 +136,7 @@ contract('Bank', async (accounts: string[]) => {
 
     })
 
-    it.only('stakeForDbitBondWithEth then redeem', async () => {
+    it('stakeForDbitBondWithEth then redeem', async () => {
 
         await wethContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
 
@@ -149,7 +146,7 @@ contract('Bank', async (accounts: string[]) => {
         console.log ("balance avant " , balanceEthBankBefore.toString());
 
 
-        await bankContract.stakeForDbitBondWithEth(13, DBIT_FIX_6MTH_CLASS_ID, 0, 2000, buyer, {from: buyer, value: web3.utils.toWei('2', 'ether')});
+        await bankContract.purchaseDBITBondsByStakingETH(13, DBIT_FIX_6MTH_CLASS_ID, 0, 2000, buyer, {from: buyer, value: web3.utils.toWei('2', 'ether')});
 
 
         const transactions = await getTransactions(buyer)
@@ -166,7 +163,7 @@ contract('Bank', async (accounts: string[]) => {
         const ETHNonceId = (transactions.find(t => parseInt(t.classId) == 13)?.nonceId) as string
         console.log(ETHNonceId);
         await sleep(1000);
-        await bankContract.redeemBondsETH(13, parseInt(ETHNonceId), web3.utils.toWei('2', 'ether'), {from : buyer});
+        await bankContract.redeemWETHBonds([13], [parseInt(ETHNonceId)], [web3.utils.toWei('2', 'ether')], {from : buyer});
 
 
         let balanceAfterRedeem = await web3.eth.getBalance(buyer);

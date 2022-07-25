@@ -58,126 +58,148 @@ abstract contract BankRouter {
         oracleAddress = _oracleAddress;
     }
 
-    function _setApmAddress(address _apmAddress) internal {
-        apmAddress = _apmAddress;
-    }
-
-    function updateWhenAddLiquidity(
-        uint _amountA,
-        uint _amountB,
-        address _tokenA,
-        address _tokenB) internal {
-        IAPM(apmAddress).updateWhenAddLiquidity(_amountA, _amountB, _tokenA, _tokenB);
-    }
-
     function swapExactTokensForTokens(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path,
-        address to
+        uint _amountIn,
+        uint _amountOutMin,
+        address[] calldata _path,
+        address _to
     ) external {
-        uint[] memory amounts = IAPM(apmAddress).getAmountsOut(amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
+        uint[] memory amounts = IAPM(apmAddress).getAmountsOut(_amountIn, _path);
+        require(amounts[amounts.length - 1] >= _amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
 
-        IERC20(path[0]).transferFrom(msg.sender, apmAddress, amounts[0]);
-        _swap(amounts, path, to);
+        IERC20(_path[0]).safeTransferFrom(msg.sender, apmAddress, amounts[0]);
+        _swap(amounts, _path, _to);
     }
 
     function swapExactTokensForEth(
-        uint amountIn,
-        uint amountEthMin,
-        address[] calldata path,
-        address to
+        uint _amountIn,
+        uint _amountEthMin,
+        address[] calldata _path,
+        address _to
     ) external {
-        require(path[path.length - 1] == WETHAddress, 'APMRouter: INVALID_PATH');
-        uint[] memory amounts = IAPM(apmAddress).getAmountsOut(amountIn, path);
+        require(_path[_path.length - 1] == WETHAddress, 'APMRouter: INVALID_PATH');
+        uint[] memory amounts = IAPM(apmAddress).getAmountsOut(_amountIn, _path);
         uint lastAmount = amounts[amounts.length - 1];
-        require(lastAmount >= amountEthMin, 'APMRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        require(lastAmount >= _amountEthMin, 'APMRouter: INSUFFICIENT_OUTPUT_AMOUNT');
 
-        IERC20(path[0]).transferFrom(msg.sender, apmAddress, amounts[0]);
-        _swap(amounts, path, address(this));
+        IERC20(_path[0]).safeTransferFrom(msg.sender, apmAddress, amounts[0]);
+        _swap(amounts, _path, address(this));
         IWETH(WETHAddress).withdraw(lastAmount);
-        payable(to).transfer(lastAmount);
+        payable(_to).transfer(lastAmount);
     }
+
     function swapExactEthForTokens(
-        uint amountOutMin,
-        address[] calldata path,
-        address to
+        uint _amountOutMin,
+        address[] calldata _path,
+        address _to
     ) external payable {
-        require(path[0] == WETHAddress, 'APMRouter: INVALID_PATH');
+        require(_path[0] == WETHAddress, 'APMRouter: INVALID_PATH');
         uint amountIn = msg.value;
-        uint[] memory amounts = IAPM(apmAddress).getAmountsOut(amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'APMRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        uint[] memory amounts = IAPM(apmAddress).getAmountsOut(amountIn, _path);
+        require(amounts[amounts.length - 1] >= _amountOutMin, 'APMRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         IWETH(WETHAddress).deposit{value : amountIn}();
         assert(IWETH(WETHAddress).transfer(apmAddress, amountIn));
-        _swap(amounts, path, to);
+        _swap(amounts, _path, _to);
     }
 
-    function removeLiquidity(address _to, address tokenAddress, uint amount) internal {
-        IAPM(apmAddress).removeLiquidity(_to, tokenAddress, amount);
+    function getReserves(
+        address _tokenA,
+        address _tokenB
+    ) external view returns (uint _reserveA, uint _reserveB) {
+        (_reserveA, _reserveB) = IAPM(apmAddress).getReserves(_tokenA, _tokenB);
     }
 
-    function removeWETHLiquidity(uint amount) internal {
-        IAPM(apmAddress).removeLiquidity(address(this), WETHAddress, amount);
-        IWETH(WETHAddress).withdraw(amount);
-        payable(msg.sender).transfer(amount);
+    function _updateWhenAddLiquidity(
+        uint _amountA,
+        uint _amountB,
+        address _tokenA,
+        address _tokenB
+    ) internal {
+        IAPM(apmAddress).updateWhenAddLiquidity(_amountA, _amountB, _tokenA, _tokenB);
     }
 
-    function addLiquidityDbitPair(address _from, address tokenAddress, uint amount) internal {
-        IERC20(tokenAddress).safeTransferFrom(_from, apmAddress, amount);
+    function _removeLiquidity(
+        address _to,
+        address _tokenAddress,
+        uint _amount
+    ) internal {
+        IAPM(apmAddress).removeLiquidity(_to, _tokenAddress, _amount);
+    }
 
-        uint amountDBITToMint = convertToDbit(amount, tokenAddress);
+    function _removeWETHLiquidity(
+        uint _amount
+    ) internal {
+        IAPM(apmAddress).removeLiquidity(address(this), WETHAddress, _amount);
+        IWETH(WETHAddress).withdraw(_amount);
+        payable(msg.sender).transfer(_amount);
+    }
+
+    function _addLiquidityDbitPair(
+        address _from,
+        address _tokenAddress,
+        uint _amount
+    ) internal {
+        IERC20(_tokenAddress).safeTransferFrom(_from, apmAddress, _amount);
+
+        uint amountDBITToMint = _convertToDbit(_amount, _tokenAddress);
         IDebondToken(DBITAddress).mintCollateralisedSupply(apmAddress, amountDBITToMint);
 
-        updateWhenAddLiquidity(amount, amountDBITToMint, tokenAddress, DBITAddress);
+        _updateWhenAddLiquidity(_amount, amountDBITToMint, _tokenAddress, DBITAddress);
     }
 
-    function addLiquidityDgovPair(address _from, address tokenAddress, uint amount) internal {
-        IERC20(tokenAddress).transferFrom(_from, apmAddress, amount);
+    function _addLiquidityDgovPair(
+        address _from,
+        address _tokenAddress,
+        uint _amount
+    ) internal {
+        IERC20(_tokenAddress).safeTransferFrom(_from, apmAddress, _amount);
 
-        uint amountDBITToMint = tokenAddress == DBITAddress ? amount : convertToDbit(uint128(amount), tokenAddress);
+        uint amountDBITToMint = _tokenAddress == DBITAddress ? _amount : _convertToDbit(uint128(_amount), _tokenAddress);
         uint amountDGOVToMint = convertDbitToDgov(amountDBITToMint);
 
         IDebondToken(DBITAddress).mintCollateralisedSupply(apmAddress, amountDGOVToMint);
         IDebondToken(DBITAddress).mintCollateralisedSupply(apmAddress, 2 * amountDBITToMint);
 
-        updateWhenAddLiquidity(amount, amountDBITToMint, tokenAddress, DBITAddress);
-        updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, DGOVAddress);
+        _updateWhenAddLiquidity(_amount, amountDBITToMint, _tokenAddress, DBITAddress);
+        _updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, DGOVAddress);
     }
 
-    function addLiquidityDbitETHPair(uint amount) internal {
-        IWETH(WETHAddress).transfer(apmAddress, amount);
+    function _addLiquidityDbitETHPair(
+        uint _amount
+    ) internal {
+        IWETH(WETHAddress).transfer(apmAddress, _amount);
 
-        uint amountDBITToMint = convertToDbit(amount, WETHAddress);
+        uint amountDBITToMint = _convertToDbit(_amount, WETHAddress);
         IDebondToken(DBITAddress).mintCollateralisedSupply(apmAddress, amountDBITToMint);
 
-        updateWhenAddLiquidity(amount, amountDBITToMint, WETHAddress, DBITAddress);
+        _updateWhenAddLiquidity(_amount, amountDBITToMint, WETHAddress, DBITAddress);
     }
 
-    function addLiquidityDgovETHPair(uint amount) internal {
-        IWETH(WETHAddress).transfer(apmAddress, amount);
+    function _addLiquidityDgovETHPair(
+        uint _amount
+    ) internal {
+        IWETH(WETHAddress).transfer(apmAddress, _amount);
 
-        uint amountDBITToMint = convertToDbit(uint128(amount), WETHAddress);
+        uint amountDBITToMint = _convertToDbit(uint128(_amount), WETHAddress);
         uint amountDGOVToMint = convertDbitToDgov(amountDBITToMint);
 
         IDebondToken(DBITAddress).mintCollateralisedSupply(apmAddress, amountDGOVToMint);
         IDebondToken(DBITAddress).mintCollateralisedSupply(apmAddress, 2 * amountDBITToMint);
 
-        updateWhenAddLiquidity(amount, amountDBITToMint, WETHAddress, DBITAddress);
-        updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, DGOVAddress);
+        _updateWhenAddLiquidity(_amount, amountDBITToMint, WETHAddress, DBITAddress);
+        _updateWhenAddLiquidity(amountDBITToMint, amountDGOVToMint, DBITAddress, DGOVAddress);
     }
 
-    function addLiquidityDbitDgov(address _from, uint DBITamount) internal {
-        IERC20(DBITAddress).transferFrom(_from, apmAddress, DBITamount);
+    function _addLiquidityDbitDgov(
+        address _from,
+        uint DBITamount
+    ) internal {
+        IERC20(DBITAddress).safeTransferFrom(_from, apmAddress, DBITamount);
 
         uint amountDGOVToMint = convertDbitToDgov(DBITamount);
         IDebondToken(DGOVAddress).mintCollateralisedSupply(apmAddress, amountDGOVToMint);
-        updateWhenAddLiquidity(DBITamount, amountDGOVToMint, DBITAddress, DGOVAddress);
+        _updateWhenAddLiquidity(DBITamount, amountDGOVToMint, DBITAddress, DGOVAddress);
 
-    }
-
-    function getReserves(address tokenA, address tokenB) external view returns (uint _reserveA, uint _reserveB) {
-        (_reserveA, _reserveB) = IAPM(apmAddress).getReserves(tokenA, tokenB);
     }
 
     function _swap(uint[] memory amounts, address[] memory path, address to) private {
@@ -197,7 +219,7 @@ abstract contract BankRouter {
     * @param _tokenAddress the address of token
     * @return amountDBIT the amount of DBIT to mint
     */
-    function convertToDbit(uint256 _amountToken, address _tokenAddress) internal view returns (uint256 amountDBIT) {
+    function _convertToDbit(uint256 _amountToken, address _tokenAddress) internal view returns (uint256 amountDBIT) {
 
         uint256 tokenToUsd = _convertTokenToUSDC(_amountToken, _tokenAddress);
         uint256 rate = _cdpUsdToDBIT();
@@ -227,7 +249,10 @@ abstract contract BankRouter {
     * @param _tokenAddress the address of token we want to convert
     * @return amountUsd the corresponding amount of usd
     */
-    function _convertTokenToUSDC(uint256 _amountToken, address _tokenAddress) private view returns (uint256 amountUsd) {
+    function _convertTokenToUSDC(
+        uint256 _amountToken,
+        address _tokenAddress
+    ) private view returns (uint256 amountUsd) {
 
         if (_tokenAddress == USDCAddress) {
             amountUsd = _amountToken;
@@ -238,25 +263,30 @@ abstract contract BankRouter {
     }
 
     /**
-            * @dev gives the amount of dgov which should be minted for 1 dbit of input
-        * @return amountDGOV the amount of DGOV which should be minted
-        */
+    * @dev gives the amount of dgov which should be minted for 1 dbit of input
+    * @return amountDGOV the amount of DGOV which should be minted
+    */
     function _cdpDbitToDgov() private view returns (uint256 amountDGOV) {
-        uint256 _sCollateralised = IDebondToken(DGOVAddress).getTotalCollateralisedSupply();
-         amountDGOV = (100 ether + ((_sCollateralised * 1e9) / 33333 / 1e18)**2).inv();
+        uint256 _totalCollateralisedSupply = IDebondToken(DGOVAddress).getTotalCollateralisedSupply();
+         amountDGOV = (100 ether + ((_totalCollateralisedSupply * 1e9) / 33333 / 1e18)**2).inv();
     }
     /**
     * @dev given the amount of dbit, returns the amout of DGOV to mint
     * @param _amountDBIT the amount of token
     * @return amountDGOV the amount of DGOV to mint
     */
-    function convertDbitToDgov(uint256 _amountDBIT) private view returns (uint256 amountDGOV) {
+    function convertDbitToDgov(
+        uint256 _amountDBIT
+    ) private view returns (uint256 amountDGOV) {
         uint256 rate = _cdpDbitToDgov();
         amountDGOV = _amountDBIT.mul(rate);
     }
 
-    function _convertToDgov(address tokenAddress, uint256 amount) internal view returns (uint256 amountDgov) {
-        uint amountDBITToMint = tokenAddress == DBITAddress ? amount : convertToDbit(uint128(amount), tokenAddress);
+    function _convertToDgov(
+        address _tokenAddress,
+        uint256 _amount
+    ) internal view returns (uint256 amountDgov) {
+        uint amountDBITToMint = _tokenAddress == DBITAddress ? _amount : _convertToDbit(uint128(_amount), _tokenAddress);
         amountDgov = convertDbitToDgov(amountDBITToMint);
     }
 }
