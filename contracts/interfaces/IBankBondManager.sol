@@ -33,7 +33,6 @@ interface IBankBondManager {
 
     function getETA(uint256 classId, uint256 nonceId) external view returns (uint256);
     function classValues(uint256 classId) external view returns (address _tokenAddress, InterestRateType _interestRateType, uint256 _periodTimestamp);
-    function getClasses() external view returns (uint[] memory);
     function getInterestRate(uint classId, uint amount) external view returns (uint rate);
 }
 

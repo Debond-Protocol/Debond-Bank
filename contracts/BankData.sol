@@ -27,10 +27,6 @@ contract BankData is IBankData, GovernanceOwnable {
     mapping(uint256 => mapping(uint256 => bool)) _canPurchase; // can u get second input classId token from providing first input classId token
     uint public BASE_TIMESTAMP;
     uint public BENCHMARK_RATE_DECIMAL_18 = 5 * 10 ** 16;
-    uint[] public classes;
-
-    mapping(address => mapping(BankBondManager.InterestRateType => uint256)) public tokenRateTypeTotalSupply; // needed for interest rate calculation also
-    mapping(address => mapping(uint256 => uint256)) public tokenTotalSupplyAtNonce;
     mapping(address => uint256[]) public classIdsPerTokenAddress;
 
     constructor(address _governanceAddress, address _bankAddress, uint _baseTimestamp) GovernanceOwnable(_governanceAddress) {
@@ -52,20 +48,8 @@ contract BankData is IBankData, GovernanceOwnable {
         _canPurchase[classIdIn][classIdOut] = __canPurchase;
     }
 
-    function setTokenInterestRateSupply(address tokenAddress, BankBondManager.InterestRateType interestRateType, uint amount) external onlyBank {
-        tokenRateTypeTotalSupply[tokenAddress][interestRateType] += amount;
-    }
-
-    function setTokenTotalSupplyAtNonce(address tokenAddress, uint nonceId, uint amount) external onlyBank {
-        tokenTotalSupplyAtNonce[tokenAddress][nonceId] = amount;
-    }
-
     function pushClassIdPerTokenAddress(address tokenAddress, uint classId) external onlyBank {
         classIdsPerTokenAddress[tokenAddress].push(classId);
-    }
-
-    function addNewClassId(uint classId) external onlyBank {
-        classes.push(classId);
     }
 
     function setBenchmarkInterest(uint _benchmarkInterest) external onlyBank {
@@ -80,20 +64,8 @@ contract BankData is IBankData, GovernanceOwnable {
         return _canPurchase[classIdIn][classIdOut];
     }
 
-    function getClasses() external view returns (uint[] memory) {
-        return classes;
-    }
-
-    function getTokenInterestRateSupply(address tokenAddress, BankBondManager.InterestRateType interestRateType) external view returns (uint) {
-        return tokenRateTypeTotalSupply[tokenAddress][interestRateType];
-    }
-
     function getClassIdsFromTokenAddress(address tokenAddress) external view returns (uint[] memory) {
         return classIdsPerTokenAddress[tokenAddress];
-    }
-
-    function getTokenTotalSupplyAtNonce(address tokenAddress, uint nonceId) external view returns (uint) {
-        return tokenTotalSupplyAtNonce[tokenAddress][nonceId];
     }
 
     function getBenchmarkInterest() external view returns (uint) {
