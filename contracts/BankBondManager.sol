@@ -48,6 +48,8 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     uint public constant EPOCH_24H = 1 days;
     bool dataInitialized;
 
+    event ClassCreated(uint classId, string, address, InterestRateType, uint);
+
 
     constructor(
         address _governanceAddress,
@@ -334,6 +336,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         _pushClassIdPerToken(tokenAddress, classId);
         _addNewClassId(classId);
         _createNonceMetadatas(classId);
+        emit ClassCreated(classId, symbol, tokenAddress, interestRateType, period);
     }
 
     function _createNonceMetadatas(uint256 classId) private {
