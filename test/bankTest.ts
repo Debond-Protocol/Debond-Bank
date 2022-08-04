@@ -103,7 +103,7 @@ contract('Bank', async (accounts: string[]) => {
 
         //approve usdc and buy bonds
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        await bankContract.purchaseDBITBondsByStakingTokens(1, 0, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
+        await bankContract.purchaseDBITBondsByStakingTokens(1, 0, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer);
 
         const transactions = await getTransactions(buyer)
 
@@ -153,7 +153,7 @@ contract('Bank', async (accounts: string[]) => {
 
         //approve dbit and buy bonds
         await dbitContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        await bankContract.purchaseDGOVBondsByStakingDBIT(0, 4, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
+        await bankContract.purchaseDGOVBondsByStakingDBIT(0, 4, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer);
 
        //log his nonce so we can use it to query bond blance
         const transactions = await getTransactions(buyer);
@@ -199,7 +199,7 @@ contract('Bank', async (accounts: string[]) => {
 
         //approve usdc and buy bonds
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        await bankContract.purchaseDGOVBondsByStakingTokens(USDC_FIX_6MTH_CLASS_ID, 4, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
+        await bankContract.purchaseDGOVBondsByStakingTokens(USDC_FIX_6MTH_CLASS_ID, 4, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer);
 
         const transactions = await getTransactions(buyer)
         let dgovbondBalance = (transactions.find(t => parseInt(t.classId) == 4)?.amount) as string;
@@ -245,7 +245,7 @@ contract('Bank', async (accounts: string[]) => {
 
         //approve usdc and buy bonds
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        await bankContract.buyDBITBondsWithTokens(1, 0, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
+        await bankContract.buyDBITBondsWithTokens(1, 0, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer);
 
         const transactions = await getTransactions(buyer)
 
@@ -290,7 +290,7 @@ contract('Bank', async (accounts: string[]) => {
 
         //approve dbit and buy bonds
         await dbitContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        await bankContract.buyDGOVBondsWithDBIT(0, 4, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
+        await bankContract.buyDGOVBondsWithDBIT(0, 4, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer);
 
         const transactions = await getTransactions(buyer)
 
@@ -342,7 +342,7 @@ contract('Bank', async (accounts: string[]) => {
 
         //approve usdc and buy bonds
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        await bankContract.buyDGOVBondsWithTokens(USDC_FIX_6MTH_CLASS_ID, 4, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer, {from: buyer});
+        await bankContract.buyDGOVBondsWithTokens(USDC_FIX_6MTH_CLASS_ID, 4, web3.utils.toWei('3000', 'ether'), 0, 2000, buyer);
 
         const transactions = await getTransactions(buyer)
         let dgovbondBalance = (transactions.find(t => parseInt(t.classId) == 4)?.amount) as string;
@@ -376,7 +376,7 @@ contract('Bank', async (accounts: string[]) => {
     it('stakeForDbitBondWithEth', async () => {
         
         await wethContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
-        await bankContract.purchaseDBITBondsByStakingETH(10, DBIT_FIX_6MTH_CLASS_ID, 0, 2000, buyer, {from: buyer, value: web3.utils.toWei('2', 'ether')});
+        await bankContract.purchaseDBITBondsByStakingETH(10, DBIT_FIX_6MTH_CLASS_ID, 0, 2000, buyer);
 
         const transactions = await getTransactions(buyer)
         let ETHbondBalance = (transactions.find(t => parseInt(t.classId) == 10)?.amount) as string;
