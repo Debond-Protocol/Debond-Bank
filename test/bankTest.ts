@@ -87,11 +87,6 @@ contract('Bank', async (accounts: string[]) => {
         bankBondManagerContract = await BankBondManager.deployed();
     })
 
-    it('should return all the classes', async () => {
-        const classes = (await bankBondManagerContract.getClasses()).map(c => c.toNumber())
-        console.log("classes: " + classes)
-    })
-
     it.only('stakeForDbitBondWithElse', async () => {
 
         //mint usdc to the buyer

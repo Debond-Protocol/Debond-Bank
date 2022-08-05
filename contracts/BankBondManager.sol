@@ -45,6 +45,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     uint public constant maturityDateMetadataId = 1;
 
     uint public constant EPOCH_24H = 1 days;
+    uint public constant CLASS_PERIOD_1 = 180 * EPOCH_24H; // 6 months
     bool dataInitialized;
 
 
@@ -75,24 +76,22 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     ) external onlyGovernance {
         require(!dataInitialized);
         dataInitialized = true;
-        uint SIX_M_PERIOD = 180 * EPOCH_24H;
-        // 1 hour period for tests
 
         _createInitClassMetadatas();
 
-        _createClass(0, "DBIT", DBITAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
-        _createClass(1, "USDC", USDCAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
-        _createClass(2, "USDT", USDTAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
-        _createClass(3, "DAI", DAIAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
-        _createClass(4, "DGOV", DGOVAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
-        _createClass(10, "WETH", WETHAddress, InterestRateType.FixedRate, SIX_M_PERIOD);
+        _createClass(0, "DBIT", DBITAddress, InterestRateType.FixedRate, CLASS_PERIOD_1);
+        _createClass(1, "USDC", USDCAddress, InterestRateType.FixedRate, CLASS_PERIOD_1);
+        _createClass(2, "USDT", USDTAddress, InterestRateType.FixedRate, CLASS_PERIOD_1);
+        _createClass(3, "DAI", DAIAddress, InterestRateType.FixedRate, CLASS_PERIOD_1);
+        _createClass(4, "DGOV", DGOVAddress, InterestRateType.FixedRate, CLASS_PERIOD_1);
+        _createClass(10, "WETH", WETHAddress, InterestRateType.FixedRate, CLASS_PERIOD_1);
 
-        _createClass(5, "DBIT", DBITAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
-        _createClass(6, "USDC", USDCAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
-        _createClass(7, "USDT", USDTAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
-        _createClass(8, "DAI", DAIAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
-        _createClass(9, "DGOV", DGOVAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
-        _createClass(11, "WETH", WETHAddress, InterestRateType.FloatingRate, SIX_M_PERIOD);
+        _createClass(5, "DBIT", DBITAddress, InterestRateType.FloatingRate, CLASS_PERIOD_1);
+        _createClass(6, "USDC", USDCAddress, InterestRateType.FloatingRate, CLASS_PERIOD_1);
+        _createClass(7, "USDT", USDTAddress, InterestRateType.FloatingRate, CLASS_PERIOD_1);
+        _createClass(8, "DAI", DAIAddress, InterestRateType.FloatingRate, CLASS_PERIOD_1);
+        _createClass(9, "DGOV", DGOVAddress, InterestRateType.FloatingRate, CLASS_PERIOD_1);
+        _createClass(11, "WETH", WETHAddress, InterestRateType.FloatingRate, CLASS_PERIOD_1);
 
 
         _updateCanPurchase(1, 0, true);
@@ -346,7 +345,6 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         (,, uint period) = classValues(classId);
         (uint[] memory _metadataIds, IERC3475.Values[] memory _values) = mapNonceValuesFrom(creationTimestamp, creationTimestamp + period);
         IDebondBond(debondBondAddress).createNonce(classId, newNonceId, _metadataIds, _values);
-        _updateLastNonce(classId, newNonceId, creationTimestamp);
     }
 
     function _getNonceFromDate(uint256 _date) private view returns (uint256) {
@@ -357,10 +355,6 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         return _period / EPOCH_24H;
     }
 
-    function _updateLastNonce(uint _classId, uint _nonceId, uint _createdAt) internal {
-        IDebondBond(debondBondAddress).updateLastNonce(_classId, _nonceId, _createdAt);
-    }
-
     function getETA(uint256 _classId, uint256 _nonceId) external view returns (uint256) {
         (address _tokenAddress, InterestRateType _interestRateType,) = classValues(_classId);
         (, uint256 _maturityDate) = nonceValues(_classId, _nonceId);
@@ -369,13 +363,11 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
             return _maturityDate;
         }
 
-        uint _totalSupply = _tokenTotalSupply(_tokenAddress);
-        uint _supplyAtNonce = getTokenTotalSupplyAtNonce(_tokenAddress, _nonceId);
+        uint256 _totalSupply = _tokenTotalSupply(_tokenAddress);
+        uint256 _supplyAtNonce = getTokenTotalSupplyAtNonce(_tokenAddress, _nonceId);
 
-        //TODO Get the today nonce and note the last nonce created on the desired Class
-        (uint lastNonceCreated,) = IDebondBond(debondBondAddress).getLastNonceCreated(_classId);
-        uint liquidityInForLast30Nonces = _tokenLiquidityInFromTo(_tokenAddress, lastNonceCreated - 30, lastNonceCreated);
-        uint averageLiquidityInOverLast30Nonces = liquidityInForLast30Nonces / 30;
+        uint256 liquidityInFromLast30Nonces = _tokenLiquidityInFromLast(_tokenAddress, 30);
+        uint256 averageLiquidityInOverLast30Nonces = liquidityInFromLast30Nonces / 30;
         return DebondMath.floatingETA(_maturityDate, _supplyAtNonce, getBenchmarkInterest(), _totalSupply, EPOCH_24H, averageLiquidityInOverLast30Nonces);
     }
 
@@ -431,13 +423,19 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         return supply;
     }
 
-    function _tokenLiquidityInFromTo(address _tokenAddress, uint256 _fromNonceId, uint256 _toNonceId) internal view returns (uint256 supply) {
-        require(_fromNonceId <= _toNonceId, "DebondBond Error: Invalid Input");
+    function _tokenLiquidityInFromLast(address _tokenAddress, uint256 _nonceCount) internal view returns (uint256 supply) {
         uint[] memory _classIdsPerTokenAddress = getClassIdsFromTokenAddress(_tokenAddress);
         for (uint i = 0; i < _classIdsPerTokenAddress.length; i++) {
+            (,, uint _period) = classValues(_classIdsPerTokenAddress[i]);
+            (uint _toNonceId,) = IDebondBond(debondBondAddress).getLastNonceCreated(_classIdsPerTokenAddress[i]);
+            if(_toNonceId < _getNonceFromPeriod(_period) || _toNonceId < _nonceCount) {
+                supply += 0;
+                continue;
+            }
+            uint _fromNonceId = _toNonceId - _nonceCount < _getNonceFromPeriod(_period) ? _getNonceFromPeriod(_period) : _toNonceId - _nonceCount;
             supply +=
-                IDebondBond(debondBondAddress).classLiquidityAtNonce(_classIdsPerTokenAddress[i], _toNonceId) -
-                IDebondBond(debondBondAddress).classLiquidityAtNonce(_classIdsPerTokenAddress[i], _fromNonceId);
+                IDebondBond(debondBondAddress).classLiquidityAtNonce(_classIdsPerTokenAddress[i], _toNonceId, _getNonceFromPeriod(_period)) -
+                IDebondBond(debondBondAddress).classLiquidityAtNonce(_classIdsPerTokenAddress[i], _fromNonceId, _getNonceFromPeriod(_period));
         }
     }
 
@@ -469,7 +467,8 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         uint[] memory _tokenClasses = IBankData(bankDataAddress).getClassIdsFromTokenAddress(tokenAddress);
         uint supply;
         for (uint i; i < _tokenClasses.length; i++) {
-            supply += IDebondBond(debondBondAddress).classLiquidityAtNonce(_tokenClasses[i], nonceId);
+            (,, uint _period) = classValues(_tokenClasses[i]);
+            supply += IDebondBond(debondBondAddress).classLiquidityAtNonce(_tokenClasses[i], nonceId, _getNonceFromPeriod(_period));
         }
         return supply;
     }
@@ -478,8 +477,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         return IBankData(bankDataAddress).getBenchmarkInterest();
     }
 
-    function getInterestRate(uint classId, uint amount) external view returns (uint weightedRate) {
-        uint256 _toNonce = _getNonceFromDate(block.timestamp);
+    function getInterestRate(uint classId, uint amount) external view returns (uint256) {
         (address tokenAddress, InterestRateType interestRateType,) = classValues(classId);
         (uint fixRateSupply, uint floatRateSupply) = _getSupplies(tokenAddress, interestRateType, amount);
 
@@ -488,18 +486,18 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         uint oneTokenToUSDValue = _convertTokenToUSDC(1 ether, tokenAddress);
         if ((fixRateSupply.mul(oneTokenToUSDValue)) < 100_000 ether || (floatRateSupply.mul(oneTokenToUSDValue)) < 100_000 ether) {
             (fixRate, floatRate) = _getDefaultRate();
+           return interestRateType == InterestRateType.FixedRate ? fixRate : floatRate;
         } else {
             (fixRate, floatRate) = _getCalculatedRate(fixRateSupply, floatRateSupply);
+            uint256 rate = interestRateType == InterestRateType.FixedRate ? fixRate : floatRate;
+            uint256 _last30NoncesLiquidityIn = _tokenLiquidityInFromLast(tokenAddress, 30);
+
+            // now we calculate the weight
+            uint256 weight = DebondMath.getWeight(_last30NoncesLiquidityIn, 30, _tokenTotalSupply(tokenAddress));
+
+            return rate.mul(weight);
         }
-        uint256 rate = interestRateType == InterestRateType.FixedRate ? fixRate : floatRate;
 
-        uint256 _fromNonce = _toNonce < 30 ? 0 : _toNonce - 30;
-        uint256 _last30NoncesLiquidityIn = _tokenLiquidityInFromTo(tokenAddress, _fromNonce, _toNonce);
-
-        // now we calculate the weight
-        uint256 weight = DebondMath.getWeight(_last30NoncesLiquidityIn, 30, _tokenTotalSupply(tokenAddress));
-
-        weightedRate = rate.mul(weight);
 
 
     }

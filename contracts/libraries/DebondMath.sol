@@ -220,7 +220,7 @@ library DebondMath {
         uint256 _totalLiquidityIn
     ) public pure returns(uint256 weight) {
         uint256 _averageEpochLiquidityIn = div(_periodLiquidityIn, _noncesCount);
-        uint256 _lambda = 1 ether - (div(_totalLiquidityIn, _averageEpochLiquidityIn));
+        uint256 _lambda = _averageEpochLiquidityIn > 0 ? 1 ether - (div(_totalLiquidityIn, _averageEpochLiquidityIn)) : 1 ether;
         uint256 _gamma = 1 ether;
         uint256 _k = div(_gamma, _lambda);
 
