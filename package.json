@@ -13,7 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "@openzeppelin/contracts": "^4.5.0",
-    "@debond-protocol/debond-apm-contracts": "^0.0.1",
+    "@debond-protocol/debond-apm-contracts": "^0.0.3",
     "@debond-protocol/debond-erc3475-contracts": "^0.0.4",
     "@debond-protocol/debond-governance-contracts": "^0.0.1",
     "@debond-protocol/debond-oracle-contracts": "0.0.1",

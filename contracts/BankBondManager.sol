@@ -160,7 +160,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
             (uint _lastNonceCreated,) = IDebondBond(debondBondAddress).getLastNonceCreated(_classIds[i]);
             // here we check if the nonce to issue the bond with is already created
             if (_nonceToIssueWith > _lastNonceCreated) {
-                createNewNonce(_classIds[i], _nonceToIssueWith, instant);
+                _createNewNonce(_classIds[i], _nonceToIssueWith, instant);
                 _lastNonceCreated = _nonceToIssueWith;
             }
             nonceIds[i] = _lastNonceCreated;
@@ -210,6 +210,22 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
 
         progressRemaining = BsumNInterest < BsumNL ? 0 : 100;
         progressAchieved = 100 - progressRemaining;
+    }
+
+    function getETA(uint256 _classId, uint256 _nonceId) external view returns (uint256) {
+        (address _tokenAddress, InterestRateType _interestRateType,) = classValues(_classId);
+        (, uint256 _maturityDate) = nonceValues(_classId, _nonceId);
+
+        if (_interestRateType == InterestRateType.FixedRate) {
+            return _maturityDate;
+        }
+
+        uint256 _totalSupply = _tokenTotalSupply(_tokenAddress);
+        uint256 _supplyAtNonce = getTokenTotalSupplyAtNonce(_tokenAddress, _nonceId);
+
+        uint256 liquidityInFromLast30Nonces = _tokenLiquidityInFromLast(_tokenAddress, 30);
+        uint256 averageLiquidityInOverLast30Nonces = liquidityInFromLast30Nonces / 30;
+        return DebondMath.floatingETA(_maturityDate, _supplyAtNonce, getBenchmarkInterest(), _totalSupply, EPOCH_24H, averageLiquidityInOverLast30Nonces);
     }
 
     /**
@@ -341,7 +357,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         IDebondBond(debondBondAddress).createNonceMetadataBatch(classId, metadataIds, metadatas);
     }
 
-    function createNewNonce(uint classId, uint newNonceId, uint creationTimestamp) private {
+    function _createNewNonce(uint classId, uint newNonceId, uint creationTimestamp) private {
         (,, uint period) = classValues(classId);
         (uint[] memory _metadataIds, IERC3475.Values[] memory _values) = mapNonceValuesFrom(creationTimestamp, creationTimestamp + period);
         IDebondBond(debondBondAddress).createNonce(classId, newNonceId, _metadataIds, _values);
@@ -353,22 +369,6 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
 
     function _getNonceFromPeriod(uint256 _period) private pure returns (uint256) {
         return _period / EPOCH_24H;
-    }
-
-    function getETA(uint256 _classId, uint256 _nonceId) external view returns (uint256) {
-        (address _tokenAddress, InterestRateType _interestRateType,) = classValues(_classId);
-        (, uint256 _maturityDate) = nonceValues(_classId, _nonceId);
-
-        if (_interestRateType == InterestRateType.FixedRate) {
-            return _maturityDate;
-        }
-
-        uint256 _totalSupply = _tokenTotalSupply(_tokenAddress);
-        uint256 _supplyAtNonce = getTokenTotalSupplyAtNonce(_tokenAddress, _nonceId);
-
-        uint256 liquidityInFromLast30Nonces = _tokenLiquidityInFromLast(_tokenAddress, 30);
-        uint256 averageLiquidityInOverLast30Nonces = liquidityInFromLast30Nonces / 30;
-        return DebondMath.floatingETA(_maturityDate, _supplyAtNonce, getBenchmarkInterest(), _totalSupply, EPOCH_24H, averageLiquidityInOverLast30Nonces);
     }
 
     /**
@@ -414,7 +414,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         _maturityDate = (IERC3475(debondBondAddress).nonceValues(_classId, _nonceId, maturityDateMetadataId)).uintValue;
     }
 
-    function _tokenTotalSupply(address tokenAddress) internal view returns (uint256) {
+    function _tokenTotalSupply(address tokenAddress) private view returns (uint256) {
         uint[] memory _tokenClasses = IBankData(bankDataAddress).getClassIdsFromTokenAddress(tokenAddress);
         uint supply;
         for (uint i; i < _tokenClasses.length; i++) {
@@ -423,7 +423,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         return supply;
     }
 
-    function _tokenLiquidityInFromLast(address _tokenAddress, uint256 _nonceCount) internal view returns (uint256 supply) {
+    function _tokenLiquidityInFromLast(address _tokenAddress, uint256 _nonceCount) private view returns (uint256 supply) {
         uint[] memory _classIdsPerTokenAddress = getClassIdsFromTokenAddress(_tokenAddress);
         for (uint i = 0; i < _classIdsPerTokenAddress.length; i++) {
             (,, uint _period) = classValues(_classIdsPerTokenAddress[i]);
