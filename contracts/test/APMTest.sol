@@ -7,5 +7,5 @@ import "@debond-protocol/debond-apm-contracts/APM.sol";
 
 contract APMTest is APM {
 
-    constructor(address governanceAddress) APM(governanceAddress) {}
+    constructor(address governanceAddress, address bankAddress) APM(governanceAddress, bankAddress) {}
 }

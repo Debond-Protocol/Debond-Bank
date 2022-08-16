@@ -213,4 +213,18 @@ library DebondMath {
 
         crisis = deficit > 0;
     }
+
+    function getWeight(
+        uint256 _periodLiquidityIn,
+        uint256 _noncesCount,
+        uint256 _totalLiquidityIn
+    ) public pure returns(uint256 weight) {
+        uint256 _averageEpochLiquidityIn = div(_periodLiquidityIn, _noncesCount);
+        uint256 _lambda = _averageEpochLiquidityIn > 0 ? 1 ether - (div(_totalLiquidityIn, _averageEpochLiquidityIn)) : 1 ether;
+        uint256 _gamma = 1 ether;
+        uint256 _k = div(_gamma, _lambda);
+
+        weight = 1 ether - div(1 ether, pow(2 ether, _k));
+
+    }
 }

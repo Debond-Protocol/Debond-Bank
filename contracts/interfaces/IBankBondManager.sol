@@ -28,12 +28,11 @@ interface IBankBondManager {
     function createClass(uint256 classId, string memory symbol, address tokenAddress, InterestRateType interestRateType, uint256 period) external;
 
     function issueBonds(address to, uint256[] memory classIds, uint256[] memory amounts) external;
-    function redeemBonds(address from, uint[] memory classIds, uint[] memory nonceIds, uint[] memory amounts) external;
 
 
     function getETA(uint256 classId, uint256 nonceId) external view returns (uint256);
     function classValues(uint256 classId) external view returns (address _tokenAddress, InterestRateType _interestRateType, uint256 _periodTimestamp);
-    function getClasses() external view returns (uint[] memory);
+    function nonceValues(uint256 classId, uint256 nonceId) external view returns (uint256 _issuanceDate, uint256 _maturityDate);
     function getInterestRate(uint classId, uint amount) external view returns (uint rate);
 }
 

@@ -34,7 +34,8 @@ module.exports = async function (deployer, networks, accounts) {
       "0x0000000000000000000000000000000000000000",
       USDCAddress,
       WETHAddress,
-      oracleAddress);
+      oracleAddress,
+      "0x0000000000000000000000000000000000000000");
 
   // const bankInstance = await Bank.deployed();
   // await apmInstance.setBankAddress(bankInstance.address);

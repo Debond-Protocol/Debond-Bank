@@ -24,6 +24,7 @@ pragma solidity ^0.8.0;
 import "@debond-protocol/debond-token-contracts/interfaces/IDebondToken.sol";
 import "@debond-protocol/debond-oracle-contracts/interfaces/IOracle.sol";
 import "@debond-protocol/debond-governance-contracts/utils/GovernanceOwnable.sol";
+import "@debond-protocol/debond-erc3475-contracts/interfaces/ILiquidityRedeemable.sol";
 import "./interfaces/IWETH.sol";
 import "./BankBondManager.sol";
 import "./libraries/DebondMath.sol";
@@ -34,12 +35,13 @@ import "./BankRouter.sol";
 
 //todo : grammaire( _ internal, majuscules etc), commentaires
 
-contract Bank is BankRouter, GovernanceOwnable {
+contract Bank is BankRouter, GovernanceOwnable, ILiquidityRedeemable {
 
     using DebondMath for uint256;
 
     address public bankDataAddress;
     address public bondManagerAddress;
+    address public debondBondAddress;
     enum PurchaseMethod {Buying, Staking}
 
 
@@ -53,10 +55,12 @@ contract Bank is BankRouter, GovernanceOwnable {
         address _DGOVAddress,
         address _USDCAddress,
         address _WETHAddress,
-        address _oracleAddress
+        address _oracleAddress,
+        address _debondBondAddress
     ) GovernanceOwnable(_governanceAddress) BankRouter(_APMAddress, _DBITAddress, _DGOVAddress, _USDCAddress, _WETHAddress, _oracleAddress) {
         bondManagerAddress = _bankBondManagerAddress;
         bankDataAddress = _bankDataAddress;
+        debondBondAddress = _debondBondAddress;
     }
 
     receive() external payable {}
@@ -66,6 +70,10 @@ contract Bank is BankRouter, GovernanceOwnable {
             revert Deadline(deadline, block.timestamp);
         }
         _;
+    }
+
+    function setDebondBondAddress(address _debondBondAddress) external onlyGovernance {
+        debondBondAddress = _debondBondAddress;
     }
 
     function setApmAddress(
@@ -480,53 +488,12 @@ contract Bank is BankRouter, GovernanceOwnable {
         _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, _dgovClassId, _interestRate, _to);
     }
 
-
-    /**
-    * @notice user redeeming his ERC3475 bonds
-    * @param _classIds class Ids to redeem
-    * @param _nonceIds nonce Ids to redeem
-    * @param _amounts amounts to redeem
-    */
-    function redeemBonds(
-        uint[] memory _classIds,
-        uint[] memory _nonceIds,
-        uint[] memory _amounts
-    ) external {
-        _redeemERC3475(_classIds, _nonceIds, _amounts);
-
-        for(uint i; i < _classIds.length; i++) {
-            (address tokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_classIds[i]);
-            _removeLiquidity(msg.sender, tokenAddress, _amounts[i]);
+    function redeemLiquidity(address _from, IERC3475.Transaction[] calldata _transactions) external {
+        require(msg.sender == debondBondAddress, "Bank Error: Not Authorised");
+        for(uint i; i < _transactions.length; i++) {
+            (address tokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_transactions[i].classId);
+            _removeLiquidity(_from, tokenAddress, _transactions[i].amount);
         }
-
-    }
-
-    /**
-    * @notice user redeeming his ERC3475 bonds
-    * @param _wethClassIds ERC3475 WETH class Id
-    * @param _nonceIds ERC3475 nonce Ids
-    * @param _amounts ERC3475 amounts
-    */
-    function redeemWETHBonds(
-        uint[] memory _wethClassIds,
-        uint[] memory _nonceIds,
-        uint[] memory _amounts
-    ) external {
-        _redeemERC3475(_wethClassIds, _nonceIds, _amounts);
-
-        for(uint i; i < _amounts.length; i++) {
-            _removeWETHLiquidity(_amounts[i]);
-        }
-
-    }
-
-    function _redeemERC3475(
-        uint[] memory _classIds,
-        uint[] memory _nonceIds,
-        uint[] memory _amounts
-    ) private {
-        require(_classIds.length == _nonceIds.length && _classIds.length == _amounts.length);
-        IBankBondManager(bondManagerAddress).redeemBonds(msg.sender, _classIds, _nonceIds, _amounts);
     }
 
     /**
