@@ -123,6 +123,12 @@ abstract contract BankRouter {
         address _tokenAddress,
         uint _amount
     ) internal {
+        if (_tokenAddress == WETHAddress) {
+            IAPM(apmAddress).removeLiquidity(address(this), WETHAddress, _amount);
+            IWETH(WETHAddress).withdraw(_amount);
+            payable(_to).transfer(_amount);
+            return;
+        }
         IAPM(apmAddress).removeLiquidity(_to, _tokenAddress, _amount);
     }
 

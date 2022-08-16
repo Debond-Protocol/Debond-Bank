@@ -7,7 +7,7 @@ import {
     USDCInstance,
     USDTInstance,
     WETHInstance,
-    BankBondManagerInstance
+    BankBondManagerInstance, APMTestInstance
 } from "../types/truffle-contracts";
 
 const Bank = artifacts.require("Bank");
@@ -76,7 +76,7 @@ contract('Bank', async (accounts: string[]) => {
     let wethContract: WETHInstance
     let dbitContract: DBITTestInstance
     let dgovContract: DGOVTestInstance
-    let apmContract: APMInstance
+    let apmContract: APMTestInstance
     let bondContract: DebondBondTestInstance
     let BankBondManagerContract : BankBondManagerInstance
 
@@ -128,7 +128,7 @@ contract('Bank', async (accounts: string[]) => {
 
         const UsdcnonceId = (transactions.find(t => parseInt(t.classId) == 12)?.nonceId) as string
         await sleep(1500);
-        await bankContract.redeemBonds([12], [parseInt(UsdcnonceId)], [web3.utils.toWei('3000', 'ether')], {from : buyer});
+        await bondContract.redeem(buyer, [{classId : 12, nonceId : parseInt(UsdcnonceId), amount: web3.utils.toWei('3000', 'ether')}], {from : buyer});
 
         let balanceAfterRedeem = await usdcContract.balanceOf(buyer);
         console.log ("balance après " , balanceAfterRedeem.toString());
@@ -163,8 +163,7 @@ contract('Bank', async (accounts: string[]) => {
         const ETHNonceId = (transactions.find(t => parseInt(t.classId) == 13)?.nonceId) as string
         console.log(ETHNonceId);
         await sleep(1000);
-        await bankContract.redeemWETHBonds([13], [parseInt(ETHNonceId)], [web3.utils.toWei('2', 'ether')], {from : buyer});
-
+        await bondContract.redeem(buyer, [{classId : 13, nonceId : parseInt(ETHNonceId), amount: web3.utils.toWei('2', 'ether')}], {from : buyer});
 
         let balanceAfterRedeem = await web3.eth.getBalance(buyer);
         console.log ("balance après " , balanceAfterRedeem.toString());
@@ -175,7 +174,7 @@ contract('Bank', async (accounts: string[]) => {
         let v1 = parseFloat(web3.utils.fromWei(balanceAfterRedeem, "ether"));
         let v2 = parseFloat(web3.utils.fromWei(balancebeforeRedeem, "ether"));
         let v3 = v2-v1;
-        expect(v3).to.greaterThan(-0.01);
+        expect(v3).to.lessThan(0.03); // gas used
 
 
     })

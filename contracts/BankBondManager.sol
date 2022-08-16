@@ -173,23 +173,6 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     }
 
     /**
-    * @notice redeem ERC3475 bonds only Bank can process this action
-    * @param _from the address redeeming the bonds
-    * @param _classIds the requested class Ids
-    * @param _nonceIds the requested nonce Ids
-    * @param _amounts the amounts of bond to redeem
-    */
-    function redeemBonds(address _from, uint[] memory _classIds, uint[] memory _nonceIds, uint[] memory _amounts) external onlyBank {
-        require(_classIds.length == _nonceIds.length && _classIds.length == _amounts.length);
-        IERC3475.Transaction[] memory transactions = new IERC3475.Transaction[](_classIds.length);
-        for (uint i; i < _classIds.length; i++) {
-            IERC3475.Transaction memory transaction = IERC3475.Transaction(_classIds[i], _nonceIds[i], _amounts[i]);
-            transactions[i] = transaction;
-        }
-        IERC3475(debondBondAddress).redeem(_from, transactions);
-    }
-
-    /**
     * @notice gives either the progress achieved and the progress remaining for a classId and a nonceId given
     * @param _classId class Id of the requested bond
     * @param _nonceId nonce Id of the requested bond
