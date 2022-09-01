@@ -1,0 +1,27 @@
+{
+  "name": "@debond-protocol/debond-bank-contracts",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Debond-Protocol/Debond-Bank.git"
+  },
+  "keywords": [
+    "debond",
+    "protocol",
+    "bank"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Debond-Protocol/Debond-Bank/issues"
+  },
+  "homepage": "https://github.com/Debond-Protocol/Debond-Bank#readme"
+}

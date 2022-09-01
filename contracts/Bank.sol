@@ -28,14 +28,15 @@ import "@debond-protocol/debond-erc3475-contracts/interfaces/ILiquidityRedeemabl
 import "./interfaces/IWETH.sol";
 import "./BankBondManager.sol";
 import "./libraries/DebondMath.sol";
-import "./interfaces/IBankData.sol";
+import "./interfaces/IBankStorage.sol";
 import "./BankRouter.sol";
+import "./interfaces/IBank.sol";
 
 
 
 //todo : grammaire( _ internal, majuscules etc), commentaires
 
-contract Bank is BankRouter, GovernanceOwnable, ILiquidityRedeemable {
+contract Bank is IBank, BankRouter, GovernanceOwnable, ILiquidityRedeemable {
 
     using DebondMath for uint256;
 
@@ -72,38 +73,16 @@ contract Bank is BankRouter, GovernanceOwnable, ILiquidityRedeemable {
         _;
     }
 
-    function setDebondBondAddress(address _debondBondAddress) external onlyGovernance {
-        debondBondAddress = _debondBondAddress;
-    }
-
-    function setApmAddress(
-        address _apmAddress
-    ) external onlyGovernance {
-        apmAddress = _apmAddress;
-    }
-
-    function setBondManagerAddress(
+    function updateBondManagerAddress(
         address _bondManagerAddress
     ) external onlyGovernance {
         bondManagerAddress = _bondManagerAddress;
     }
 
-    function setBankDataAddress(
-        address _bankDataAddress
+    function updateOracleAddress(
+        address _oracleAddress
     ) external onlyGovernance {
-        bankDataAddress = _bankDataAddress;
-    }
-
-    function setDBITAddress(
-        address _DBITAddress
-    ) external onlyGovernance {
-        DBITAddress = _DBITAddress;
-    }
-
-    function setDGOVAddress(
-        address _DGOVAddress
-    ) external onlyGovernance {
-        DGOVAddress = _DGOVAddress;
+        oracleAddress = _oracleAddress;
     }
 
     /**
@@ -116,7 +95,7 @@ contract Bank is BankRouter, GovernanceOwnable, ILiquidityRedeemable {
         uint _classIdIn,
         uint _classIdOut
     ) public view returns (bool) {
-        return IBankData(bankDataAddress).canPurchase(_classIdIn, _classIdOut);
+        return IBankStorage(bankDataAddress).canPurchase(_classIdIn, _classIdOut);
     }
 
 

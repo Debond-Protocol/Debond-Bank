@@ -20,7 +20,7 @@ import "@debond-protocol/debond-erc3475-contracts/interfaces/IProgressCalculator
 import "@debond-protocol/debond-oracle-contracts/interfaces/IOracle.sol";
 import "erc3475/IERC3475.sol";
 import "./libraries/DebondMath.sol";
-import "./interfaces/IBankData.sol";
+import "./interfaces/IBankStorage.sol";
 import "./interfaces/IBankBondManager.sol";
 
 
@@ -120,21 +120,18 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         _;
     }
 
-    function setDebondBondAddress(address _debondBondAddress) external onlyGovernance {
-        debondBondAddress = _debondBondAddress;
-    }
-
-    function setBankDataAddress(address _bankDataAddress) external onlyGovernance {
-        bankDataAddress = _bankDataAddress;
-    }
-
-    function setBankAddress(address _bankAddress) external onlyGovernance {
+    function updateBankAddress(address _bankAddress) external onlyGovernance {
         bankAddress = _bankAddress;
     }
 
-    function setBenchmarkInterest(uint _benchmarkInterest) external onlyGovernance {
-        IBankData(bankDataAddress).setBenchmarkInterest(_benchmarkInterest);
+    function updateBenchmarkInterest(uint _benchmarkInterest) external onlyGovernance {
+        IBankStorage(bankDataAddress).updateBenchmarkInterest(_benchmarkInterest);
     }
+
+    function updateOracleAddress(address _oracleAddress) external onlyGovernance {
+        oracleAddress = _oracleAddress;
+    }
+
 
     /**
     * @notice issues ERC3475 Bonds, only the Bank can execute this action
@@ -221,21 +218,8 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         _updateCanPurchase(_classIdIn, _classIdOut, _canPurchase);
     }
 
-    /**
-    * @notice create a new set of metadatas, only Governance can process this action
-    * @param _metadataIds metadatas Ids
-    * @param _metadatas set of metadatas
-    */
-    function createClassMetadatas(uint256[] memory _metadataIds, IERC3475.Metadata[] memory _metadatas) external onlyGovernance {
-        _createClassMetadatas(_metadataIds, _metadatas);
-    }
-
     function _updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) private {
-        IBankData(bankDataAddress).updateCanPurchase(classIdIn, classIdOut, _canPurchase);
-    }
-
-    function _createClassMetadatas(uint256[] memory metadataIds, IERC3475.Metadata[] memory metadatas) internal {
-        IDebondBond(debondBondAddress).createClassMetadataBatch(metadataIds, metadatas);
+        IBankStorage(bankDataAddress).updateCanPurchase(classIdIn, classIdOut, _canPurchase);
     }
 
     /**
@@ -398,7 +382,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     }
 
     function _tokenTotalSupply(address tokenAddress) private view returns (uint256) {
-        uint[] memory _tokenClasses = IBankData(bankDataAddress).getClassIdsFromTokenAddress(tokenAddress);
+        uint[] memory _tokenClasses = IBankStorage(bankDataAddress).getClassIdsFromTokenAddress(tokenAddress);
         uint supply;
         for (uint i; i < _tokenClasses.length; i++) {
             supply += IDebondBond(debondBondAddress).classLiquidity(_tokenClasses[i]);
@@ -423,15 +407,15 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     }
 
     function _pushClassIdPerToken(address tokenAddress, uint classId) private {
-        IBankData(bankDataAddress).pushClassIdPerTokenAddress(tokenAddress, classId);
+        IBankStorage(bankDataAddress).pushClassIdPerTokenAddress(tokenAddress, classId);
     }
 
     function getBaseTimestamp() public view returns (uint) {
-        return IBankData(bankDataAddress).getBaseTimestamp();
+        return IBankStorage(bankDataAddress).getBaseTimestamp();
     }
 
     function getTokenInterestRateSupply(address tokenAddress, InterestRateType interestRateType) public view returns (uint) {
-        uint[] memory _tokenClasses = IBankData(bankDataAddress).getClassIdsFromTokenAddress(tokenAddress);
+        uint[] memory _tokenClasses = IBankStorage(bankDataAddress).getClassIdsFromTokenAddress(tokenAddress);
         uint supply;
         for (uint i; i < _tokenClasses.length; i++) {
             (, InterestRateType classInterestRateType,) = classValues(_tokenClasses[i]);
@@ -443,11 +427,11 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     }
 
     function getClassIdsFromTokenAddress(address tokenAddress) public view returns (uint[] memory) {
-        return IBankData(bankDataAddress).getClassIdsFromTokenAddress(tokenAddress);
+        return IBankStorage(bankDataAddress).getClassIdsFromTokenAddress(tokenAddress);
     }
 
     function getTokenTotalSupplyAtNonce(address tokenAddress, uint nonceId) public view returns (uint) {
-        uint[] memory _tokenClasses = IBankData(bankDataAddress).getClassIdsFromTokenAddress(tokenAddress);
+        uint[] memory _tokenClasses = IBankStorage(bankDataAddress).getClassIdsFromTokenAddress(tokenAddress);
         uint supply;
         for (uint i; i < _tokenClasses.length; i++) {
             (,, uint _period) = classValues(_tokenClasses[i]);
@@ -457,7 +441,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     }
 
     function getBenchmarkInterest() public view returns (uint) {
-        return IBankData(bankDataAddress).getBenchmarkInterest();
+        return IBankStorage(bankDataAddress).getBenchmarkInterest();
     }
 
     function getInterestRate(uint classId, uint amount) external view returns (uint256) {

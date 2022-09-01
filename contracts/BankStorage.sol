@@ -15,11 +15,11 @@ pragma solidity ^0.8.0;
 */
 
 import "./BankBondManager.sol";
-import "./interfaces/IBankData.sol";
+import "./interfaces/IBankStorage.sol";
 import "@debond-protocol/debond-governance-contracts/utils/GovernanceOwnable.sol";
 
 
-contract BankData is IBankData, GovernanceOwnable {
+contract BankStorage is IBankStorage, GovernanceOwnable {
 
     address public bankAddress;
 
@@ -39,7 +39,7 @@ contract BankData is IBankData, GovernanceOwnable {
         _;
     }
 
-    function setBankAddress(address _bankAddress) external onlyGovernance {
+    function updateBankAddress(address _bankAddress) external onlyGovernance {
         require(_bankAddress != address(0), "BankData Error: address 0");
         bankAddress = _bankAddress;
     }
@@ -52,7 +52,7 @@ contract BankData is IBankData, GovernanceOwnable {
         classIdsPerTokenAddress[tokenAddress].push(classId);
     }
 
-    function setBenchmarkInterest(uint _benchmarkInterest) external onlyBank {
+    function updateBenchmarkInterest(uint _benchmarkInterest) external onlyBank {
         BENCHMARK_RATE_DECIMAL_18 = _benchmarkInterest;
     }
 

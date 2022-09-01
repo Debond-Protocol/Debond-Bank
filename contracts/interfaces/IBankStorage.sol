@@ -17,15 +17,15 @@ pragma solidity >=0.8.0;
 import "./IBankBondManager.sol";
 
 
-interface IBankData {
+interface IBankStorage {
 
-    function setBankAddress(address _bankAddress) external;
+    function updateBankAddress(address _bankAddress) external;
 
     function updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) external;
 
     function pushClassIdPerTokenAddress(address tokenAddress, uint classId) external;
 
-    function setBenchmarkInterest(uint benchmarkInterest) external;
+    function updateBenchmarkInterest(uint benchmarkInterest) external;
 
 
 
