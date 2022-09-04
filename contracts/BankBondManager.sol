@@ -22,6 +22,7 @@ import "erc3475/IERC3475.sol";
 import "./libraries/DebondMath.sol";
 import "./interfaces/IBankStorage.sol";
 import "./interfaces/IBankBondManager.sol";
+import "./interfaces/Types.sol";
 
 
 contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwnable {
@@ -30,7 +31,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
 
     address debondBondAddress;
     address bankAddress;
-    address bankDataAddress;
+    address bankStorageAddress;
     address oracleAddress;
     address immutable USDCAddress;
 
@@ -59,7 +60,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     ) GovernanceOwnable(_governanceAddress) {
         debondBondAddress = _debondBondAddress;
         bankAddress = _bankAddress;
-        bankDataAddress = _bankDataAddress;
+        bankStorageAddress = _bankDataAddress;
         oracleAddress = _oracleAddress;
         USDCAddress = _USDCAddress;
     }
@@ -72,26 +73,30 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         address USDTAddress,
         address DAIAddress,
         address DGOVAddress,
-        address WETHAddress
+        address WETHAddress,
+        address _debondBondAddress,
+        address _bankStorageAddress
     ) external onlyGovernance {
         require(!dataInitialized);
         dataInitialized = true;
 
+        debondBondAddress = _debondBondAddress;
+        bankStorageAddress = _bankStorageAddress;
         _createInitClassMetadatas();
 
-        _createClass(0, "DBIT", DBITAddress, InterestRateType.FixedRate, CLASS_PERIOD_1);
-        _createClass(1, "USDC", USDCAddress, InterestRateType.FixedRate, CLASS_PERIOD_1);
-        _createClass(2, "USDT", USDTAddress, InterestRateType.FixedRate, CLASS_PERIOD_1);
-        _createClass(3, "DAI", DAIAddress, InterestRateType.FixedRate, CLASS_PERIOD_1);
-        _createClass(4, "DGOV", DGOVAddress, InterestRateType.FixedRate, CLASS_PERIOD_1);
-        _createClass(10, "WETH", WETHAddress, InterestRateType.FixedRate, CLASS_PERIOD_1);
+        _createClass(0, "DBIT", DBITAddress, Types.InterestRateType.FixedRate, CLASS_PERIOD_1);
+        _createClass(1, "USDC", USDCAddress, Types.InterestRateType.FixedRate, CLASS_PERIOD_1);
+        _createClass(2, "USDT", USDTAddress, Types.InterestRateType.FixedRate, CLASS_PERIOD_1);
+        _createClass(3, "DAI", DAIAddress, Types.InterestRateType.FixedRate, CLASS_PERIOD_1);
+        _createClass(4, "DGOV", DGOVAddress, Types.InterestRateType.FixedRate, CLASS_PERIOD_1);
+        _createClass(10, "WETH", WETHAddress, Types.InterestRateType.FixedRate, CLASS_PERIOD_1);
 
-        _createClass(5, "DBIT", DBITAddress, InterestRateType.FloatingRate, CLASS_PERIOD_1);
-        _createClass(6, "USDC", USDCAddress, InterestRateType.FloatingRate, CLASS_PERIOD_1);
-        _createClass(7, "USDT", USDTAddress, InterestRateType.FloatingRate, CLASS_PERIOD_1);
-        _createClass(8, "DAI", DAIAddress, InterestRateType.FloatingRate, CLASS_PERIOD_1);
-        _createClass(9, "DGOV", DGOVAddress, InterestRateType.FloatingRate, CLASS_PERIOD_1);
-        _createClass(11, "WETH", WETHAddress, InterestRateType.FloatingRate, CLASS_PERIOD_1);
+        _createClass(5, "DBIT", DBITAddress, Types.InterestRateType.FloatingRate, CLASS_PERIOD_1);
+        _createClass(6, "USDC", USDCAddress, Types.InterestRateType.FloatingRate, CLASS_PERIOD_1);
+        _createClass(7, "USDT", USDTAddress, Types.InterestRateType.FloatingRate, CLASS_PERIOD_1);
+        _createClass(8, "DAI", DAIAddress, Types.InterestRateType.FloatingRate, CLASS_PERIOD_1);
+        _createClass(9, "DGOV", DGOVAddress, Types.InterestRateType.FloatingRate, CLASS_PERIOD_1);
+        _createClass(11, "WETH", WETHAddress, Types.InterestRateType.FloatingRate, CLASS_PERIOD_1);
 
 
         _updateCanPurchase(1, 0, true);
@@ -122,10 +127,6 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
 
     function updateBankAddress(address _bankAddress) external onlyGovernance {
         bankAddress = _bankAddress;
-    }
-
-    function updateBenchmarkInterest(uint _benchmarkInterest) external onlyGovernance {
-        IBankStorage(bankDataAddress).updateBenchmarkInterest(_benchmarkInterest);
     }
 
     function updateOracleAddress(address _oracleAddress) external onlyGovernance {
@@ -176,9 +177,9 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     * @return progressAchieved and progressRemaining
     */
     function getProgress(uint256 _classId, uint256 _nonceId) external view returns (uint256 progressAchieved, uint256 progressRemaining) {
-        (address _tokenAddress, InterestRateType _interestRateType, uint _periodTimestamp) = classValues(_classId);
+        (address _tokenAddress, Types.InterestRateType _interestRateType, uint _periodTimestamp) = classValues(_classId);
         (, uint256 _maturityDate) = nonceValues(_classId, _nonceId);
-        if (_interestRateType == InterestRateType.FixedRate) {
+        if (_interestRateType == Types.InterestRateType.FixedRate) {
             progressRemaining = _maturityDate <= block.timestamp ? 0 : (_maturityDate - block.timestamp) * 100 / _periodTimestamp;
             progressAchieved = 100 - progressRemaining;
             return (progressAchieved, progressRemaining);
@@ -193,10 +194,10 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     }
 
     function getETA(uint256 _classId, uint256 _nonceId) external view returns (uint256) {
-        (address _tokenAddress, InterestRateType _interestRateType,) = classValues(_classId);
+        (address _tokenAddress, Types.InterestRateType _interestRateType,) = classValues(_classId);
         (, uint256 _maturityDate) = nonceValues(_classId, _nonceId);
 
-        if (_interestRateType == InterestRateType.FixedRate) {
+        if (_interestRateType == Types.InterestRateType.FixedRate) {
             return _maturityDate;
         }
 
@@ -219,7 +220,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     }
 
     function _updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) private {
-        IBankStorage(bankDataAddress).updateCanPurchase(classIdIn, classIdOut, _canPurchase);
+        IBankStorage(bankStorageAddress).updateCanPurchase(classIdIn, classIdOut, _canPurchase);
     }
 
     /**
@@ -233,7 +234,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     function mapClassValuesFrom(
         string memory _symbol,
         address _tokenAddress,
-        InterestRateType _interestRateType,
+        Types.InterestRateType _interestRateType,
         uint256 _period
     ) private pure returns (uint[] memory, IERC3475.Values[] memory) {
         uint[] memory _metadataIds = new uint[](4);
@@ -294,7 +295,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         uint256 _classId,
         string memory _symbol,
         address _tokenAddress,
-        InterestRateType _interestRateType,
+        Types.InterestRateType _interestRateType,
         uint256 _period
     ) external onlyGovernance {
         _createClass(_classId, _symbol, _tokenAddress, _interestRateType, _period);
@@ -304,7 +305,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         uint256 classId,
         string memory symbol,
         address tokenAddress,
-        InterestRateType interestRateType,
+        Types.InterestRateType interestRateType,
         uint256 period
     ) private {
         (uint[] memory _metadataIds, IERC3475.Values[] memory _values) = mapClassValuesFrom(symbol, tokenAddress, interestRateType, period);
@@ -343,17 +344,17 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     */
     function _getSupplies(
         address _tokenAddress,
-        InterestRateType _interestRateType,
+        Types.InterestRateType _interestRateType,
         uint _supplyToAdd
     ) internal view returns (uint _fixRateSupply, uint _floatRateSupply) {
-        _fixRateSupply = getTokenInterestRateSupply(_tokenAddress, InterestRateType.FixedRate);
-        _floatRateSupply = getTokenInterestRateSupply(_tokenAddress, InterestRateType.FloatingRate);
+        _fixRateSupply = getTokenInterestRateSupply(_tokenAddress, Types.InterestRateType.FixedRate);
+        _floatRateSupply = getTokenInterestRateSupply(_tokenAddress, Types.InterestRateType.FloatingRate);
 
         // we had the client amount to the according bond balance to calculate interest rate after deposit
-        if (_supplyToAdd > 0 && _interestRateType == InterestRateType.FixedRate) {
+        if (_supplyToAdd > 0 && _interestRateType == Types.InterestRateType.FixedRate) {
             _fixRateSupply += _supplyToAdd;
         }
-        if (_supplyToAdd > 0 && _interestRateType == InterestRateType.FloatingRate) {
+        if (_supplyToAdd > 0 && _interestRateType == Types.InterestRateType.FloatingRate) {
             _floatRateSupply += _supplyToAdd;
         }
     }
@@ -363,10 +364,10 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     * @param _classId the requested class Id
     * @return _tokenAddress _interestRateType _periodTimestamp (the class values)
     */
-    function classValues(uint256 _classId) public view returns (address _tokenAddress, InterestRateType _interestRateType, uint256 _periodTimestamp) {
+    function classValues(uint256 _classId) public view returns (address _tokenAddress, Types.InterestRateType _interestRateType, uint256 _periodTimestamp) {
         _tokenAddress = (IERC3475(debondBondAddress).classValues(_classId, tokenAddressMetadataId)).addressValue;
         uint interestType = (IERC3475(debondBondAddress).classValues(_classId, interestRateTypeMetadataId)).uintValue;
-        _interestRateType = interestType == 0 ? InterestRateType.FixedRate : InterestRateType.FloatingRate;
+        _interestRateType = interestType == 0 ? Types.InterestRateType.FixedRate : Types.InterestRateType.FloatingRate;
         _periodTimestamp = (IERC3475(debondBondAddress).classValues(_classId, periodMetadataId)).uintValue;
     }
 
@@ -382,7 +383,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     }
 
     function _tokenTotalSupply(address tokenAddress) private view returns (uint256) {
-        uint[] memory _tokenClasses = IBankStorage(bankDataAddress).getClassIdsFromTokenAddress(tokenAddress);
+        uint[] memory _tokenClasses = IBankStorage(bankStorageAddress).getClassIdsFromTokenAddress(tokenAddress);
         uint supply;
         for (uint i; i < _tokenClasses.length; i++) {
             supply += IDebondBond(debondBondAddress).classLiquidity(_tokenClasses[i]);
@@ -407,18 +408,18 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     }
 
     function _pushClassIdPerToken(address tokenAddress, uint classId) private {
-        IBankStorage(bankDataAddress).pushClassIdPerTokenAddress(tokenAddress, classId);
+        IBankStorage(bankStorageAddress).pushClassIdPerTokenAddress(tokenAddress, classId);
     }
 
     function getBaseTimestamp() public view returns (uint) {
-        return IBankStorage(bankDataAddress).getBaseTimestamp();
+        return IBankStorage(bankStorageAddress).getBaseTimestamp();
     }
 
-    function getTokenInterestRateSupply(address tokenAddress, InterestRateType interestRateType) public view returns (uint) {
-        uint[] memory _tokenClasses = IBankStorage(bankDataAddress).getClassIdsFromTokenAddress(tokenAddress);
+    function getTokenInterestRateSupply(address tokenAddress, Types.InterestRateType interestRateType) public view returns (uint) {
+        uint[] memory _tokenClasses = IBankStorage(bankStorageAddress).getClassIdsFromTokenAddress(tokenAddress);
         uint supply;
         for (uint i; i < _tokenClasses.length; i++) {
-            (, InterestRateType classInterestRateType,) = classValues(_tokenClasses[i]);
+            (, Types.InterestRateType classInterestRateType,) = classValues(_tokenClasses[i]);
             if (classInterestRateType == interestRateType) {
                 supply += IDebondBond(debondBondAddress).classLiquidity(_tokenClasses[i]);
             }
@@ -427,11 +428,11 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     }
 
     function getClassIdsFromTokenAddress(address tokenAddress) public view returns (uint[] memory) {
-        return IBankStorage(bankDataAddress).getClassIdsFromTokenAddress(tokenAddress);
+        return IBankStorage(bankStorageAddress).getClassIdsFromTokenAddress(tokenAddress);
     }
 
     function getTokenTotalSupplyAtNonce(address tokenAddress, uint nonceId) public view returns (uint) {
-        uint[] memory _tokenClasses = IBankStorage(bankDataAddress).getClassIdsFromTokenAddress(tokenAddress);
+        uint[] memory _tokenClasses = IBankStorage(bankStorageAddress).getClassIdsFromTokenAddress(tokenAddress);
         uint supply;
         for (uint i; i < _tokenClasses.length; i++) {
             (,, uint _period) = classValues(_tokenClasses[i]);
@@ -441,11 +442,11 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     }
 
     function getBenchmarkInterest() public view returns (uint) {
-        return IBankStorage(bankDataAddress).getBenchmarkInterest();
+        return IBankStorage(bankStorageAddress).getBenchmarkInterest();
     }
 
     function getInterestRate(uint classId, uint amount) external view returns (uint256) {
-        (address tokenAddress, InterestRateType interestRateType,) = classValues(classId);
+        (address tokenAddress, Types.InterestRateType interestRateType,) = classValues(classId);
         (uint fixRateSupply, uint floatRateSupply) = _getSupplies(tokenAddress, interestRateType, amount);
 
         uint fixRate;
@@ -453,10 +454,10 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         uint oneTokenToUSDValue = _convertTokenToUSDC(1 ether, tokenAddress);
         if ((fixRateSupply.mul(oneTokenToUSDValue)) < 100_000 ether || (floatRateSupply.mul(oneTokenToUSDValue)) < 100_000 ether) {
             (fixRate, floatRate) = _getDefaultRate();
-           return interestRateType == InterestRateType.FixedRate ? fixRate : floatRate;
+           return interestRateType == Types.InterestRateType.FixedRate ? fixRate : floatRate;
         } else {
             (fixRate, floatRate) = _getCalculatedRate(fixRateSupply, floatRateSupply);
-            uint256 rate = interestRateType == InterestRateType.FixedRate ? fixRate : floatRate;
+            uint256 rate = interestRateType == Types.InterestRateType.FixedRate ? fixRate : floatRate;
             uint256 _last30NoncesLiquidityIn = _tokenLiquidityInFromLast(tokenAddress, 30);
 
             // now we calculate the weight

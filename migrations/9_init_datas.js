@@ -7,11 +7,11 @@ const WETH = artifacts.require("WETH");
 
 const Bank = artifacts.require("Bank");
 const BankBondManager = artifacts.require("BankBondManager");
-const BankData = artifacts.require("BankData");
+const BankStorage = artifacts.require("BankStorage");
 const DebondBondTest = artifacts.require("DebondBondTest");
 const APMTest = artifacts.require("APMTest");
 
-module.exports = async function () {
+module.exports = async function (deployer) {
 
   const DAIInstance = await DAI.deployed();
   const DBITInstance = await DBIT.deployed();
@@ -19,20 +19,26 @@ module.exports = async function () {
   const USDTInstance = await USDT.deployed();
   const WETHInstance = await WETH.deployed();
   const apmInstance = await APMTest.deployed();
-  const bankDataInstance = await BankData.deployed();
+  const bankStorageInstance = await BankStorage.deployed();
   const debondBondInstance = await DebondBondTest.deployed()
   const bankInstance = await Bank.deployed();
   const bankBondManagerInstance = await BankBondManager.deployed();
 
 
-  await bankBondManagerInstance.setDebondBondAddress(debondBondInstance.address);
-  await bankBondManagerInstance.setBankDataAddress(bankDataInstance.address);
-  await bankBondManagerInstance.initDatas(DBITInstance.address, USDTInstance.address, DAIInstance.address, DGOVInstance.address, WETHInstance.address);
+  await bankBondManagerInstance.initDatas(
+      DBITInstance.address,
+      USDTInstance.address,
+      DAIInstance.address,
+      DGOVInstance.address,
+      WETHInstance.address,
+      debondBondInstance.address,
+      bankStorageInstance.address
+  );
 
 
   await bankInstance.setApmAddress(apmInstance.address);
-  await bankInstance.setBondManagerAddress(bankBondManagerInstance.address);
-  await bankInstance.setBankDataAddress(bankDataInstance.address);
+  await bankInstance.updateBondManagerAddress(bankBondManagerInstance.address);
+  await bankInstance.setBankStorageAddress(bankStorageInstance.address);
   await bankInstance.setDBITAddress(DBITInstance.address);
   await bankInstance.setDGOVAddress(DGOVInstance.address);
   await bankInstance.setDebondBondAddress(debondBondInstance.address);

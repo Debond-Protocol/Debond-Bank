@@ -40,7 +40,7 @@ contract Bank is IBank, BankRouter, GovernanceOwnable, ILiquidityRedeemable {
 
     using DebondMath for uint256;
 
-    address public bankDataAddress;
+    address public bankStorageAddress;
     address public bondManagerAddress;
     address public debondBondAddress;
     enum PurchaseMethod {Buying, Staking}
@@ -60,7 +60,7 @@ contract Bank is IBank, BankRouter, GovernanceOwnable, ILiquidityRedeemable {
         address _debondBondAddress
     ) GovernanceOwnable(_governanceAddress) BankRouter(_APMAddress, _DBITAddress, _DGOVAddress, _USDCAddress, _WETHAddress, _oracleAddress) {
         bondManagerAddress = _bankBondManagerAddress;
-        bankDataAddress = _bankDataAddress;
+        bankStorageAddress = _bankDataAddress;
         debondBondAddress = _debondBondAddress;
     }
 
@@ -85,6 +85,37 @@ contract Bank is IBank, BankRouter, GovernanceOwnable, ILiquidityRedeemable {
         oracleAddress = _oracleAddress;
     }
 
+    function setApmAddress(
+        address _apmAddress
+    ) external onlyGovernance {
+        apmAddress = _apmAddress;
+    }
+
+    function setBankStorageAddress(
+        address _bankStorageAddress
+    ) external onlyGovernance {
+        bankStorageAddress = _bankStorageAddress;
+    }
+
+    function setDBITAddress(
+        address _DBITAddress
+    ) external onlyGovernance {
+        DBITAddress = _DBITAddress;
+    }
+
+    function setDGOVAddress(
+        address _DGOVAddress
+    ) external onlyGovernance {
+        DGOVAddress = _DGOVAddress;
+    }
+
+    function setDebondBondAddress(
+        address _debondBondAddress
+    ) external onlyGovernance {
+        debondBondAddress = _debondBondAddress;
+    }
+
+
     /**
     * @notice return if classIdIn can purchase classIdOut
     * @param _classIdIn the classId to purchase with
@@ -95,7 +126,7 @@ contract Bank is IBank, BankRouter, GovernanceOwnable, ILiquidityRedeemable {
         uint _classIdIn,
         uint _classIdOut
     ) public view returns (bool) {
-        return IBankStorage(bankDataAddress).canPurchase(_classIdIn, _classIdOut);
+        return IBankStorage(bankStorageAddress).canPurchase(_classIdIn, _classIdOut);
     }
 
 
