@@ -16,38 +16,44 @@ pragma solidity >=0.8.0;
 
 import "./IBankBondManager.sol";
 
-
 interface IBankData {
+  function setBankAddress(address _bankAddress) external;
 
-    function setBankAddress(address _bankAddress) external;
+  function updateCanPurchase(
+    uint256 classIdIn,
+    uint256 classIdOut,
+    bool _canPurchase
+  ) external;
 
-    function updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) external;
+  function setTokenInterestRateSupply(
+    address tokenAddress,
+    IBankBondManager.InterestRateType,
+    uint256 amount
+  ) external;
 
-    function setTokenInterestRateSupply(address tokenAddress, IBankBondManager.InterestRateType, uint amount) external;
+  function setTokenTotalSupplyAtNonce(
+    address tokenAddress,
+    uint256 nonceId,
+    uint256 amount
+  ) external;
 
-    function setTokenTotalSupplyAtNonce(address tokenAddress, uint nonceId, uint amount) external;
+  function pushClassIdPerTokenAddress(address tokenAddress, uint256 classId) external;
 
-    function pushClassIdPerTokenAddress(address tokenAddress, uint classId) external;
+  function addNewClassId(uint256 classId) external;
 
-    function addNewClassId(uint classId) external;
+  function setBenchmarkInterest(uint256 benchmarkInterest) external;
 
-    function setBenchmarkInterest(uint benchmarkInterest) external;
+  function getBaseTimestamp() external view returns (uint256);
 
+  function canPurchase(uint256 classIdIn, uint256 classIdOut) external view returns (bool);
 
+  function getClasses() external view returns (uint256[] memory);
 
+  function getTokenInterestRateSupply(address tokenAddress, IBankBondManager.InterestRateType) external view returns (uint256);
 
-    function getBaseTimestamp() external view returns (uint);
+  function getClassIdsFromTokenAddress(address tokenAddress) external view returns (uint256[] memory);
 
-    function canPurchase(uint classIdIn, uint classIdOut) external view returns (bool);
+  function getTokenTotalSupplyAtNonce(address tokenAddress, uint256 nonceId) external view returns (uint256);
 
-    function getClasses() external view returns (uint[] memory);
-
-    function getTokenInterestRateSupply(address tokenAddress, IBankBondManager.InterestRateType) external view returns (uint);
-
-    function getClassIdsFromTokenAddress(address tokenAddress) external view returns (uint[] memory);
-
-    function getTokenTotalSupplyAtNonce(address tokenAddress, uint nonceId) external view returns (uint);
-
-    function getBenchmarkInterest() external view returns (uint);
-
+  function getBenchmarkInterest() external view returns (uint256);
 }

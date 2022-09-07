@@ -16,17 +16,14 @@ import "@debond-protocol/debond-oracle-contracts/interfaces/IOracle.sol";
     limitations under the License.
 */
 
-contract FakeOracle is IOracle{
-
-    function estimateAmountOut(
-        address tokenIn,
-        uint128 amountIn,
-        address tokenOut,
-        uint32 secondsAgo
-    ) external pure returns (uint amountOut) {
-        // as real oracle, result is given on base 6
-        amountOut = amountIn / 1e12;
-    }
+contract FakeOracle is IOracle {
+  function estimateAmountOut(
+    address tokenIn,
+    uint128 amountIn,
+    address tokenOut,
+    uint32 secondsAgo
+  ) external pure returns (uint256 amountOut) {
+    // as real oracle, result is given on base 6
+    amountOut = amountIn / 1e12;
+  }
 }
-
-

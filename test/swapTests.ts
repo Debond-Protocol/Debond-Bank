@@ -110,7 +110,7 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
         console.log("DBIT IN APM", balanceDbitApm.toString())
     });
 
-    it("should swap", async () => {
+    it.only("should swap", async () => {
         // setting the bank
 
 
@@ -131,7 +131,7 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
 
     })
 
-    it.only("should revert with K error", async () => {
+    it("should revert with K error", async () => {
 
         console.log("should NOT swap");
         const s = await apmContract.getReserves(usdcContract.address, dbitInstance.address);

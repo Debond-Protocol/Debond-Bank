@@ -5,5 +5,5 @@ pragma solidity ^0.8.0;
 import "./Mintable.sol";
 
 contract DAI is Mintable {
-    constructor() Mintable("DAI Test", "DAI") {}
+  constructor() Mintable("DAI Test", "DAI") {}
 }

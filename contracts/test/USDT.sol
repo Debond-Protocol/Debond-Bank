@@ -5,5 +5,5 @@ pragma solidity ^0.8.0;
 import "./Mintable.sol";
 
 contract USDT is Mintable {
-    constructor() Mintable("USDT Test", "USDT") {}
+  constructor() Mintable("USDT Test", "USDT") {}
 }

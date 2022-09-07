@@ -18,86 +18,98 @@ import "./BankBondManager.sol";
 import "./interfaces/IBankData.sol";
 import "@debond-protocol/debond-governance-contracts/utils/GovernanceOwnable.sol";
 
-
 contract BankData is IBankData, GovernanceOwnable {
+  address public bankAddress;
 
-    address public bankAddress;
+  mapping(uint256 => mapping(uint256 => bool)) _canPurchase; // can u get second input classId token from providing first input classId token
+  uint256 public BASE_TIMESTAMP;
+  uint256 public BENCHMARK_RATE_DECIMAL_18 = 5 * 10**16;
+  uint256[] public classes;
 
+  mapping(address => mapping(BankBondManager.InterestRateType => uint256)) public tokenRateTypeTotalSupply; // needed for interest rate calculation also
+  mapping(address => mapping(uint256 => uint256)) public tokenTotalSupplyAtNonce;
+  mapping(address => uint256[]) public classIdsPerTokenAddress;
 
-    mapping(uint256 => mapping(uint256 => bool)) _canPurchase; // can u get second input classId token from providing first input classId token
-    uint public BASE_TIMESTAMP;
-    uint public BENCHMARK_RATE_DECIMAL_18 = 5 * 10 ** 16;
-    uint[] public classes;
+  constructor(
+    address _governanceAddress,
+    address _bankAddress,
+    uint256 _baseTimestamp
+  ) GovernanceOwnable(_governanceAddress) {
+    bankAddress = _bankAddress;
+    BASE_TIMESTAMP = _baseTimestamp;
+  }
 
-    mapping(address => mapping(BankBondManager.InterestRateType => uint256)) public tokenRateTypeTotalSupply; // needed for interest rate calculation also
-    mapping(address => mapping(uint256 => uint256)) public tokenTotalSupplyAtNonce;
-    mapping(address => uint256[]) public classIdsPerTokenAddress;
+  modifier onlyBank() {
+    require(msg.sender == bankAddress, "BankData Error, only Bank Authorised");
+    _;
+  }
 
-    constructor(address _governanceAddress, address _bankAddress, uint _baseTimestamp) GovernanceOwnable(_governanceAddress) {
-        bankAddress = _bankAddress;
-        BASE_TIMESTAMP = _baseTimestamp;
-    }
+  function setBankAddress(address _bankAddress) external onlyGovernance {
+    require(_bankAddress != address(0), "BankData Error: address 0");
+    bankAddress = _bankAddress;
+  }
 
-    modifier onlyBank {
-        require(msg.sender == bankAddress, "BankData Error, only Bank Authorised");
-        _;
-    }
+  function updateCanPurchase(
+    uint256 classIdIn,
+    uint256 classIdOut,
+    bool __canPurchase
+  ) external onlyBank {
+    _canPurchase[classIdIn][classIdOut] = __canPurchase;
+  }
 
-    function setBankAddress(address _bankAddress) external onlyGovernance {
-        require(_bankAddress != address(0), "BankData Error: address 0");
-        bankAddress = _bankAddress;
-    }
+  function setTokenInterestRateSupply(
+    address tokenAddress,
+    BankBondManager.InterestRateType interestRateType,
+    uint256 amount
+  ) external onlyBank {
+    tokenRateTypeTotalSupply[tokenAddress][interestRateType] += amount;
+  }
 
-    function updateCanPurchase(uint classIdIn, uint classIdOut, bool __canPurchase) external onlyBank {
-        _canPurchase[classIdIn][classIdOut] = __canPurchase;
-    }
+  function setTokenTotalSupplyAtNonce(
+    address tokenAddress,
+    uint256 nonceId,
+    uint256 amount
+  ) external onlyBank {
+    tokenTotalSupplyAtNonce[tokenAddress][nonceId] = amount;
+  }
 
-    function setTokenInterestRateSupply(address tokenAddress, BankBondManager.InterestRateType interestRateType, uint amount) external onlyBank {
-        tokenRateTypeTotalSupply[tokenAddress][interestRateType] += amount;
-    }
+  function pushClassIdPerTokenAddress(address tokenAddress, uint256 classId) external onlyBank {
+    classIdsPerTokenAddress[tokenAddress].push(classId);
+  }
 
-    function setTokenTotalSupplyAtNonce(address tokenAddress, uint nonceId, uint amount) external onlyBank {
-        tokenTotalSupplyAtNonce[tokenAddress][nonceId] = amount;
-    }
+  function addNewClassId(uint256 classId) external onlyBank {
+    classes.push(classId);
+  }
 
-    function pushClassIdPerTokenAddress(address tokenAddress, uint classId) external onlyBank {
-        classIdsPerTokenAddress[tokenAddress].push(classId);
-    }
+  function setBenchmarkInterest(uint256 _benchmarkInterest) external onlyBank {
+    BENCHMARK_RATE_DECIMAL_18 = _benchmarkInterest;
+  }
 
-    function addNewClassId(uint classId) external onlyBank {
-        classes.push(classId);
-    }
+  function getBaseTimestamp() external view returns (uint256) {
+    return BASE_TIMESTAMP;
+  }
 
-    function setBenchmarkInterest(uint _benchmarkInterest) external onlyBank {
-        BENCHMARK_RATE_DECIMAL_18 = _benchmarkInterest;
-    }
+  function canPurchase(uint256 classIdIn, uint256 classIdOut) external view returns (bool) {
+    return _canPurchase[classIdIn][classIdOut];
+  }
 
-    function getBaseTimestamp() external view returns (uint) {
-        return BASE_TIMESTAMP;
-    }
+  function getClasses() external view returns (uint256[] memory) {
+    return classes;
+  }
 
-    function canPurchase(uint classIdIn, uint classIdOut) external view returns (bool) {
-        return _canPurchase[classIdIn][classIdOut];
-    }
+  function getTokenInterestRateSupply(address tokenAddress, BankBondManager.InterestRateType interestRateType) external view returns (uint256) {
+    return tokenRateTypeTotalSupply[tokenAddress][interestRateType];
+  }
 
-    function getClasses() external view returns (uint[] memory) {
-        return classes;
-    }
+  function getClassIdsFromTokenAddress(address tokenAddress) external view returns (uint256[] memory) {
+    return classIdsPerTokenAddress[tokenAddress];
+  }
 
-    function getTokenInterestRateSupply(address tokenAddress, BankBondManager.InterestRateType interestRateType) external view returns (uint) {
-        return tokenRateTypeTotalSupply[tokenAddress][interestRateType];
-    }
+  function getTokenTotalSupplyAtNonce(address tokenAddress, uint256 nonceId) external view returns (uint256) {
+    return tokenTotalSupplyAtNonce[tokenAddress][nonceId];
+  }
 
-    function getClassIdsFromTokenAddress(address tokenAddress) external view returns (uint[] memory) {
-        return classIdsPerTokenAddress[tokenAddress];
-    }
-
-    function getTokenTotalSupplyAtNonce(address tokenAddress, uint nonceId) external view returns (uint) {
-        return tokenTotalSupplyAtNonce[tokenAddress][nonceId];
-    }
-
-    function getBenchmarkInterest() external view returns (uint) {
-        return BENCHMARK_RATE_DECIMAL_18;
-    }
-
+  function getBenchmarkInterest() external view returns (uint256) {
+    return BENCHMARK_RATE_DECIMAL_18;
+  }
 }
