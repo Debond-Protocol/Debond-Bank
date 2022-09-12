@@ -127,9 +127,20 @@ abstract contract BankRouter {
             IAPM(apmAddress).removeLiquidity(address(this), WETHAddress, _amount);
             IWETH(WETHAddress).withdraw(_amount);
             payable(_to).transfer(_amount);
-            return;
+            uint _amountDbitToBurn = _convertToDbit(_amount, _tokenAddress);
+            IAPM(apmAddress).burnLiquidity(_amountDbitToBurn); //this function has to be implemented in apm ; burn token and update liquidity
+
+
         }
-        IAPM(apmAddress).removeLiquidity(_to, _tokenAddress, _amount);
+        if (_tokenAddress == DBITAddress) {
+            IAPM(apmAddress).removeLiquidity(_to, _tokenAddress, _amount);
+        }
+        else {
+            IAPM(apmAddress).removeLiquidity(_to, _tokenAddress, _amount);
+            uint _amountDbitToBurn = _convertToDbit(_amount, _tokenAddress);
+            IAPM(apmAddress).burnLiquidity(_amountDbitToBurn); //this function has to be implemented in apm ; burn token and update liquidity
+
+        }
     }
 
     function _removeWETHLiquidity(
