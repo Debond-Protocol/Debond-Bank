@@ -120,26 +120,26 @@ abstract contract BankRouter {
 
     function _removeLiquidity(
         address _to,
-        address _tokenAddress,
+        address _tokenA, //tokenB may be dbit
         uint _amount
     ) internal {
-        if (_tokenAddress == WETHAddress) {
+        if (_tokenA == DBITAddress) {
+            IAPM(apmAddress).removeLiquidity(_to, _tokenA, _amount);
+        }
+        if (_tokenA == WETHAddress) {
             IAPM(apmAddress).removeLiquidity(address(this), WETHAddress, _amount);
             IWETH(WETHAddress).withdraw(_amount);
             payable(_to).transfer(_amount);
-            uint _amountDbitToBurn = _convertToDbit(_amount, _tokenAddress);
-            IAPM(apmAddress).burnLiquidity(_amountDbitToBurn); //this function has to be implemented in apm ; burn token and update liquidity
-
-
+            uint _amountDbitToBurn = _convertToDbit(_amount, _tokenA);
+            IAPM(apmAddress).removeLiquidityInsidePool(_to, _tokenA, DBITAddress, _amountDbitToBurn); 
+            IDebondToken(DBITAddress).burn(_amountDbitToBurn);
         }
-        if (_tokenAddress == DBITAddress) {
-            IAPM(apmAddress).removeLiquidity(_to, _tokenAddress, _amount);
-        }
+        
         else {
-            IAPM(apmAddress).removeLiquidity(_to, _tokenAddress, _amount);
-            uint _amountDbitToBurn = _convertToDbit(_amount, _tokenAddress);
-            IAPM(apmAddress).burnLiquidity(_amountDbitToBurn); //this function has to be implemented in apm ; burn token and update liquidity
-
+            IAPM(apmAddress).removeLiquidity(_to, _tokenA, _amount);
+            uint _amountDbitToBurn = _convertToDbit(_amount, _tokenA);
+            IAPM(apmAddress).removeLiquidityInsidePool(_to, _tokenA, DBITAddress, _amountDbitToBurn); 
+            IDebondToken(DBITAddress).burn(_amountDbitToBurn);
         }
     }
 
