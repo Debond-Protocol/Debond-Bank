@@ -47,7 +47,7 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
         await dbitInstance.setBankAddress(accounts[1]);
         await dbitInstance.mintCollateralisedSupply(swapper, web3.utils.toWei('0.1', 'ether'), {from: accounts[1]});
 
-        await dbitInstance.mintCollateralisedSupply(apmContract.address, web3.utils.toWei('200.2', 'ether'), {from: accounts[1]});
+        await dbitInstance.mintCollateralisedSupply(apmContract.address, web3.utils.toWei('200', 'ether'), {from: accounts[1]});
         await dbitInstance.setBankAddress(bankContract.address)
 
         const a = await apmContract.getReserves(usdcContract.address, dbitInstance.address);
@@ -64,6 +64,11 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
             usdcContract.address,
             {from: accounts[1]}
         );
+
+
+        await dbitInstance.setBankAddress(accounts[1]);
+        await dbitInstance.mintCollateralisedSupply(apmContract.address, web3.utils.toWei('0.2', 'ether'), {from: accounts[1]});
+        await dbitInstance.setBankAddress(bankContract.address)
 
         await apmContract.updateWhenAddLiquidity(
             web3.utils.toWei('0.2', 'ether'),
@@ -131,7 +136,7 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
 
     })
 
-    it.only("should revert with K error", async () => {
+    it("should revert with K error", async () => {
 
         console.log("should NOT swap");
         const s = await apmContract.getReserves(usdcContract.address, dbitInstance.address);
@@ -150,6 +155,12 @@ contract('External Swap (from Bank)', async (accounts: string[]) => {
     })
 
     it("should swapExactEthForTokens", async () => {
+
+        const p = await apmContract.getReserves(usdcContract.address, dbitInstance.address);
+        console.log("here we print r0 after swap : " + p[0].toString(), "here we print r1 after swap :" + p[1].toString());
+        const a = await dbitInstance.balanceOf(apmContract.address)
+        const b = await wethContract.balanceOf(apmContract.address)
+        console.log(a.toString(), b.toString())
         // setting the bank
         await apmContract.setBankAddress(bankContract.address);
         await bankContract.swapExactEthForTokens(

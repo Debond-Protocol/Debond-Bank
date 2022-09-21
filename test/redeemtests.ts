@@ -138,6 +138,8 @@ contract('Bank', async (accounts: string[]) => {
 
     it('stakeForDbitBondWithEth then redeem', async () => {
 
+        const r0 = await dbitContract.balanceOf(apmContract.address);
+
         await wethContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
 
         let balancebeforeRedeem = await web3.eth.getBalance(buyer);
@@ -176,7 +178,9 @@ contract('Bank', async (accounts: string[]) => {
         let v3 = v2-v1;
         expect(v3).to.lessThan(0.03); // gas used
 
+        const r1 = await dbitContract.balanceOf(apmContract.address);
 
+        console.log("HEEEEEERRE" + r0.toString(), r1.toString());
     })
 
 

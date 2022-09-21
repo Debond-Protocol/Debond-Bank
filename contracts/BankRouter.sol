@@ -132,16 +132,18 @@ abstract contract BankRouter {
             IWETH(WETHAddress).withdraw(_amount);
             payable(_to).transfer(_amount);
             uint _amountDbitToBurn = _convertToDbit(_amount, _tokenA);
-            IAPM(apmAddress).updateWhenRemoveLiquidityOneToken(_amountDbitToBurn, _tokenA, DBITAddress);
             IDebondToken(DBITAddress).burn(apmAddress, _amountDbitToBurn);
+            IAPM(apmAddress).updateWhenRemoveLiquidityOneToken(_amountDbitToBurn, _tokenA, DBITAddress);
+            
         }
         
         else {
             //IAPM(apmAddress).removeLiquidity(_to, _tokenA, _amount);
             IAPM(apmAddress).removeLiquidityInsidePool(_to, _tokenA, DBITAddress, _amount);
             uint _amountDbitToBurn = _convertToDbit(_amount, _tokenA);
-            IAPM(apmAddress).updateWhenRemoveLiquidityOneToken(_amountDbitToBurn, _tokenA, DBITAddress);
             IDebondToken(DBITAddress).burn(apmAddress, _amountDbitToBurn);
+            IAPM(apmAddress).updateWhenRemoveLiquidityOneToken(_amountDbitToBurn, _tokenA, DBITAddress);
+            
         }
     }
 
