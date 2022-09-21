@@ -11,7 +11,7 @@ const BankData = artifacts.require("BankData");
 const DebondBondTest = artifacts.require("DebondBondTest");
 const APMTest = artifacts.require("APMTest");
 
-module.exports = async function () {
+module.exports = async function (deployer) {
 
   const DAIInstance = await DAI.deployed();
   const DBITInstance = await DBIT.deployed();
