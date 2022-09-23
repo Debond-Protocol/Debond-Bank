@@ -30,4 +30,6 @@ interface IBankRouter {
 
 
     function getReserves(address tokenA, address tokenB) external view returns (uint _reserveA, uint _reserveB);
+
+    function testCdp(uint _amountToken, address _tokenAddress) external view returns(uint val);
 }

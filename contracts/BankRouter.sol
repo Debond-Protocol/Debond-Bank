@@ -122,29 +122,32 @@ abstract contract BankRouter {
         address _to,
         address _tokenA, //tokenB may be dbit
         uint _amount
-    ) internal {
+    ) internal{
         if (_tokenA == DBITAddress) {
             IAPM(apmAddress).removeLiquidity(_to, _tokenA, _amount);
         }
         if (_tokenA == WETHAddress) {
             //IAPM(apmAddress).removeLiquidity(address(this), WETHAddress, _amount);
             IAPM(apmAddress).removeLiquidityInsidePool(_to, _tokenA, DBITAddress, _amount);
-            IWETH(WETHAddress).withdraw(_amount);
-            payable(_to).transfer(_amount);
+            //IWETH(WETHAddress).withdraw(_amount);  //bug here
+            /*payable(_to).transfer(_amount);
             uint _amountDbitToBurn = _convertToDbit(_amount, _tokenA);
             IDebondToken(DBITAddress).burn(apmAddress, _amountDbitToBurn);
-            IAPM(apmAddress).updateWhenRemoveLiquidityOneToken(_amountDbitToBurn, _tokenA, DBITAddress);
+            IAPM(apmAddress).updateWhenRemoveLiquidityOneToken(_amountDbitToBurn, _tokenA, DBITAddress);*/
             
         }
         
         else {
-            //IAPM(apmAddress).removeLiquidity(_to, _tokenA, _amount);
             IAPM(apmAddress).removeLiquidityInsidePool(_to, _tokenA, DBITAddress, _amount);
             uint _amountDbitToBurn = _convertToDbit(_amount, _tokenA);
             IDebondToken(DBITAddress).burn(apmAddress, _amountDbitToBurn);
-            IAPM(apmAddress).updateWhenRemoveLiquidityOneToken(_amountDbitToBurn, _tokenA, DBITAddress);
+            //IAPM(apmAddress).updateWhenRemoveLiquidityOneToken(_amountDbitToBurn, _tokenA, DBITAddress);
             
         }
+    }
+
+    function testCdp(uint _amountToken, address _tokenAddress) public view returns(uint val){
+        val = _convertToDbit(_amountToken, _tokenAddress);
     }
 
     function _removeWETHLiquidity(
