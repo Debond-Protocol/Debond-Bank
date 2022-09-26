@@ -13,7 +13,6 @@ pragma solidity ^0.8.0;
     See the License for the specific language governing permissions and
     limitations under the License.
 */
-
     error Deadline(uint deadline, uint blockTimeStamp);
     error PairNotAllowed();
     error RateNotHighEnough(uint currentRate, uint minRate);
@@ -487,6 +486,7 @@ contract Bank is BankRouter, GovernanceOwnable, ILiquidityRedeemable {
         _addLiquidityDgovETHPair(purchaseTokenAmount);
         _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, _dgovClassId, _interestRate, _to);
     }
+<<<<<<< HEAD
 
     function redeemLiquidity(address _from, IERC3475.Transaction[] calldata _transactions) external {
         require(msg.sender == debondBondAddress, "Bank Error: Not Authorised");
