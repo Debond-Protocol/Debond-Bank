@@ -120,16 +120,29 @@ abstract contract BankRouter {
 
     function _removeLiquidity(
         address _to,
-        address _tokenAddress,
+        address _tokenA, //tokenB may be dbit
         uint _amount
-    ) internal {
-        if (_tokenAddress == WETHAddress) {
-            IAPM(apmAddress).removeLiquidity(address(this), WETHAddress, _amount);
-            IWETH(WETHAddress).withdraw(_amount);
-            payable(_to).transfer(_amount);
-            return;
+    ) internal{
+        if (_tokenA == DBITAddress) {
+            IAPM(apmAddress).removeLiquidity(_to, _tokenA, _amount);
         }
-        IAPM(apmAddress).removeLiquidity(_to, _tokenAddress, _amount);
+        if (_tokenA == WETHAddress) {
+            IAPM(apmAddress).removeLiquidityInsidePool(address(this), _tokenA, DBITAddress, _amount);
+            IWETH(WETHAddress).withdraw(_amount); 
+            payable(_to).transfer(_amount);
+            uint _amountDbitToBurn = _convertToDbit(_amount, _tokenA);
+            IDebondToken(DBITAddress).burn(apmAddress, _amountDbitToBurn);
+            IAPM(apmAddress).updateWhenRemoveLiquidityOneToken(_amountDbitToBurn, _tokenA, DBITAddress);
+            
+        }
+        
+        else {
+            IAPM(apmAddress).removeLiquidityInsidePool(_to, _tokenA, DBITAddress, _amount);
+            uint _amountDbitToBurn = _convertToDbit(_amount, _tokenA);
+            IDebondToken(DBITAddress).burn(apmAddress, _amountDbitToBurn);
+            IAPM(apmAddress).updateWhenRemoveLiquidityOneToken(_amountDbitToBurn, _tokenA, DBITAddress);
+            
+        }
     }
 
     function _removeWETHLiquidity(
@@ -264,7 +277,7 @@ abstract contract BankRouter {
             amountUsd = _amountToken;
         }
         else {
-            amountUsd = IOracle(oracleAddress).estimateAmountOut(_tokenAddress, uint128(_amountToken), USDCAddress, 60) * 1e12;
+            amountUsd = IOracle(oracleAddress).estimateAmountOut(_tokenAddress, uint128(_amountToken), USDCAddress, 60) * 1e12; //usdc is 6 decimals, so we multiply by 1e12 to have 18 decimals
         }
     }
 
