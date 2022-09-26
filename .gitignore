@@ -11,3 +11,4 @@ Bank.sol.txt
 Exchange.sol.txt
 tenderly.yaml.txt
 .idea
+contracts/package-lock.json

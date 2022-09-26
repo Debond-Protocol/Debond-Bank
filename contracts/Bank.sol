@@ -23,23 +23,24 @@ pragma solidity ^0.8.0;
 
 import "@debond-protocol/debond-token-contracts/interfaces/IDebondToken.sol";
 import "@debond-protocol/debond-oracle-contracts/interfaces/IOracle.sol";
-import "@debond-protocol/debond-governance-contracts/utils/GovernanceOwnable.sol";
+import "@debond-protocol/debond-governance-contracts/utils/ExecutableOwnable.sol";
 import "@debond-protocol/debond-erc3475-contracts/interfaces/ILiquidityRedeemable.sol";
 import "./interfaces/IWETH.sol";
 import "./BankBondManager.sol";
 import "./libraries/DebondMath.sol";
-import "./interfaces/IBankData.sol";
+import "./interfaces/IBankStorage.sol";
 import "./BankRouter.sol";
+import "./interfaces/IBank.sol";
 
 
 
 //todo : grammaire( _ internal, majuscules etc), commentaires
 
-contract Bank is BankRouter, GovernanceOwnable, ILiquidityRedeemable {
+contract Bank is IBank, BankRouter, ExecutableOwnable, ILiquidityRedeemable {
 
     using DebondMath for uint256;
 
-    address public bankDataAddress;
+    address public bankStorageAddress;
     address public bondManagerAddress;
     address public debondBondAddress;
     enum PurchaseMethod {Buying, Staking}
@@ -47,7 +48,7 @@ contract Bank is BankRouter, GovernanceOwnable, ILiquidityRedeemable {
 
 
     constructor(
-        address _governanceAddress,
+        address _executableAddress,
         address _APMAddress,
         address _bankBondManagerAddress,
         address _bankDataAddress,
@@ -57,9 +58,9 @@ contract Bank is BankRouter, GovernanceOwnable, ILiquidityRedeemable {
         address _WETHAddress,
         address _oracleAddress,
         address _debondBondAddress
-    ) GovernanceOwnable(_governanceAddress) BankRouter(_APMAddress, _DBITAddress, _DGOVAddress, _USDCAddress, _WETHAddress, _oracleAddress) {
+    ) ExecutableOwnable(_executableAddress) BankRouter(_APMAddress, _DBITAddress, _DGOVAddress, _USDCAddress, _WETHAddress, _oracleAddress) {
         bondManagerAddress = _bankBondManagerAddress;
-        bankDataAddress = _bankDataAddress;
+        bankStorageAddress = _bankDataAddress;
         debondBondAddress = _debondBondAddress;
     }
 
@@ -72,39 +73,48 @@ contract Bank is BankRouter, GovernanceOwnable, ILiquidityRedeemable {
         _;
     }
 
-    function setDebondBondAddress(address _debondBondAddress) external onlyGovernance {
-        debondBondAddress = _debondBondAddress;
+    function updateBondManagerAddress(
+        address _bondManagerAddress
+    ) external onlyExecutable {
+        bondManagerAddress = _bondManagerAddress;
+    }
+
+    function updateOracleAddress(
+        address _oracleAddress
+    ) external onlyExecutable {
+        oracleAddress = _oracleAddress;
     }
 
     function setApmAddress(
         address _apmAddress
-    ) external onlyGovernance {
+    ) external onlyExecutable {
         apmAddress = _apmAddress;
     }
 
-    function setBondManagerAddress(
-        address _bondManagerAddress
-    ) external onlyGovernance {
-        bondManagerAddress = _bondManagerAddress;
-    }
-
-    function setBankDataAddress(
-        address _bankDataAddress
-    ) external onlyGovernance {
-        bankDataAddress = _bankDataAddress;
+    function setBankStorageAddress(
+        address _bankStorageAddress
+    ) external onlyExecutable {
+        bankStorageAddress = _bankStorageAddress;
     }
 
     function setDBITAddress(
         address _DBITAddress
-    ) external onlyGovernance {
+    ) external onlyExecutable {
         DBITAddress = _DBITAddress;
     }
 
     function setDGOVAddress(
         address _DGOVAddress
-    ) external onlyGovernance {
+    ) external onlyExecutable {
         DGOVAddress = _DGOVAddress;
     }
+
+    function setDebondBondAddress(
+        address _debondBondAddress
+    ) external onlyExecutable {
+        debondBondAddress = _debondBondAddress;
+    }
+
 
     /**
     * @notice return if classIdIn can purchase classIdOut
@@ -116,7 +126,7 @@ contract Bank is BankRouter, GovernanceOwnable, ILiquidityRedeemable {
         uint _classIdIn,
         uint _classIdOut
     ) public view returns (bool) {
-        return IBankData(bankDataAddress).canPurchase(_classIdIn, _classIdOut);
+        return IBankStorage(bankStorageAddress).canPurchase(_classIdIn, _classIdOut);
     }
 
 

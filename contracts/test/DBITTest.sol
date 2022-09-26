@@ -15,9 +15,8 @@ contract DBITTest is DBIT {
     constructor(
         address governanceAddress,
         address bankAddress,
-        address airdropAddress,
-        address exchangeAddress
-    ) DBIT(governanceAddress, bankAddress, airdropAddress, exchangeAddress) {}
+        address airdropAddress
+    ) DBIT(governanceAddress, bankAddress, airdropAddress) {}
 
 
 }

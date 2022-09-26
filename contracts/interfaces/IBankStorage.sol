@@ -14,21 +14,15 @@ pragma solidity >=0.8.0;
     limitations under the License.
 */
 
-import "./IBankBondManager.sol";
+interface IBankStorage {
 
-
-interface IBankData {
-
-    function setBankAddress(address _bankAddress) external;
+    function updateBankAddress(address _bankAddress) external;
 
     function updateCanPurchase(uint classIdIn, uint classIdOut, bool _canPurchase) external;
 
+    function updateBenchmarkInterest(uint benchmarkInterest) external;
+
     function pushClassIdPerTokenAddress(address tokenAddress, uint classId) external;
-
-    function setBenchmarkInterest(uint benchmarkInterest) external;
-
-
-
 
     function getBaseTimestamp() external view returns (uint);
 

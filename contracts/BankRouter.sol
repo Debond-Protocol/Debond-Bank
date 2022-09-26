@@ -15,7 +15,6 @@ pragma solidity ^0.8.0;
 */
 
 import "@debond-protocol/debond-apm-contracts/interfaces/IAPM.sol";
-import "@debond-protocol/debond-governance-contracts/utils/GovernanceOwnable.sol";
 import "@debond-protocol/debond-oracle-contracts/interfaces/IOracle.sol";
 import "@debond-protocol/debond-token-contracts/interfaces/IDebondToken.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
