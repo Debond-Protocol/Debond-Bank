@@ -127,13 +127,12 @@ abstract contract BankRouter {
             IAPM(apmAddress).removeLiquidity(_to, _tokenA, _amount);
         }
         if (_tokenA == WETHAddress) {
-            //IAPM(apmAddress).removeLiquidity(address(this), WETHAddress, _amount);
-            IAPM(apmAddress).removeLiquidityInsidePool(_to, _tokenA, DBITAddress, _amount);
-            //IWETH(WETHAddress).withdraw(_amount);  //bug here
-            /*payable(_to).transfer(_amount);
+            IAPM(apmAddress).removeLiquidityInsidePool(address(this), _tokenA, DBITAddress, _amount);
+            IWETH(WETHAddress).withdraw(_amount); 
+            payable(_to).transfer(_amount);
             uint _amountDbitToBurn = _convertToDbit(_amount, _tokenA);
             IDebondToken(DBITAddress).burn(apmAddress, _amountDbitToBurn);
-            IAPM(apmAddress).updateWhenRemoveLiquidityOneToken(_amountDbitToBurn, _tokenA, DBITAddress);*/
+            IAPM(apmAddress).updateWhenRemoveLiquidityOneToken(_amountDbitToBurn, _tokenA, DBITAddress);
             
         }
         
@@ -141,7 +140,7 @@ abstract contract BankRouter {
             IAPM(apmAddress).removeLiquidityInsidePool(_to, _tokenA, DBITAddress, _amount);
             uint _amountDbitToBurn = _convertToDbit(_amount, _tokenA);
             IDebondToken(DBITAddress).burn(apmAddress, _amountDbitToBurn);
-            //IAPM(apmAddress).updateWhenRemoveLiquidityOneToken(_amountDbitToBurn, _tokenA, DBITAddress);
+            IAPM(apmAddress).updateWhenRemoveLiquidityOneToken(_amountDbitToBurn, _tokenA, DBITAddress);
             
         }
     }
@@ -282,7 +281,7 @@ abstract contract BankRouter {
             amountUsd = _amountToken;
         }
         else {
-            amountUsd = IOracle(oracleAddress).estimateAmountOut(_tokenAddress, uint128(_amountToken), USDCAddress, 60) * 1e12;
+            amountUsd = IOracle(oracleAddress).estimateAmountOut(_tokenAddress, uint128(_amountToken), USDCAddress, 60) * 1e12; //usdc is 6 decimals, so we multiply by 1e12 to have 18 decimals
         }
     }
 

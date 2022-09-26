@@ -15,7 +15,7 @@ module.exports = {
       port: 8545,
       network_id: "*"
     },
-    rinkeby: {
+       rinkeby: {
       provider: function() {
         return new HDWalletProvider(process.env.TESTNET_PRIVATE_KEY, `https://rinkeby.infura.io/v3/${process.env.INFURA_ACCESS_TOKEN}`);
       },
