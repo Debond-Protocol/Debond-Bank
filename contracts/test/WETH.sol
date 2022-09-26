@@ -20,7 +20,7 @@ contract WETH is IWETH, ERC20 {
     }
 
     function withdraw(uint wad) public {
-        require(balanceOf(msg.sender) >= wad);
+        require(balanceOf(msg.sender) >= wad, "WETH : notEnoughBalance");
         _burn(msg.sender, wad);
         payable(msg.sender).transfer(wad);
     }
