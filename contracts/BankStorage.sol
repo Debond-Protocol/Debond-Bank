@@ -16,10 +16,10 @@ pragma solidity ^0.8.0;
 
 import "./BankBondManager.sol";
 import "./interfaces/IBankStorage.sol";
-import "@debond-protocol/debond-governance-contracts/utils/GovernanceOwnable.sol";
+import "@debond-protocol/debond-governance-contracts/utils/ExecutableOwnable.sol";
 
 
-contract BankStorage is IBankStorage, GovernanceOwnable {
+contract BankStorage is IBankStorage, ExecutableOwnable {
 
     address public bankAddress;
 
@@ -29,7 +29,7 @@ contract BankStorage is IBankStorage, GovernanceOwnable {
     uint public BENCHMARK_RATE_DECIMAL_18 = 5 * 10 ** 16;
     mapping(address => uint256[]) public classIdsPerTokenAddress;
 
-    constructor(address _governanceAddress, address _bankAddress, uint _baseTimestamp) GovernanceOwnable(_governanceAddress) {
+    constructor(address _executableAddress, address _bankAddress, uint _baseTimestamp) ExecutableOwnable(_executableAddress) {
         bankAddress = _bankAddress;
         BASE_TIMESTAMP = _baseTimestamp;
     }
@@ -39,7 +39,7 @@ contract BankStorage is IBankStorage, GovernanceOwnable {
         _;
     }
 
-    function updateBankAddress(address _bankAddress) external onlyGovernance {
+    function updateBankAddress(address _bankAddress) external onlyExecutable {
         require(_bankAddress != address(0), "BankData Error: address 0");
         bankAddress = _bankAddress;
     }

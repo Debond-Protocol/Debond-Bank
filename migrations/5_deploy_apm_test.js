@@ -5,5 +5,5 @@ module.exports = async function (deployer, networks, accounts) {
 
   const governanceAddress = accounts[0]
   const bankInstance = await Bank.deployed()
-  await deployer.deploy(APMTest, governanceAddress, bankInstance.address);
+  await deployer.deploy(APMTest, governanceAddress, bankInstance.address, "0x0000000000000000000000000000000000000000");
 };

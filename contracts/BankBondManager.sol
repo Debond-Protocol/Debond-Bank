@@ -14,7 +14,7 @@ pragma solidity ^0.8.0;
     limitations under the License.
 */
 
-import "@debond-protocol/debond-governance-contracts/utils/GovernanceOwnable.sol";
+import "@debond-protocol/debond-governance-contracts/utils/ExecutableOwnable.sol";
 import "@debond-protocol/debond-erc3475-contracts/interfaces/IDebondBond.sol";
 import "@debond-protocol/debond-erc3475-contracts/interfaces/IProgressCalculator.sol";
 import "@debond-protocol/debond-oracle-contracts/interfaces/IOracle.sol";
@@ -25,7 +25,7 @@ import "./interfaces/IBankBondManager.sol";
 import "./interfaces/Types.sol";
 
 
-contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwnable {
+contract BankBondManager is IBankBondManager, IProgressCalculator, ExecutableOwnable {
 
     using DebondMath for uint256;
 
@@ -51,13 +51,13 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
 
 
     constructor(
-        address _governanceAddress,
+        address _executableAddress,
         address _debondBondAddress,
         address _bankAddress,
         address _bankDataAddress,
         address _oracleAddress,
         address _USDCAddress
-    ) GovernanceOwnable(_governanceAddress) {
+    ) ExecutableOwnable(_executableAddress) {
         debondBondAddress = _debondBondAddress;
         bankAddress = _bankAddress;
         bankStorageAddress = _bankDataAddress;
@@ -76,7 +76,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         address WETHAddress,
         address _debondBondAddress,
         address _bankStorageAddress
-    ) external onlyGovernance {
+    ) external onlyExecutable {
         require(!dataInitialized);
         dataInitialized = true;
 
@@ -125,11 +125,11 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         _;
     }
 
-    function updateBankAddress(address _bankAddress) external onlyGovernance {
+    function updateBankAddress(address _bankAddress) external onlyExecutable {
         bankAddress = _bankAddress;
     }
 
-    function updateOracleAddress(address _oracleAddress) external onlyGovernance {
+    function updateOracleAddress(address _oracleAddress) external onlyExecutable {
         oracleAddress = _oracleAddress;
     }
 
@@ -215,7 +215,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
     * @param _classIdOut class Id to purchase
     * @param _canPurchase set to true if it can purchase, false if not
     */
-    function updateCanPurchase(uint _classIdIn, uint _classIdOut, bool _canPurchase) external onlyGovernance {
+    function updateCanPurchase(uint _classIdIn, uint _classIdOut, bool _canPurchase) external onlyExecutable {
         _updateCanPurchase(_classIdIn, _classIdOut, _canPurchase);
     }
 
@@ -297,7 +297,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, GovernanceOwn
         address _tokenAddress,
         Types.InterestRateType _interestRateType,
         uint256 _period
-    ) external onlyGovernance {
+    ) external onlyExecutable {
         _createClass(_classId, _symbol, _tokenAddress, _interestRateType, _period);
     }
 

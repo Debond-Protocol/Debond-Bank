@@ -23,7 +23,7 @@ pragma solidity ^0.8.0;
 
 import "@debond-protocol/debond-token-contracts/interfaces/IDebondToken.sol";
 import "@debond-protocol/debond-oracle-contracts/interfaces/IOracle.sol";
-import "@debond-protocol/debond-governance-contracts/utils/GovernanceOwnable.sol";
+import "@debond-protocol/debond-governance-contracts/utils/ExecutableOwnable.sol";
 import "@debond-protocol/debond-erc3475-contracts/interfaces/ILiquidityRedeemable.sol";
 import "./interfaces/IWETH.sol";
 import "./BankBondManager.sol";
@@ -36,7 +36,7 @@ import "./interfaces/IBank.sol";
 
 //todo : grammaire( _ internal, majuscules etc), commentaires
 
-contract Bank is IBank, BankRouter, GovernanceOwnable, ILiquidityRedeemable {
+contract Bank is IBank, BankRouter, ExecutableOwnable, ILiquidityRedeemable {
 
     using DebondMath for uint256;
 
@@ -48,7 +48,7 @@ contract Bank is IBank, BankRouter, GovernanceOwnable, ILiquidityRedeemable {
 
 
     constructor(
-        address _governanceAddress,
+        address _executableAddress,
         address _APMAddress,
         address _bankBondManagerAddress,
         address _bankDataAddress,
@@ -58,7 +58,7 @@ contract Bank is IBank, BankRouter, GovernanceOwnable, ILiquidityRedeemable {
         address _WETHAddress,
         address _oracleAddress,
         address _debondBondAddress
-    ) GovernanceOwnable(_governanceAddress) BankRouter(_APMAddress, _DBITAddress, _DGOVAddress, _USDCAddress, _WETHAddress, _oracleAddress) {
+    ) ExecutableOwnable(_executableAddress) BankRouter(_APMAddress, _DBITAddress, _DGOVAddress, _USDCAddress, _WETHAddress, _oracleAddress) {
         bondManagerAddress = _bankBondManagerAddress;
         bankStorageAddress = _bankDataAddress;
         debondBondAddress = _debondBondAddress;
@@ -75,43 +75,43 @@ contract Bank is IBank, BankRouter, GovernanceOwnable, ILiquidityRedeemable {
 
     function updateBondManagerAddress(
         address _bondManagerAddress
-    ) external onlyGovernance {
+    ) external onlyExecutable {
         bondManagerAddress = _bondManagerAddress;
     }
 
     function updateOracleAddress(
         address _oracleAddress
-    ) external onlyGovernance {
+    ) external onlyExecutable {
         oracleAddress = _oracleAddress;
     }
 
     function setApmAddress(
         address _apmAddress
-    ) external onlyGovernance {
+    ) external onlyExecutable {
         apmAddress = _apmAddress;
     }
 
     function setBankStorageAddress(
         address _bankStorageAddress
-    ) external onlyGovernance {
+    ) external onlyExecutable {
         bankStorageAddress = _bankStorageAddress;
     }
 
     function setDBITAddress(
         address _DBITAddress
-    ) external onlyGovernance {
+    ) external onlyExecutable {
         DBITAddress = _DBITAddress;
     }
 
     function setDGOVAddress(
         address _DGOVAddress
-    ) external onlyGovernance {
+    ) external onlyExecutable {
         DGOVAddress = _DGOVAddress;
     }
 
     function setDebondBondAddress(
         address _debondBondAddress
-    ) external onlyGovernance {
+    ) external onlyExecutable {
         debondBondAddress = _debondBondAddress;
     }
 

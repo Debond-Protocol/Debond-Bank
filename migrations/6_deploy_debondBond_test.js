@@ -10,6 +10,6 @@ module.exports = async function (deployer, networks, accounts) {
   const bankBondManagerInstance = await BankBondManager.deployed();
   const bankInstance = await Bank.deployed();
 
-  await debondBondInstance.setBondManagerAddress(bankBondManagerInstance.address);
-  await debondBondInstance.setRedeemableAddress(bankInstance.address);
+  await debondBondInstance.updateBondManagerAddress(bankBondManagerInstance.address);
+  await debondBondInstance.updateBankAddress(bankInstance.address);
 }

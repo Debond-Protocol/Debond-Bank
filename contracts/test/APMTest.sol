@@ -8,9 +8,5 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract APMTest is APM {
 
-    constructor(address governanceAddress, address bankAddress) APM(governanceAddress, bankAddress) {}
-
-    /*function removeLiquidityInsidePool(address _to, address _tokenA, address DBITAddress, uint _amountDbitToBurn) public {
-        //IERC20(DBITAddress).mint();
-    }*/
+    constructor(address governanceAddress, address bankAddress, address stakingDebondContract) APM(governanceAddress, bankAddress, stakingDebondContract) {}
 } 
