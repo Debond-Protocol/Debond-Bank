@@ -7,7 +7,11 @@
     "test": "test"
   },
   "dependencies": {
-    "@debond-protocol/debond-oracle-contracts": "0.0.1"
+    "@debond-protocol/debond-apm-contracts": "^0.0.5",
+    "@debond-protocol/debond-erc3475-contracts": "^0.0.5",
+    "@debond-protocol/debond-governance-contracts": "^0.0.1",
+    "@debond-protocol/debond-oracle-contracts": "0.0.1",
+    "@debond-protocol/debond-token-contracts": "^0.0.2"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
