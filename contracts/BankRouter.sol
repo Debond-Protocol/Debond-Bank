@@ -145,10 +145,6 @@ abstract contract BankRouter {
         }
     }
 
-    function testCdp(uint _amountToken, address _tokenAddress) public view returns(uint val){
-        val = _convertToDbit(_amountToken, _tokenAddress);
-    }
-
     function _removeWETHLiquidity(
         uint _amount
     ) internal {
