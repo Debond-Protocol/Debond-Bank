@@ -496,8 +496,6 @@ contract Bank is IBank, BankRouter, ExecutableOwnable, ILiquidityRedeemable {
         _addLiquidityDgovETHPair(purchaseTokenAmount);
         _issuingProcessBuying(purchaseTokenAmount, purchaseTokenAddress, _dgovClassId, _interestRate, _to);
     }
-<<<<<<< HEAD
-
     function redeemLiquidity(address _from, IERC3475.Transaction[] calldata _transactions) external {
         require(msg.sender == debondBondAddress, "Bank Error: Not Authorised");
         for(uint i; i < _transactions.length; i++) {
