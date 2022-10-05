@@ -14,9 +14,8 @@ contract DGOVTest is DGOV {
     constructor(
         address governanceAddress,
         address bankAddress,
-        address airdropAddress,
-        address exchangeAddress
-    ) DGOV(governanceAddress, bankAddress, airdropAddress, exchangeAddress) {}
+        address airdropAddress
+    ) DGOV(governanceAddress, bankAddress, airdropAddress) {}
 
 
 }

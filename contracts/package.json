@@ -1,0 +1,37 @@
+{
+  "name": "@debond-protocol/debond-bank-contracts",
+  "version": "0.0.3",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.5.0",
+    "@debond-protocol/debond-apm-contracts": "^0.0.5",
+    "@debond-protocol/debond-erc3475-contracts": "^0.0.6",
+    "@debond-protocol/debond-governance-contracts": "^0.0.3",
+    "@debond-protocol/debond-oracle-contracts": "0.0.1",
+    "@debond-protocol/debond-token-contracts": "^0.0.4",
+    "erc3475": "^0.0.2",
+    "prb-math": "^2.4.3"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Debond-Protocol/Debond-Bank.git"
+  },
+  "keywords": [
+    "debond",
+    "protocol",
+    "bank"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Debond-Protocol/Debond-Bank/issues"
+  },
+  "homepage": "https://github.com/Debond-Protocol/Debond-Bank#readme"
+}

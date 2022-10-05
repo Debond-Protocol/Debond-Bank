@@ -105,8 +105,14 @@ contract('Bank', async (accounts: string[]) => {
 
     it('stakeForDbitBondWithElse then redeem', async () => {
 
+        
+
         //mint usdc to the buyer
         await usdcContract.mint(buyer, web3.utils.toWei('100000', 'ether'));
+        
+        await dbitContract.setBankAddress(accounts[1]);
+        await dbitContract.mintCollateralisedSupply(apmContract.address, web3.utils.toWei('300', 'ether'), {from: accounts[1]});
+        await dbitContract.setBankAddress(bankContract.address)
 
         //approve usdc and buy bonds
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
@@ -128,15 +134,27 @@ contract('Bank', async (accounts: string[]) => {
 
         const UsdcnonceId = (transactions.find(t => parseInt(t.classId) == 12)?.nonceId) as string
         await sleep(1500);
+        console.log("before redeeem")
+        const DBIT = await dbitContract.balanceOf(apmContract.address)
+        console.log(DBIT.toString())
+        const r0 = await dbitContract.balanceOf(apmContract.address);
+
         await bondContract.redeem(buyer, [{classId : 12, nonceId : parseInt(UsdcnonceId), amount: web3.utils.toWei('3000', 'ether')}], {from : buyer});
+        console.log("after redeeem")
 
         let balanceAfterRedeem = await usdcContract.balanceOf(buyer);
         console.log ("balance après " , balanceAfterRedeem.toString());
         expect( balanceAfterRedeem.toString()).to.equal(web3.utils.toWei('100000', 'ether').toString());
 
+        const r1 = await dbitContract.balanceOf(apmContract.address);
+
+        console.log("HEEEEEERRE  " +  r0.toString(), r1.toString());
+
     })
 
-    it('stakeForDbitBondWithEth then redeem', async () => {
+    it.only('stakeForDbitBondWithEth then redeem', async () => {
+
+        const r0 = await dbitContract.balanceOf(apmContract.address);
 
         await wethContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
 
@@ -176,7 +194,14 @@ contract('Bank', async (accounts: string[]) => {
         let v3 = v2-v1;
         expect(v3).to.lessThan(0.03); // gas used
 
+        const r1 = await dbitContract.balanceOf(apmContract.address);
 
+        let p0 = parseFloat(web3.utils.fromWei(r0, "ether"));
+        let p1 = parseFloat(web3.utils.fromWei(r1, "ether"));
+        let p2 = p1-p0;
+        expect(p2).to.lessThan(37000000000000000000); // gas used
+
+        console.log("HEEEEEERRE" + r0.toString(), r1.toString());
     })
 
 
