@@ -20,19 +20,13 @@ import "@debond-protocol/debond-token-contracts/interfaces/IDebondToken.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IWETH.sol";
-
 import "./libraries/DebondMath.sol";
-
-
-
 
 
 abstract contract BankRouter {
 
     using DebondMath for uint256;
     using SafeERC20 for IERC20;
-
-
 
     address apmAddress;
     address DBITAddress;
@@ -41,20 +35,23 @@ abstract contract BankRouter {
     address immutable WETHAddress;
     address oracleAddress;
 
-    constructor(
-        address _apmAddress,
-        address _DBITAddress,
-        address _DGOVAddress,
-        address _USDCAddress,
-        address _WETHAddress,
-        address _oracleAddress
-    ) {
-        apmAddress = _apmAddress;
-        DBITAddress = _DBITAddress;
-        DGOVAddress = _DGOVAddress;
+    uint constant MIN_COLATERALISED_AMOUNT = 1000 ether;
+
+    constructor(address _USDCAddress, address _WETHAddress) {
         USDCAddress = _USDCAddress;
         WETHAddress = _WETHAddress;
+    }
+
+    function _initDatas(
+        address _apmAddress,
+        address _oracleAddress,
+        address _DBITAddress,
+        address _DGOVAddress
+    ) internal {
+        apmAddress = _apmAddress;
         oracleAddress = _oracleAddress;
+        DBITAddress = _DBITAddress;
+        DGOVAddress = _DGOVAddress;
     }
 
     function swapExactTokensForTokens(
@@ -121,26 +118,26 @@ abstract contract BankRouter {
         address _to,
         address _tokenA, //tokenB may be dbit
         uint _amount
-    ) internal{
+    ) internal {
         if (_tokenA == DBITAddress) {
             IAPM(apmAddress).removeLiquidity(_to, _tokenA, _amount);
         }
         if (_tokenA == WETHAddress) {
             IAPM(apmAddress).removeLiquidityInsidePool(address(this), _tokenA, DBITAddress, _amount);
-            IWETH(WETHAddress).withdraw(_amount); 
+            IWETH(WETHAddress).withdraw(_amount);
             payable(_to).transfer(_amount);
             uint _amountDbitToBurn = _convertToDbit(_amount, _tokenA);
             IDebondToken(DBITAddress).burn(apmAddress, _amountDbitToBurn);
             IAPM(apmAddress).updateWhenRemoveLiquidityOneToken(_amountDbitToBurn, _tokenA, DBITAddress);
-            
+
         }
-        
+
         else {
             IAPM(apmAddress).removeLiquidityInsidePool(_to, _tokenA, DBITAddress, _amount);
             uint _amountDbitToBurn = _convertToDbit(_amount, _tokenA);
             IDebondToken(DBITAddress).burn(apmAddress, _amountDbitToBurn);
             IAPM(apmAddress).updateWhenRemoveLiquidityOneToken(_amountDbitToBurn, _tokenA, DBITAddress);
-            
+
         }
     }
 
@@ -254,7 +251,7 @@ abstract contract BankRouter {
         amountDBIT = 1 ether;
         uint256 _sCollateralised = IDebondToken(DBITAddress).getTotalCollateralisedSupply();
 
-        if (_sCollateralised >= 1000 ether) {
+        if (_sCollateralised >= MIN_COLATERALISED_AMOUNT) {
             amountDBIT = 1.05 ether;
             uint256 logCollateral = (_sCollateralised / 1000).log2();
             amountDBIT = amountDBIT.pow(logCollateral);
@@ -276,7 +273,8 @@ abstract contract BankRouter {
             amountUsd = _amountToken;
         }
         else {
-            amountUsd = IOracle(oracleAddress).estimateAmountOut(_tokenAddress, uint128(_amountToken), USDCAddress, 60) * 1e12; //usdc is 6 decimals, so we multiply by 1e12 to have 18 decimals
+            amountUsd = IOracle(oracleAddress).estimateAmountOut(_tokenAddress, uint128(_amountToken), USDCAddress, 60) * 1e12;
+            //usdc is 6 decimals, so we multiply by 1e12 to have 18 decimals
         }
     }
 
@@ -286,7 +284,7 @@ abstract contract BankRouter {
     */
     function _cdpDbitToDgov() private view returns (uint256 amountDGOV) {
         uint256 _totalCollateralisedSupply = IDebondToken(DGOVAddress).getTotalCollateralisedSupply();
-         amountDGOV = (100 ether + ((_totalCollateralisedSupply * 1e9) / 33333 / 1e18)**2).inv();
+        amountDGOV = (100 ether + ((_totalCollateralisedSupply * 1e9) / 33333 / 1e18) ** 2).inv();
     }
     /**
     * @dev given the amount of dbit, returns the amout of DGOV to mint

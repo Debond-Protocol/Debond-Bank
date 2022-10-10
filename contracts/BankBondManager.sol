@@ -52,16 +52,10 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, ExecutableOwn
 
     constructor(
         address _executableAddress,
-        address _debondBondAddress,
         address _bankAddress,
-        address _bankDataAddress,
-        address _oracleAddress,
         address _USDCAddress
     ) ExecutableOwnable(_executableAddress) {
-        debondBondAddress = _debondBondAddress;
         bankAddress = _bankAddress;
-        bankStorageAddress = _bankDataAddress;
-        oracleAddress = _oracleAddress;
         USDCAddress = _USDCAddress;
     }
 
@@ -75,10 +69,13 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, ExecutableOwn
         address DGOVAddress,
         address WETHAddress,
         address _debondBondAddress,
-        address _bankStorageAddress
+        address _bankStorageAddress,
+        address _oracleAddress
     ) external onlyOwner {
         debondBondAddress = _debondBondAddress;
         bankStorageAddress = _bankStorageAddress;
+        oracleAddress = _oracleAddress;
+
         _createInitClassMetadatas();
 
         _createClass(0, "DBIT", DBITAddress, Types.InterestRateType.FixedRate);
