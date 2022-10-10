@@ -21,7 +21,7 @@ interface IBankBondManager {
 
     function updateOracleAddress(address _oracleAddress) external;
     function updateBankAddress(address _bankAddress) external;
-    function createClass(uint256 classId, string memory symbol, address tokenAddress, Types.InterestRateType interestRateType, uint256 period) external;
+    function createClass(uint256 classId, string memory symbol, address tokenAddress, Types.InterestRateType interestRateType) external;
     function issueBonds(address to, uint256[] memory classIds, uint256[] memory amounts) external;
     function getETA(uint256 classId, uint256 nonceId) external view returns (uint256);
     function classValues(uint256 classId) external view returns (address _tokenAddress, Types.InterestRateType _interestRateType, uint256 _periodTimestamp);
