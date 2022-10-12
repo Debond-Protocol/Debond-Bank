@@ -137,10 +137,10 @@ contract('Bank', async (accounts: string[]) => {
 
     it('stakeForDgovBondWithDbit', async () => {
 
-        await dbitContract.setBankAddress(accounts[9]);
+        await dbitContract.updateBankAddress(accounts[9]);
         //mint dbit to the buyer
         await dbitContract.mintCollateralisedSupply(buyer, web3.utils.toWei('100000', 'ether'), {from: accounts[1]});
-        await dbitContract.setBankAddress(bankContract.address)
+        await dbitContract.updateBankAddress(bankContract.address)
 
         //log his dbit balance
         let balance = await dbitContract.balanceOf(buyer);
@@ -274,10 +274,10 @@ contract('Bank', async (accounts: string[]) => {
 
     it('buyForDgovBondWithDbit', async () => {
 
-        await dbitContract.setBankAddress(accounts[1]);
+        await dbitContract.updateBankAddress(accounts[1]);
         //mint dbit to the buyer
         await dbitContract.mintCollateralisedSupply(buyer, web3.utils.toWei('100000', 'ether'), {from: accounts[1]});
-        await dbitContract.setBankAddress(bankContract.address);
+        await dbitContract.updateBankAddress(bankContract.address);
 
         //log his dbit balance
         let balance = await dbitContract.balanceOf(buyer);
