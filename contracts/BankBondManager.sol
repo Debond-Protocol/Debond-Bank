@@ -14,6 +14,7 @@ pragma solidity ^0.8.0;
     limitations under the License.
 */
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@debond-protocol/debond-governance-contracts/utils/ExecutableOwnable.sol";
 import "@debond-protocol/debond-erc3475-contracts/interfaces/IDebondBond.sol";
 import "@debond-protocol/debond-erc3475-contracts/interfaces/IProgressCalculator.sol";
@@ -25,7 +26,7 @@ import "./interfaces/IBankBondManager.sol";
 import "./interfaces/Types.sol";
 
 
-contract BankBondManager is IBankBondManager, IProgressCalculator, ExecutableOwnable {
+contract BankBondManager is IBankBondManager, IProgressCalculator, ExecutableOwnable, Ownable {
 
     using DebondMath for uint256;
 
@@ -47,21 +48,14 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, ExecutableOwn
 
     uint public constant EPOCH_24H = 1 days;
     uint public constant CLASS_PERIOD_1 = 180 * EPOCH_24H; // 6 months
-    bool dataInitialized;
-
+    uint public constant MINIMUM_LIQ_VALUE = 100_000 ether;
 
     constructor(
         address _executableAddress,
-        address _debondBondAddress,
         address _bankAddress,
-        address _bankDataAddress,
-        address _oracleAddress,
         address _USDCAddress
     ) ExecutableOwnable(_executableAddress) {
-        debondBondAddress = _debondBondAddress;
         bankAddress = _bankAddress;
-        bankStorageAddress = _bankDataAddress;
-        oracleAddress = _oracleAddress;
         USDCAddress = _USDCAddress;
     }
 
@@ -75,28 +69,28 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, ExecutableOwn
         address DGOVAddress,
         address WETHAddress,
         address _debondBondAddress,
-        address _bankStorageAddress
-    ) external onlyExecutable {
-        require(!dataInitialized);
-        dataInitialized = true;
-
+        address _bankStorageAddress,
+        address _oracleAddress
+    ) external onlyOwner {
         debondBondAddress = _debondBondAddress;
         bankStorageAddress = _bankStorageAddress;
+        oracleAddress = _oracleAddress;
+
         _createInitClassMetadatas();
 
-        _createClass(0, "DBIT", DBITAddress, Types.InterestRateType.FixedRate, CLASS_PERIOD_1);
-        _createClass(1, "USDC", USDCAddress, Types.InterestRateType.FixedRate, CLASS_PERIOD_1);
-        _createClass(2, "USDT", USDTAddress, Types.InterestRateType.FixedRate, CLASS_PERIOD_1);
-        _createClass(3, "DAI", DAIAddress, Types.InterestRateType.FixedRate, CLASS_PERIOD_1);
-        _createClass(4, "DGOV", DGOVAddress, Types.InterestRateType.FixedRate, CLASS_PERIOD_1);
-        _createClass(10, "WETH", WETHAddress, Types.InterestRateType.FixedRate, CLASS_PERIOD_1);
+        _createClass(0, "DBIT", DBITAddress, Types.InterestRateType.FixedRate);
+        _createClass(1, "USDC", USDCAddress, Types.InterestRateType.FixedRate);
+        _createClass(2, "USDT", USDTAddress, Types.InterestRateType.FixedRate);
+        _createClass(3, "DAI", DAIAddress, Types.InterestRateType.FixedRate);
+        _createClass(4, "DGOV", DGOVAddress, Types.InterestRateType.FixedRate);
+        _createClass(10, "WETH", WETHAddress, Types.InterestRateType.FixedRate);
 
-        _createClass(5, "DBIT", DBITAddress, Types.InterestRateType.FloatingRate, CLASS_PERIOD_1);
-        _createClass(6, "USDC", USDCAddress, Types.InterestRateType.FloatingRate, CLASS_PERIOD_1);
-        _createClass(7, "USDT", USDTAddress, Types.InterestRateType.FloatingRate, CLASS_PERIOD_1);
-        _createClass(8, "DAI", DAIAddress, Types.InterestRateType.FloatingRate, CLASS_PERIOD_1);
-        _createClass(9, "DGOV", DGOVAddress, Types.InterestRateType.FloatingRate, CLASS_PERIOD_1);
-        _createClass(11, "WETH", WETHAddress, Types.InterestRateType.FloatingRate, CLASS_PERIOD_1);
+        _createClass(5, "DBIT", DBITAddress, Types.InterestRateType.FloatingRate);
+        _createClass(6, "USDC", USDCAddress, Types.InterestRateType.FloatingRate);
+        _createClass(7, "USDT", USDTAddress, Types.InterestRateType.FloatingRate);
+        _createClass(8, "DAI", DAIAddress, Types.InterestRateType.FloatingRate);
+        _createClass(9, "DGOV", DGOVAddress, Types.InterestRateType.FloatingRate);
+        _createClass(11, "WETH", WETHAddress, Types.InterestRateType.FloatingRate);
 
 
         _updateCanPurchase(1, 0, true);
@@ -118,6 +112,8 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, ExecutableOwn
         _updateCanPurchase(7, 9, true);
         _updateCanPurchase(8, 9, true);
         _updateCanPurchase(11, 9, true);
+
+        renounceOwnership();
     }
 
     modifier onlyBank {
@@ -152,9 +148,8 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, ExecutableOwn
         uint[] memory nonceIds = new uint[](_classIds.length);
         IERC3475.Transaction[] memory transactions = new IERC3475.Transaction[](_classIds.length);
         for (uint i; i < _classIds.length; i++) {
-            (,, uint _period) = classValues(_classIds[i]);
             // here we get the nonce for a period to add it to the current nonce
-            uint _nonceToIssueWith = _nowNonce + _getNonceFromPeriod(_period);
+            uint _nonceToIssueWith = _nowNonce + _getNonceFromPeriod(CLASS_PERIOD_1);
             (uint _lastNonceCreated,) = IDebondBond(debondBondAddress).getLastNonceCreated(_classIds[i]);
             // here we check if the nonce to issue the bond with is already created
             if (_nonceToIssueWith > _lastNonceCreated) {
@@ -246,7 +241,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, ExecutableOwn
         IERC3475.Values[] memory _values = new IERC3475.Values[](4);
         _values[0] = IERC3475.Values(_symbol, 0, address(0), false);
         _values[1] = IERC3475.Values("", 0, _tokenAddress, false);
-        _values[2] = IERC3475.Values("", uint(_interestRateType), address(0), false);
+        _values[2] = IERC3475.Values("", uint8(_interestRateType), address(0), false);
         _values[3] = IERC3475.Values("", _period, address(0), false);
         return (_metadataIds, _values);
     }
@@ -295,20 +290,18 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, ExecutableOwn
         uint256 _classId,
         string memory _symbol,
         address _tokenAddress,
-        Types.InterestRateType _interestRateType,
-        uint256 _period
+        Types.InterestRateType _interestRateType
     ) external onlyExecutable {
-        _createClass(_classId, _symbol, _tokenAddress, _interestRateType, _period);
+        _createClass(_classId, _symbol, _tokenAddress, _interestRateType);
     }
 
     function _createClass(
         uint256 classId,
         string memory symbol,
         address tokenAddress,
-        Types.InterestRateType interestRateType,
-        uint256 period
+        Types.InterestRateType interestRateType
     ) private {
-        (uint[] memory _metadataIds, IERC3475.Values[] memory _values) = mapClassValuesFrom(symbol, tokenAddress, interestRateType, period);
+        (uint[] memory _metadataIds, IERC3475.Values[] memory _values) = mapClassValuesFrom(symbol, tokenAddress, interestRateType, CLASS_PERIOD_1);
         IDebondBond(debondBondAddress).createClass(classId, _metadataIds, _values);
         _pushClassIdPerToken(tokenAddress, classId);
         _createNonceMetadatas(classId);
@@ -394,7 +387,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, ExecutableOwn
     function _tokenLiquidityInFromLast(address _tokenAddress, uint256 _nonceCount) private view returns (uint256 supply) {
         uint[] memory _classIdsPerTokenAddress = getClassIdsFromTokenAddress(_tokenAddress);
         for (uint i = 0; i < _classIdsPerTokenAddress.length; i++) {
-            (,, uint _period) = classValues(_classIdsPerTokenAddress[i]);
+            uint _period = CLASS_PERIOD_1;
             (uint _toNonceId,) = IDebondBond(debondBondAddress).getLastNonceCreated(_classIdsPerTokenAddress[i]);
             if(_toNonceId < _getNonceFromPeriod(_period) || _toNonceId < _nonceCount) {
                 supply += 0;
@@ -452,7 +445,7 @@ contract BankBondManager is IBankBondManager, IProgressCalculator, ExecutableOwn
         uint fixRate;
         uint floatRate;
         uint oneTokenToUSDValue = _convertTokenToUSDC(1 ether, tokenAddress);
-        if ((fixRateSupply.mul(oneTokenToUSDValue)) < 100_000 ether || (floatRateSupply.mul(oneTokenToUSDValue)) < 100_000 ether) {
+        if ((fixRateSupply.mul(oneTokenToUSDValue)) < MINIMUM_LIQ_VALUE || (floatRateSupply.mul(oneTokenToUSDValue)) < MINIMUM_LIQ_VALUE) {
             (fixRate, floatRate) = _getDefaultRate();
            return interestRateType == Types.InterestRateType.FixedRate ? fixRate : floatRate;
         } else {

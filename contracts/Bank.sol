@@ -14,13 +14,7 @@ pragma solidity ^0.8.0;
     limitations under the License.
 */
 
-    error Deadline(uint deadline, uint blockTimeStamp);
-    error PairNotAllowed();
-    error RateNotHighEnough(uint currentRate, uint minRate);
-    error INSUFFICIENT_AMOUNT(uint amount);
-    error INSUFFICIENT_LIQUIDITY(uint liquidity);
-    error WrongTokenAddress(address tokenAddress);
-
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@debond-protocol/debond-token-contracts/interfaces/IDebondToken.sol";
 import "@debond-protocol/debond-oracle-contracts/interfaces/IOracle.sol";
 import "@debond-protocol/debond-governance-contracts/utils/ExecutableOwnable.sol";
@@ -32,11 +26,12 @@ import "./interfaces/IBankStorage.sol";
 import "./BankRouter.sol";
 import "./interfaces/IBank.sol";
 
+contract Bank is IBank, BankRouter, ExecutableOwnable, ILiquidityRedeemable, Ownable {
 
-
-//todo : grammaire( _ internal, majuscules etc), commentaires
-
-contract Bank is IBank, BankRouter, ExecutableOwnable, ILiquidityRedeemable {
+    error Deadline(uint deadline, uint blockTimeStamp);
+    error PairNotAllowed();
+    error RateNotHighEnough(uint currentRate, uint minRate);
+    error WrongTokenAddress(address tokenAddress);
 
     using DebondMath for uint256;
 
@@ -45,26 +40,28 @@ contract Bank is IBank, BankRouter, ExecutableOwnable, ILiquidityRedeemable {
     address public debondBondAddress;
     enum PurchaseMethod {Buying, Staking}
 
-
-
     constructor(
         address _executableAddress,
+        address _USDCAddress,
+        address _WETHAddress
+    ) ExecutableOwnable(_executableAddress) BankRouter(_USDCAddress, _WETHAddress) {}
+
+    receive() external payable {}
+
+    function initDatas(
+        address _DBITAddress,
+        address _DGOVAddress,
         address _APMAddress,
         address _bankBondManagerAddress,
         address _bankDataAddress,
-        address _DBITAddress,
-        address _DGOVAddress,
-        address _USDCAddress,
-        address _WETHAddress,
         address _oracleAddress,
         address _debondBondAddress
-    ) ExecutableOwnable(_executableAddress) BankRouter(_APMAddress, _DBITAddress, _DGOVAddress, _USDCAddress, _WETHAddress, _oracleAddress) {
+    ) external onlyOwner {
+        _initDatas(_APMAddress, _oracleAddress, _DBITAddress, _DGOVAddress);
         bondManagerAddress = _bankBondManagerAddress;
         bankStorageAddress = _bankDataAddress;
         debondBondAddress = _debondBondAddress;
     }
-
-    receive() external payable {}
 
     modifier ensure(uint deadline) {
         if (deadline >= block.timestamp) {
@@ -83,36 +80,6 @@ contract Bank is IBank, BankRouter, ExecutableOwnable, ILiquidityRedeemable {
         address _oracleAddress
     ) external onlyExecutable {
         oracleAddress = _oracleAddress;
-    }
-
-    function setApmAddress(
-        address _apmAddress
-    ) external onlyExecutable {
-        apmAddress = _apmAddress;
-    }
-
-    function setBankStorageAddress(
-        address _bankStorageAddress
-    ) external onlyExecutable {
-        bankStorageAddress = _bankStorageAddress;
-    }
-
-    function setDBITAddress(
-        address _DBITAddress
-    ) external onlyExecutable {
-        DBITAddress = _DBITAddress;
-    }
-
-    function setDGOVAddress(
-        address _DGOVAddress
-    ) external onlyExecutable {
-        DGOVAddress = _DGOVAddress;
-    }
-
-    function setDebondBondAddress(
-        address _debondBondAddress
-    ) external onlyExecutable {
-        debondBondAddress = _debondBondAddress;
     }
 
 
@@ -500,7 +467,7 @@ contract Bank is IBank, BankRouter, ExecutableOwnable, ILiquidityRedeemable {
 
     function redeemLiquidity(address _from, IERC3475.Transaction[] calldata _transactions) external {
         require(msg.sender == debondBondAddress, "Bank Error: Not Authorised");
-        for(uint i; i < _transactions.length; i++) {
+        for (uint i; i < _transactions.length; i++) {
             (address tokenAddress,,) = IBankBondManager(bondManagerAddress).classValues(_transactions[i].classId);
             _removeLiquidity(_from, tokenAddress, _transactions[i].amount);
         }

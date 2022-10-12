@@ -94,8 +94,8 @@ contract('Bank', async (accounts: string[]) => {
         BankBondManagerContract = await BankBondManager.deployed();
 
         let governanceAddress = accounts[0];
-        await BankBondManagerContract.createClass(12, "USDC", usdcContract.address, 0, 1, {from: governanceAddress});
-        await BankBondManagerContract.createClass(13, "WETH", wethContract.address, 0, 1, {from: governanceAddress});
+        await BankBondManagerContract.createClass(12, "USDC", usdcContract.address, 0, {from: governanceAddress});
+        await BankBondManagerContract.createClass(13, "WETH", wethContract.address, 0, {from: governanceAddress});
 
         await BankBondManagerContract.updateCanPurchase(12, 0, true, {from: governanceAddress});
         await BankBondManagerContract.updateCanPurchase(13, 0, true, {from: governanceAddress});
@@ -110,9 +110,9 @@ contract('Bank', async (accounts: string[]) => {
         //mint usdc to the buyer
         await usdcContract.mint(buyer, web3.utils.toWei('100000', 'ether'));
         
-        await dbitContract.setBankAddress(accounts[1]);
+        await dbitContract.updateBankAddress(accounts[1]);
         await dbitContract.mintCollateralisedSupply(apmContract.address, web3.utils.toWei('300', 'ether'), {from: accounts[1]});
-        await dbitContract.setBankAddress(bankContract.address)
+        await dbitContract.updateBankAddress(bankContract.address)
 
         //approve usdc and buy bonds
         await usdcContract.approve(bankContract.address, web3.utils.toWei('100000', 'ether'), {from: buyer});
@@ -200,8 +200,6 @@ contract('Bank', async (accounts: string[]) => {
         let p1 = parseFloat(web3.utils.fromWei(r1, "ether"));
         let p2 = p1-p0;
         expect(p2).to.lessThan(37000000000000000000); // gas used
-
-        console.log("HEEEEEERRE" + r0.toString(), r1.toString());
     })
 
 
