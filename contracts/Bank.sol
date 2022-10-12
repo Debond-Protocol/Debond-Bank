@@ -61,6 +61,8 @@ contract Bank is IBank, BankRouter, ExecutableOwnable, ILiquidityRedeemable, Own
         bondManagerAddress = _bankBondManagerAddress;
         bankStorageAddress = _bankDataAddress;
         debondBondAddress = _debondBondAddress;
+
+        renounceOwnership();
     }
 
     modifier ensure(uint deadline) {
